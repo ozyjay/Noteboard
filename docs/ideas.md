@@ -22,7 +22,9 @@ For example, an optional starting point could be:
 
 ## Ideas inbox
 
-Add new ideas here whenever they occur.
+> ### What about supporting RAG and web search?
+>
+> We probably need additional provider agnostic layer(s) that provide functionality such as RAG and web search.
 
 ## Review and promotion
 
