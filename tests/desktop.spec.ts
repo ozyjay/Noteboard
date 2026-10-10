@@ -37,6 +37,15 @@ test("production desktop bridge saves and reopens an inquiry in SQLite", async (
     await expect(
       page.getByText("Saved locally", { exact: true }),
     ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Appearance settings", exact: true })
+      .click();
+    await page.getByLabel("Theme", { exact: true }).selectOption("dark");
+    await page.getByLabel("Reading text size").selectOption("large");
+    await page
+      .getByRole("button", { name: "Save appearance", exact: true })
+      .click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
     await app.close();
     app = await electron.launch({
       args: [".", `--user-data-dir=${dir}`],
@@ -52,6 +61,11 @@ test("production desktop bridge saves and reopens an inquiry in SQLite", async (
         .first(),
     ).toBeVisible();
     await expect(page.locator(".note-card")).toHaveCount(1);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-text-size",
+      "large",
+    );
     expect(
       await page.evaluate(
         () => typeof (window as unknown as { require?: unknown }).require,

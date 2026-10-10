@@ -4,12 +4,21 @@ export const MessageSchema = z.object({
   content: z.string(),
 });
 export type Message = z.infer<typeof MessageSchema>;
+export const AppearanceSchema = z.object({
+  theme: z.enum(["light", "dark", "system"]).default("light"),
+  accent: z.enum(["sage", "blue", "plum"]).default("sage"),
+  textSize: z.enum(["standard", "large", "larger"]).default("standard"),
+  showGrid: z.boolean().default(true),
+});
+export type Appearance = z.infer<typeof AppearanceSchema>;
+export const defaultAppearance: Appearance = AppearanceSchema.parse({});
 export const SettingsSchema = z.object({
   provider: z.enum(["demo", "ollama", "chatgpt"]),
   endpoint: z.string().max(300),
   chatgptAccountId: z.string().max(200).optional(),
   model: z.string().max(100),
   contextLimit: z.number().int().min(1024).max(1000000),
+  appearance: AppearanceSchema.default(defaultAppearance),
   depthReminder: z.number().int().min(1).max(100),
 });
 export type Settings = z.infer<typeof SettingsSchema>;
@@ -19,6 +28,7 @@ export const defaults: Settings = {
   model: "",
   contextLimit: 8192,
   depthReminder: 8,
+  appearance: defaultAppearance,
 };
 const PositionSchema = z.object({
   x: z.number().finite(),

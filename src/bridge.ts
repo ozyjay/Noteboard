@@ -3,6 +3,7 @@ import {
   type Settings,
   validateBoard,
   defaults,
+  SettingsSchema,
 } from "./core/model";
 import {
   demoProvider,
@@ -62,9 +63,15 @@ const preview: InquiryBridge = {
     );
   },
   async getSettings() {
-    return defaults;
+    const stored = localStorage.getItem("inquiry.settings");
+    return stored ? SettingsSchema.parse(JSON.parse(stored)) : defaults;
   },
-  async saveSettings() {},
+  async saveSettings(settings) {
+    localStorage.setItem(
+      "inquiry.settings",
+      JSON.stringify(SettingsSchema.parse(settings)),
+    );
+  },
   async models() {
     return ["synthetic-demo"];
   },

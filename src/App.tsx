@@ -37,7 +37,11 @@ import {
   ChevronDown,
   Sparkles,
   Compass,
+  Palette,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
+import { AppearanceSettings } from "./components/AppearanceSettings";
 import { ChatGPTSettings } from "./components/ChatGPTSettings";
 import { providerMessages } from "./core/providers";
 import { bridge, desktop } from "./bridge";
@@ -46,6 +50,8 @@ import {
   type Note,
   type Highlight,
   type Settings,
+  type Appearance,
+  SettingsSchema,
   type Artefact,
   newBoard,
   uid,
@@ -83,6 +89,30 @@ export default function App() {
     [boardId, setBoardId] = useState(""),
     [settings, setSettings] = useState<Settings>(defaults),
     [ready, setReady] = useState(false);
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [appearanceDraft, setAppearanceDraft] = useState<Appearance>(
+    defaults.appearance,
+  );
+  const [appearanceSaving, setAppearanceSaving] = useState(false);
+  const [readerExpanded, setReaderExpanded] = useState(false);
+  const appearance = appearanceOpen ? appearanceDraft : settings.appearance;
+  useEffect(() => {
+    const root = document.documentElement;
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => {
+      root.dataset.theme =
+        appearance.theme === "system"
+          ? media.matches
+            ? "dark"
+            : "light"
+          : appearance.theme;
+      root.dataset.accent = appearance.accent;
+      root.dataset.textSize = appearance.textSize;
+    };
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, [appearance]);
   const [error, setError] = useState(""),
     [saveStatus, setSaveStatus] = useState("Saved locally"),
     [mode, setMode] = useState<"explore" | "synthesis">("explore");
@@ -126,6 +156,9 @@ export default function App() {
   const { zoom } = useViewport();
   const nodesInitialised = useNodesInitialized();
   const layoutBoard = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!readerId) setReaderExpanded(false);
+  }, [readerId]);
   const board = boards.find((b) => b.id === boardId);
   const note = board?.notes.find((n) => n.id === readerId);
   const artefact = board?.artefacts.find((a) => a.id === activeArtefact);
@@ -141,7 +174,7 @@ export default function App() {
         const initial = loaded.length ? loaded : [exampleBoard()];
         setBoards(initial);
         setBoardId(initial[0].id);
-        setSettings(s);
+        setSettings(SettingsSchema.parse(s));
         setReady(true);
       } catch (e) {
         setError(`Could not open local data: ${errorText(e)}`);
@@ -209,7 +242,7 @@ export default function App() {
     }
   }, [readerId, anchor, note]);
   useEffect(() => {
-    if (!composer && !providerOpen && !synthOpen) return;
+    if (!composer && !providerOpen && !synthOpen && !appearanceOpen) return;
     const previous = document.activeElement as HTMLElement | null;
     const dialog = document.querySelector<HTMLElement>(".modal");
     if (!dialog) return;
@@ -225,10 +258,16 @@ export default function App() {
       focusable()[0]
     )?.focus();
     const key = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !busy && !accountBusy) {
+      if (
+        event.key === "Escape" &&
+        !busy &&
+        !accountBusy &&
+        !appearanceSaving
+      ) {
         setComposer(null);
         setProviderOpen(false);
         setSynthOpen(false);
+        setAppearanceOpen(false);
       }
       if (event.key === "Tab") {
         const elements = focusable(),
@@ -248,7 +287,15 @@ export default function App() {
       document.removeEventListener("keydown", key);
       previous?.focus();
     };
-  }, [Boolean(composer), providerOpen, synthOpen, busy, accountBusy]);
+  }, [
+    Boolean(composer),
+    providerOpen,
+    synthOpen,
+    appearanceOpen,
+    busy,
+    accountBusy,
+    appearanceSaving,
+  ]);
   function changeBoard(fn: (b: Board) => Board) {
     setBoards((current) =>
       current.map((b) =>
@@ -590,10 +637,10 @@ export default function App() {
             : highlightLabel(e.highlight)
           : undefined,
       type: "smoothstep",
-      markerEnd: { type: MarkerType.ArrowClosed, color: "#9b9d90" },
-      style: { stroke: "#9b9d90", strokeWidth: 1.5 },
-      labelStyle: { fontSize: 11, fill: "#62685b" },
-      labelBgStyle: { fill: "#f7f6f2", fillOpacity: 0.95 },
+      markerEnd: { type: MarkerType.ArrowClosed, color: "var(--edge)" },
+      style: { stroke: "var(--edge)", strokeWidth: 1.5 },
+      labelStyle: { fontSize: 11, fill: "var(--text-secondary)" },
+      labelBgStyle: { fill: "var(--canvas)", fillOpacity: 0.95 },
       labelBgPadding: [8, 5],
       labelBgBorderRadius: 5,
     })) || [];
@@ -724,6 +771,17 @@ export default function App() {
           </div>
           <div className="topbar-actions">
             <button
+              aria-label="Appearance settings"
+              title="Appearance settings"
+              onClick={() => {
+                setAppearanceDraft(settings.appearance);
+                setError("");
+                setAppearanceOpen(true);
+              }}
+            >
+              <Palette size={16} />
+            </button>
+            <button
               title="Import a Board"
               aria-label="Import a Board"
               disabled={busy}
@@ -835,7 +893,7 @@ export default function App() {
         )}
         {mode === "explore" ? (
           <div className="exploration">
-            <div className="canvas">
+            <div className="canvas" inert={readerExpanded || undefined}>
               <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -866,15 +924,21 @@ export default function App() {
                   changeBoard((b) => ({ ...b, viewport }))
                 }
               >
-                <Background color="#c8cdc0" gap={24} size={1} />
+                {appearance.showGrid && (
+                  <Background color="var(--grid)" gap={24} size={1} />
+                )}
                 <Controls showInteractive={false} />
                 <MiniMap
+                  style={{ width: 135, height: 90 }}
                   nodeColor={(n) =>
-                    ["#eee5aa", "#dce8cf", "#e5dded", "#d8e5e9"][
-                      (n.data as CardNode["data"]).index % 4
-                    ]
+                    [
+                      "var(--note-0)",
+                      "var(--note-1)",
+                      "var(--note-2)",
+                      "var(--note-3)",
+                    ][(n.data as CardNode["data"]).index % 4]
                   }
-                  maskColor="rgba(247,246,242,.65)"
+                  maskColor="var(--minimap-mask)"
                   pannable
                   zoomable
                 />
@@ -907,12 +971,30 @@ export default function App() {
               </div>
             </div>
             {note && (
-              <aside className="reader">
+              <aside
+                className={`reader ${readerExpanded ? "reader-expanded" : ""}`}
+              >
                 <div className="panel-head">
                   <span>
                     <BookOpen size={15} /> NOTE{" "}
                     {String(board!.notes.indexOf(note) + 1).padStart(2, "0")}
                   </span>
+                  <button
+                    aria-label={
+                      readerExpanded ? "Collapse Note" : "Expand Note"
+                    }
+                    title={
+                      readerExpanded ? "Return to side panel" : "Fill workspace"
+                    }
+                    aria-pressed={readerExpanded}
+                    onClick={() => setReaderExpanded((value) => !value)}
+                  >
+                    {readerExpanded ? (
+                      <Minimize2 size={18} />
+                    ) : (
+                      <Maximize2 size={18} />
+                    )}
+                  </button>
                   <button
                     aria-label="Close Note"
                     onClick={() => {
@@ -1362,6 +1444,29 @@ export default function App() {
             </form>
           </section>
         </div>
+      )}
+      {appearanceOpen && (
+        <AppearanceSettings
+          value={appearanceDraft}
+          onChange={setAppearanceDraft}
+          saving={appearanceSaving}
+          error={error}
+          onClose={() => setAppearanceOpen(false)}
+          onSave={async () => {
+            setAppearanceSaving(true);
+            setError("");
+            try {
+              const next = { ...settings, appearance: appearanceDraft };
+              await bridge.saveSettings(next);
+              setSettings(next);
+              setAppearanceOpen(false);
+            } catch (e) {
+              setError(errorText(e));
+            } finally {
+              setAppearanceSaving(false);
+            }
+          }}
+        />
       )}
       {providerOpen && (
         <div className="modal-backdrop">

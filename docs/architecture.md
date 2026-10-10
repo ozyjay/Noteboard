@@ -26,7 +26,9 @@ ChatGPT model discovery uses the selected account’s token. Inference sends com
 
 Electron stores `inquiry.sqlite` in `app.getPath('userData')`. SQLite uses WAL and two tables: `boards` (validated JSON snapshots with sortable title/update metadata), and separate `settings`. Schema version 1 is the initial storage format. Individual saves are atomic SQLite upserts; the renderer queues snapshots to preserve write order. This favours a straightforward prototype over a prematurely normalised graph schema.
 
-JSON export includes exploration and artefacts, not provider settings. Import validates the tree and anchors and gives the imported Board a new ID. Browser preview uses localStorage and demo inference only, explicitly identified in the interface.
+Appearance preferences (theme, accent colour, reading text size and canvas grid) share the validated settings record, with defaults for older records. The renderer applies semantic CSS tokens and listens to system colour-scheme changes when requested. The expanded Note reader overlays the workspace body while retaining the mounted canvas and its viewport.
+
+JSON export includes exploration and artefacts, not provider or appearance settings. Import validates the tree and anchors and gives the imported Board a new ID. Browser preview uses localStorage and demo inference only, explicitly identified in the interface.
 
 ## Synthesis
 

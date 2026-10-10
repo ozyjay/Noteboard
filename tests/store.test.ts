@@ -44,12 +44,25 @@ it("reopens SQLite with spatial positions, exact anchors, effective context and 
       ...defaults,
       provider: "ollama",
       model: "local-test",
+      appearance: {
+        theme: "dark",
+        accent: "blue",
+        textSize: "large",
+        showGrid: false,
+      },
     });
     store.close();
     store = new Store(db);
     expect(store.list()).toEqual([b]);
+    expect(store.settings().appearance).toEqual({
+      theme: "dark",
+      accent: "blue",
+      textSize: "large",
+      showGrid: false,
+    });
     expect(store.settings().model).toBe("local-test");
     expect(JSON.stringify(store.list())).not.toContain("local-test");
+    expect(JSON.stringify(store.list())).not.toContain("appearance");
     store.close();
   } finally {
     rmSync(dir, { recursive: true, force: true });

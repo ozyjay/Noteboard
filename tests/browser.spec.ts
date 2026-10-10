@@ -510,3 +510,110 @@ test("ChatGPT account settings and effective context survive branching and reope
     page.getByText("Signed out of this ChatGPT account."),
   ).toBeVisible();
 });
+
+test("appearance previews, cancels, saves and follows system changes after reopening", async ({
+  page,
+}, testInfo) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/");
+  await expect(page.getByText("Saved locally", { exact: true })).toBeVisible();
+  await page
+    .getByRole("button", { name: "Appearance settings", exact: true })
+    .click();
+  await page.getByLabel("Theme", { exact: true }).selectOption("dark");
+  await page.getByLabel("Accent colour").selectOption("blue");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(page.locator("html")).toHaveAttribute("data-accent", "sage");
+  await page
+    .getByRole("button", { name: "Appearance settings", exact: true })
+    .click();
+  await page.getByLabel("Theme", { exact: true }).selectOption("system");
+  await page.getByLabel("Accent colour").selectOption("plum");
+  await page.getByLabel("Reading text size").selectOption("larger");
+  await page.getByLabel("Show canvas grid").uncheck();
+  await page
+    .getByRole("button", { name: "Save appearance", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-accent", "plum");
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-text-size",
+    "larger",
+  );
+  await expect(page.locator(".react-flow__background")).toHaveCount(0);
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.screenshot({ path: testInfo.outputPath("dark-appearance.png") });
+  await page
+    .getByRole("button", { name: "How do complex systems work?", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Expand Note", exact: true }).click();
+  expect(
+    await page
+      .locator(".reader-response")
+      .evaluate((element) => parseFloat(getComputedStyle(element).fontSize)),
+  ).toBeGreaterThan(18);
+  await page.screenshot({
+    path: testInfo.outputPath("dark-expanded-note.png"),
+  });
+  const stored = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("inquiry.settings")!),
+  );
+  expect(stored.provider).toBe("demo");
+  expect(stored.appearance).toEqual({
+    theme: "system",
+    accent: "plum",
+    textSize: "larger",
+    showGrid: false,
+  });
+  await page
+    .getByRole("button", { name: "Appearance settings", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Reset defaults" }).click();
+  await page
+    .getByRole("button", { name: "Save appearance", exact: true })
+    .click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(page.locator(".react-flow__background")).toHaveCount(1);
+});
+
+test("expanded Note fills the workspace and retains passage navigation", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "How do complex systems work?", exact: true })
+    .click();
+  const sourceText = await page.locator(".reader-response").textContent();
+  await page.getByRole("button", { name: "Expand Note", exact: true }).click();
+  const reader = (await page.locator(".reader").boundingBox())!;
+  const body = (await page.locator(".exploration").boundingBox())!;
+  expect(reader.width).toBe(body.width);
+  expect(reader.height).toBe(body.height);
+  await expect(page.locator(".reader-response")).toHaveText(sourceText!);
+  await page.screenshot({ path: testInfo.outputPath("expanded-note.png") });
+  await page
+    .getByRole("button", { name: "Collapse Note", exact: true })
+    .click();
+  expect((await page.locator(".reader").boundingBox())!.width).toBeLessThan(
+    body.width,
+  );
+  await page.getByRole("button", { name: "Close Note" }).click();
+  await page.getByRole("button", { name: "Fit View", exact: true }).click();
+  await page.locator(".react-flow__edge").first().click();
+  await page.getByRole("button", { name: "Expand Note", exact: true }).click();
+  expect(await page.evaluate(() => getSelection()?.toString())).not.toBe("");
+  await page.locator(".reader-response").evaluate((root) => {
+    root.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+  });
+  await expect(
+    page.getByRole("button", { name: "Explore this passage" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Explore this passage" }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Your question" }),
+  ).toHaveValue(/^What is /);
+});

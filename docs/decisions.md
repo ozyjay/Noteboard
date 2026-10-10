@@ -1,6 +1,7 @@
 # Initial decisions
 
-- **Detailed Notes:** a side reading panel preserves the Board arrangement and offers a comfortable selectable reading surface.
+- **Detailed Notes:** a side reading panel preserves the Board arrangement and offers a comfortable selectable reading surface. A human-controlled expand/collapse action fills the workspace body for focused reading without moving Notes.
+- **Appearance:** app-wide light/dark/system themes, curated accent colours, reading text sizes and an optional canvas grid. Changes preview immediately; Cancel restores saved preferences. Preferences persist independently of Boards in SQLite (localStorage in browser preview).
 - **Child placement:** place to the parent's right, scan down for collisions, retain all manually positioned Notes. No automatic whole-Board rearrangement.
 - **Anchoring:** rendered-text snapshots plus exact DOM Range offsets. Source responses are immutable; a new response would need a new version ID rather than editing an anchored response.
 - **Takeaways:** request an explicit principal Takeaway from Ollama. If absent, use the first substantive paragraph as a lightweight fallback, never the final sentence. Users can correct it.
