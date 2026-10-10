@@ -15,7 +15,7 @@ export interface Provider {
   capabilities: {
     streaming: boolean;
     modelDiscovery: boolean;
-    authentication: "none";
+    authentication: "none" | "oauth";
   };
   models(settings: Settings, signal?: AbortSignal): Promise<string[]>;
   generate(
@@ -75,3 +75,17 @@ export const demoProvider: Provider = {
     return { text: result, model: "synthetic-demo" };
   },
 };
+
+// Preserve exactly the effective role/content pairs sent to each provider.
+export function providerMessages(
+  messages: Message[],
+  provider: Settings["provider"],
+): Message[] {
+  return messages.map((message) => ({
+    ...message,
+    role:
+      provider === "chatgpt" && message.role === "system"
+        ? "developer"
+        : message.role,
+  }));
+}

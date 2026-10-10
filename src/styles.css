@@ -869,6 +869,7 @@ h1 {
   margin: 24px 0 22px;
 }
 .modal form > label,
+.chatgpt-settings label,
 .form-columns label {
   display: block;
   font-size: 11px;
@@ -1056,4 +1057,21 @@ h1 {
 
 .prose .katex {
   font-size: 1.1em;
+}
+
+.chatgpt-settings {
+  margin: 16px 0;
+}
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+.chatgpt-signin {
+  background: #111;
+  color: white;
+  border: 1px solid #111;
+  border-radius: 8px;
+  padding: 10px 16px;
 }

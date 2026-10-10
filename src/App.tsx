@@ -38,6 +38,8 @@ import {
   Sparkles,
   Compass,
 } from "lucide-react";
+import { ChatGPTSettings } from "./components/ChatGPTSettings";
+import { providerMessages } from "./core/providers";
 import { bridge, desktop } from "./bridge";
 import {
   type Board,
@@ -112,7 +114,8 @@ export default function App() {
   const [search, setSearch] = useState(""),
     [models, setModels] = useState<string[]>([]),
     [settingsDraft, setSettingsDraft] = useState<Settings>(defaults),
-    [discovering, setDiscovering] = useState(false);
+    [discovering, setDiscovering] = useState(false),
+    [accountBusy, setAccountBusy] = useState(false);
   const generation = useRef<string | undefined>(undefined),
     cancelled = useRef(false),
     readerSurface = useRef<HTMLDivElement>(null),
@@ -222,7 +225,7 @@ export default function App() {
       focusable()[0]
     )?.focus();
     const key = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !busy) {
+      if (event.key === "Escape" && !busy && !accountBusy) {
         setComposer(null);
         setProviderOpen(false);
         setSynthOpen(false);
@@ -245,7 +248,7 @@ export default function App() {
       document.removeEventListener("keydown", key);
       previous?.focus();
     };
-  }, [Boolean(composer), providerOpen, synthOpen, busy]);
+  }, [Boolean(composer), providerOpen, synthOpen, busy, accountBusy]);
   function changeBoard(fn: (b: Board) => Board) {
     setBoards((current) =>
       current.map((b) =>
@@ -329,7 +332,10 @@ export default function App() {
     const h = composer.highlight;
     const question = prompt.trim();
     try {
-      const context = buildContext(snapshot, question, h);
+      const context = providerMessages(
+        buildContext(snapshot, question, h),
+        settings.provider,
+      );
       const result = await generate(context, "explore");
       const parent = h
         ? snapshot.notes.find((n) => n.id === h.sourceId)
@@ -394,14 +400,17 @@ export default function App() {
       );
       let text: string,
         model: string,
-        provider: "demo" | "ollama" | "human",
+        provider: "demo" | "ollama" | "chatgpt" | "human",
         context: ReturnType<typeof buildContext> = [];
       if (format === "journey") {
         text = journey(board, ids);
         model = "verbatim";
         provider = "human";
       } else {
-        context = synthesisContext(board, ids, format, structure);
+        context = providerMessages(
+          synthesisContext(board, ids, format, structure),
+          settings.provider,
+        );
         const result = await generate(context, "synthesis");
         text = result.text;
         model = result.model;
@@ -679,7 +688,9 @@ export default function App() {
             <strong>
               {settings.provider === "demo"
                 ? "Demo workspace"
-                : "Ollama · local"}
+                : settings.provider === "chatgpt"
+                  ? "ChatGPT plan"
+                  : "Ollama · local"}
             </strong>
             <small>
               {settings.provider === "demo"
@@ -692,6 +703,8 @@ export default function App() {
             disabled={busy}
             onClick={() => {
               setSettingsDraft(settings);
+              setModels([]);
+              setError("");
               setProviderOpen(true);
             }}
           >
@@ -1282,7 +1295,24 @@ export default function App() {
                     : 0}{" "}
                   context tokens
                 </span>
-                <span>History stays complete</span>
+                {settings.provider === "chatgpt" ? (
+                  <span>
+                    Using ChatGPT plan ·{" "}
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={() =>
+                        void bridge
+                          .chatgptUsage()
+                          .catch((e) => setError(errorText(e)))
+                      }
+                    >
+                      Manage usage
+                    </button>
+                  </span>
+                ) : (
+                  <span>History stays complete</span>
+                )}
               </div>
               {error && (
                 <p className="form-error" role="alert">
@@ -1347,6 +1377,7 @@ export default function App() {
               </span>
               <button
                 aria-label="Close provider settings"
+                disabled={accountBusy}
                 onClick={() => setProviderOpen(false)}
               >
                 <X size={18} />
@@ -1363,19 +1394,41 @@ export default function App() {
                 <select
                   aria-label="Provider"
                   value={settingsDraft.provider}
-                  onChange={(e) =>
+                  disabled={accountBusy}
+                  onChange={(e) => {
+                    setModels([]);
+                    setError("");
                     setSettingsDraft((s) => ({
                       ...s,
+                      model: "",
                       provider: e.target.value as Settings["provider"],
-                    }))
-                  }
+                    }));
+                  }}
                 >
                   <option value="demo">Demo — synthetic responses</option>
+                  <option value="chatgpt" disabled={!desktop}>
+                    ChatGPT — use your plan
+                  </option>
                   <option value="ollama" disabled={!desktop}>
                     Ollama — local inference
                   </option>
                 </select>
               </label>
+              {settingsDraft.provider === "chatgpt" && (
+                <ChatGPTSettings
+                  accountId={settingsDraft.chatgptAccountId}
+                  onAccount={(id) => {
+                    setModels([]);
+                    setSettingsDraft((s) => ({
+                      ...s,
+                      chatgptAccountId: id,
+                      model: "",
+                    }));
+                  }}
+                  onError={setError}
+                  onBusy={setAccountBusy}
+                />
+              )}
               {settingsDraft.provider === "ollama" && (
                 <>
                   <label>
@@ -1391,13 +1444,22 @@ export default function App() {
                       }
                     />
                   </label>
+                </>
+              )}
+              {settingsDraft.provider !== "demo" && (
+                <>
                   <label>
                     Model
                     <div className="model-input">
                       <input
                         required
                         list="installed-models"
-                        placeholder="Select or enter an installed model"
+                        aria-label="Model"
+                        placeholder={
+                          settingsDraft.provider === "chatgpt"
+                            ? "Discover available ChatGPT models"
+                            : "Select or enter an installed model"
+                        }
                         value={settingsDraft.model}
                         onChange={(e) =>
                           setSettingsDraft((s) => ({
@@ -1409,7 +1471,7 @@ export default function App() {
                       <button
                         type="button"
                         className="secondary"
-                        disabled={discovering}
+                        disabled={discovering || accountBusy}
                         onClick={discover}
                       >
                         {discovering ? "Checking…" : "Discover"}
@@ -1464,7 +1526,7 @@ export default function App() {
               </p>
               {error && <p className="form-error">{error}</p>}
               <div className="modal-actions">
-                <button className="primary">
+                <button className="primary" disabled={accountBusy}>
                   Save settings <Check size={15} />
                 </button>
               </div>
@@ -1550,7 +1612,7 @@ export default function App() {
                 {format === "journey"
                   ? "Learning journeys preserve the original text and require no model request."
                   : settings.provider === "demo"
-                    ? "Demo synthesis groups takeaways. Choose Ollama for a model-generated explanation."
+                    ? "Demo synthesis groups takeaways. Choose ChatGPT or Ollama for a model-generated explanation."
                     : "Your model will organise the sources and retain links to each Note."}{" "}
                 Earlier artefacts are kept when you consolidate again.
               </p>

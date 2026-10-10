@@ -1,6 +1,11 @@
 import { contextBridge, ipcRenderer } from "electron";
 import { type InquiryBridge } from "../src/bridge";
 const bridge: InquiryBridge = {
+  chatgptAccounts: () => ipcRenderer.invoke("chatgpt:accounts"),
+  chatgptSignIn: (id) => ipcRenderer.invoke("chatgpt:signin", id),
+  chatgptCancelSignIn: () => ipcRenderer.invoke("chatgpt:cancel"),
+  chatgptSignOut: (id) => ipcRenderer.invoke("chatgpt:signout", id),
+  chatgptUsage: () => ipcRenderer.invoke("chatgpt:usage"),
   listBoards: () => ipcRenderer.invoke("boards:list"),
   saveBoard: (b) => ipcRenderer.invoke("boards:save", b),
   getSettings: () => ipcRenderer.invoke("settings:get"),

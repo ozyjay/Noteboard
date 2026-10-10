@@ -1,12 +1,13 @@
 import { z } from "zod";
 export const MessageSchema = z.object({
-  role: z.enum(["system", "user", "assistant"]),
+  role: z.enum(["system", "developer", "user", "assistant"]),
   content: z.string(),
 });
 export type Message = z.infer<typeof MessageSchema>;
 export const SettingsSchema = z.object({
-  provider: z.enum(["demo", "ollama"]),
+  provider: z.enum(["demo", "ollama", "chatgpt"]),
   endpoint: z.string().max(300),
+  chatgptAccountId: z.string().max(200).optional(),
   model: z.string().max(100),
   contextLimit: z.number().int().min(1024).max(1000000),
   depthReminder: z.number().int().min(1).max(100),
@@ -27,7 +28,7 @@ export const VersionSchema = z.object({
   id: z.string(),
   text: z.string(),
   createdAt: z.string(),
-  provider: z.enum(["demo", "ollama"]),
+  provider: z.enum(["demo", "ollama", "chatgpt"]),
   model: z.string(),
   context: z.array(MessageSchema),
   estimatedTokens: z.number(),
@@ -72,7 +73,7 @@ export const DocumentVersionSchema = z.object({
   text: z.string(),
   createdAt: z.string(),
   kind: z.enum(["generated", "edited"]),
-  provider: z.enum(["demo", "ollama", "human"]),
+  provider: z.enum(["demo", "ollama", "chatgpt", "human"]),
   model: z.string(),
   context: z.array(MessageSchema),
 });

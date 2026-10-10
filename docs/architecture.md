@@ -1,6 +1,6 @@
 # Architecture
 
-Noteboard separates a React renderer from an Electron main process. The sandboxed preload exposes only Board/settings persistence, model discovery, generation, cancellation and stream subscription. The renderer has no Node access and cannot call arbitrary remote inference endpoints. External navigation and new windows are blocked; rendered Markdown does not execute HTML or fetch images.
+Noteboard separates a React renderer from an Electron main process. The sandboxed preload exposes only Board/settings persistence, model discovery, generation, cancellation and stream subscription. The renderer has no Node access and cannot call arbitrary remote inference endpoints. External navigation and new windows are blocked; narrow main-process actions open only the generated OpenAI authorisation URL and fixed ChatGPT usage settings in the system browser; rendered Markdown does not execute HTML or fetch images.
 
 ## Domain records
 
@@ -18,6 +18,10 @@ Notes and synthesis share GitHub-flavoured Markdown and local KaTeX rendering. M
 
 The `Provider` interface declares streaming, model discovery and authentication capabilities. Demo generation is explicitly synthetic. The Ollama adapter runs in the main process and accepts only loopback endpoints. It discovers `/api/tags`, checks model context capability with `/api/show`, and streams `/api/chat` as newline-delimited JSON. Complete records are committed only after the stream's completion marker. Aborting or failing leaves the source Board untouched.
 
+The ChatGPT adapter uses the documented local-app Sign in with ChatGPT public-client flow. A loopback callback validates state, exchanges a PKCE-bound code, verifies the ID-token signature/issuer/audience/expiry/nonce, and keeps issued client IDs bound to verified subjects. Separate saved registrations support different accounts/workspaces. A stable host UUID is reused. Credentials reside in an atomic, OS-encrypted file with owner-only permissions, independent of Board/settings persistence; the preload exposes only account labels, connection state, sign-in/cancel/sign-out and a fixed usage-settings action. No token reaches the renderer. Expiring tokens refresh through a serialised rotation; terminal refresh errors clear tokens while retaining registration. Sign-out attempts remote revocation and reports if only local sign-out succeeded.
+
+ChatGPT model discovery uses the selected account’s token. Inference sends complete role/content pairs to Responses with `store: false` and `stream: true`. System messages are converted to developer messages before recording and transmission, preserving exact effective context. No provider conversation state, tools, automatic truncation or API-key fallback is used. Failed/incomplete/interrupted streams cannot commit a Note or artefact. The local estimate reserves output space but the preview route has no supported output cap; service errors remain authoritative.
+
 ## Persistence
 
 Electron stores `inquiry.sqlite` in `app.getPath('userData')`. SQLite uses WAL and two tables: `boards` (validated JSON snapshots with sortable title/update metadata), and separate `settings`. Schema version 1 is the initial storage format. Individual saves are atomic SQLite upserts; the renderer queues snapshots to preserve write order. This favours a straightforward prototype over a prematurely normalised graph schema.
@@ -30,4 +34,4 @@ A learning journey is deterministic and preserves original prompts/responses. In
 
 ## Boundaries
 
-SQLite/network operations remain in Electron; graph, ancestry and selection behaviour are independently testable. No autonomous branching, agent orchestration, shared Boards, paid fallbacks or credential persistence is present. Provider protocol documentation: [Ollama chat](https://docs.ollama.com/api/chat), [model listing](https://docs.ollama.com/api/tags). Desktop isolation follows [Electron context isolation](https://www.electronjs.org/docs/latest/tutorial/context-isolation).
+SQLite/network operations remain in Electron; graph, ancestry and selection behaviour are independently testable. No autonomous branching, agent orchestration, shared Boards, paid fallbacks or credentials in Board data are present. ChatGPT protocol: [registration](https://developers.openai.com/siwc/token-sharing-open-source/sign-in), [inference](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference), [preview limitations](https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations). Provider protocol documentation: [Ollama chat](https://docs.ollama.com/api/chat), [model listing](https://docs.ollama.com/api/tags). Desktop isolation follows [Electron context isolation](https://www.electronjs.org/docs/latest/tutorial/context-isolation).

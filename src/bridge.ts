@@ -9,7 +9,18 @@ import {
   type GenerationRequest,
   type GenerationResult,
 } from "./core/providers";
+export interface ChatGPTAccount {
+  id: string;
+  label: string;
+  connected: boolean;
+  planEnabled: boolean;
+}
 export interface InquiryBridge {
+  chatgptAccounts(): Promise<ChatGPTAccount[]>;
+  chatgptSignIn(accountId?: string): Promise<ChatGPTAccount[]>;
+  chatgptCancelSignIn(): Promise<void>;
+  chatgptSignOut(accountId: string): Promise<{ revoked: boolean }>;
+  chatgptUsage(): Promise<void>;
   listBoards(): Promise<Board[]>;
   saveBoard(board: Board): Promise<void>;
   getSettings(): Promise<Settings>;
@@ -26,7 +37,17 @@ declare global {
 }
 const controllers = new Map<string, AbortController>();
 const listeners = new Set<(event: { id: string; text: string }) => void>();
+const desktopOnly = async (): Promise<never> => {
+  throw new Error(
+    "ChatGPT account support is available in the desktop app. Run npm run dev.",
+  );
+};
 const preview: InquiryBridge = {
+  chatgptAccounts: async () => [],
+  chatgptSignIn: desktopOnly,
+  chatgptCancelSignIn: desktopOnly,
+  chatgptSignOut: desktopOnly,
+  chatgptUsage: desktopOnly,
   async listBoards() {
     return JSON.parse(localStorage.getItem("inquiry.boards") || "[]").map(
       validateBoard,

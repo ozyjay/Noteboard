@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, safeStorage, shell } from "electron";
 import path from "node:path";
 import { z } from "zod";
 import { Store } from "./store";
@@ -6,6 +6,9 @@ import { MessageSchema, SettingsSchema } from "../src/core/model";
 import { demoProvider } from "../src/core/providers";
 import { ollamaProvider, localEndpoint } from "./ollama";
 import { assertBudget } from "../src/core/context";
+import { ChatGPTAuth } from "./chatgpt-auth";
+import { chatGPTProvider } from "./chatgpt";
+let auth: ChatGPTAuth;
 let store: Store;
 let window: BrowserWindow | null = null;
 const pending = new Map<string, AbortController>();
@@ -45,6 +48,7 @@ function createWindow() {
   window.on("closed", () => {
     for (const c of pending.values()) c.abort();
     pending.clear();
+    auth.cancel();
     window = null;
   });
   if (process.env.INQUIRY_DEV === "1")
@@ -56,53 +60,91 @@ app.setName("Inquiry");
 const existingUserData = app.getPath("userData");
 app.setName("Noteboard");
 app.setPath("userData", process.env.INQUIRY_DATA_DIR || existingUserData);
-app.whenReady().then(() => {
-  store = new Store(path.join(app.getPath("userData"), "inquiry.sqlite"));
-  handle("boards:list", () => store.list());
-  handle("boards:save", (b) => store.save(b));
-  handle("settings:get", () => store.settings());
-  handle("settings:save", (s) => {
-    const parsed = SettingsSchema.parse(s);
-    if (parsed.provider === "ollama") localEndpoint(parsed.endpoint);
-    store.saveSettings(parsed);
-  });
-  handle("provider:models", (s) => {
-    const settings = SettingsSchema.parse(s);
-    return (
-      settings.provider === "demo" ? demoProvider : ollamaProvider
-    ).models(settings);
-  });
-  handle("provider:generate", async (value) => {
-    const req = requestSchema.parse(value);
-    if (pending.size) throw new Error("A generation is already in progress");
-    assertBudget(req.messages, req.settings.contextLimit);
-    const controller = new AbortController();
-    pending.set(req.id, controller);
-    try {
-      return await (
-        req.settings.provider === "demo" ? demoProvider : ollamaProvider
-      ).generate(
-        req,
-        (text) =>
-          window?.webContents.send("provider:delta", { id: req.id, text }),
-        controller.signal,
-      );
-    } finally {
-      pending.delete(req.id);
-    }
-  });
-  handle("provider:cancel", (id) => {
-    pending.get(z.string().parse(id))?.abort();
-  });
-  createWindow();
-  app.on("activate", () => {
-    if (!window) createWindow();
-  });
+const primaryInstance = app.requestSingleInstanceLock();
+if (!primaryInstance) app.quit();
+app.on("second-instance", () => {
+  if (window?.isMinimized()) window.restore();
+  window?.focus();
 });
+if (primaryInstance)
+  app.whenReady().then(() => {
+    auth = new ChatGPTAuth(
+      path.join(app.getPath("userData"), "chatgpt-credentials.bin"),
+      {
+        available: () =>
+          safeStorage.isEncryptionAvailable() &&
+          (process.platform !== "linux" ||
+            safeStorage.getSelectedStorageBackend() !== "basic_text"),
+        encrypt: (value) => safeStorage.encryptString(value),
+        decrypt: (value) => safeStorage.decryptString(value),
+      },
+      (url) => shell.openExternal(url),
+    );
+    const chatgpt = chatGPTProvider(auth);
+    const provider = (settings: z.infer<typeof SettingsSchema>) =>
+      ({ demo: demoProvider, ollama: ollamaProvider, chatgpt })[
+        settings.provider
+      ];
+    const idle = () => {
+      if (pending.size)
+        throw new Error("Finish or cancel generation before changing accounts");
+    };
+    handle("chatgpt:accounts", () => auth.accounts());
+    handle("chatgpt:signin", (id) => {
+      idle();
+      return auth.signIn(z.string().max(200).optional().parse(id));
+    });
+    handle("chatgpt:cancel", () => auth.cancel());
+    handle("chatgpt:signout", (id) => {
+      idle();
+      return auth.signOut(z.string().max(200).parse(id));
+    });
+    handle("chatgpt:usage", () =>
+      shell.openExternal("https://chatgpt.com/settings/usage"),
+    );
+    store = new Store(path.join(app.getPath("userData"), "inquiry.sqlite"));
+    handle("boards:list", () => store.list());
+    handle("boards:save", (b) => store.save(b));
+    handle("settings:get", () => store.settings());
+    handle("settings:save", (s) => {
+      const parsed = SettingsSchema.parse(s);
+      if (parsed.provider === "ollama") localEndpoint(parsed.endpoint);
+      store.saveSettings(parsed);
+    });
+    handle("provider:models", (s) => {
+      const settings = SettingsSchema.parse(s);
+      return provider(settings).models(settings);
+    });
+    handle("provider:generate", async (value) => {
+      const req = requestSchema.parse(value);
+      if (pending.size) throw new Error("A generation is already in progress");
+      assertBudget(req.messages, req.settings.contextLimit);
+      const controller = new AbortController();
+      pending.set(req.id, controller);
+      try {
+        return await provider(req.settings).generate(
+          req,
+          (text) =>
+            window?.webContents.send("provider:delta", { id: req.id, text }),
+          controller.signal,
+        );
+      } finally {
+        pending.delete(req.id);
+      }
+    });
+    handle("provider:cancel", (id) => {
+      pending.get(z.string().parse(id))?.abort();
+    });
+    createWindow();
+    app.on("activate", () => {
+      if (!window) createWindow();
+    });
+  });
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 app.on("before-quit", () => {
   for (const c of pending.values()) c.abort();
+  auth?.cancel();
   store?.close();
 });

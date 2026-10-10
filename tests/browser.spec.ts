@@ -336,3 +336,177 @@ test("manual placement survives reopening the Board", async ({ page }) => {
     ),
   ).toEqual(placed);
 });
+
+test("ChatGPT account settings and effective context survive branching and reopening", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const listeners = new Set<(event: { id: string; text: string }) => void>();
+    let connected = true;
+    const accounts = () => [
+      {
+        id: "test-client",
+        label: "Test account · client",
+        connected,
+        planEnabled: connected,
+      },
+    ];
+    window.inquiry = {
+      listBoards: async () =>
+        JSON.parse(localStorage.getItem("test.boards") || "[]"),
+      saveBoard: async (board) => {
+        const boards = JSON.parse(localStorage.getItem("test.boards") || "[]");
+        const values = [
+          board,
+          ...boards.filter((value: { id: string }) => value.id !== board.id),
+        ];
+        values.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+        localStorage.setItem("test.boards", JSON.stringify(values));
+      },
+      getSettings: async () =>
+        JSON.parse(
+          localStorage.getItem("test.settings") ||
+            '{"provider":"demo","endpoint":"http://127.0.0.1:11434","model":"","contextLimit":8192,"depthReminder":8}',
+        ),
+      saveSettings: async (settings) => {
+        localStorage.setItem("test.settings", JSON.stringify(settings));
+      },
+      chatgptAccounts: async () => accounts(),
+      chatgptSignIn: async () => {
+        connected = true;
+        return accounts();
+      },
+      chatgptCancelSignIn: async () => {},
+      chatgptSignOut: async () => {
+        connected = false;
+        return { revoked: true };
+      },
+      chatgptUsage: async () => {
+        localStorage.setItem("test.usage", "opened");
+      },
+      models: async () => ["test-chatgpt-model"],
+      generate: async (req) => {
+        if (req.messages.some((message) => message.role === "system"))
+          throw new Error("Unexpected system message");
+        localStorage.setItem("test.request", JSON.stringify(req));
+        const text =
+          req.purpose === "explore"
+            ? "## Example\n\nConnected ideas can support an inquiry.\n\nTakeaway: Follow connected ideas."
+            : `# Explanation\n\nSelected Notes brought together.\n\n[Source Note](inquiry://note/${req.messages[1].content.match(/<note id="([^"]+)"/)?.[1]})`;
+        listeners.forEach((listener) => listener({ id: req.id, text }));
+        return {
+          text,
+          model: "test-chatgpt-model",
+          usage: { input: 10, output: 5 },
+        };
+      },
+      cancel: async () => {},
+      onDelta: (listener) => {
+        listeners.add(listener);
+        return () => {
+          listeners.delete(listener);
+        };
+      },
+    };
+  });
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "Provider settings", exact: true })
+    .click();
+  await page.getByLabel("Provider", { exact: true }).selectOption("chatgpt");
+  await expect(
+    page.getByRole("button", { name: "Continue with ChatGPT" }),
+  ).toBeVisible();
+  await page
+    .getByLabel("ChatGPT account", { exact: true })
+    .selectOption("test-client");
+  await page.getByRole("button", { name: "Manage usage", exact: true }).click();
+  expect(await page.evaluate(() => localStorage.getItem("test.usage"))).toBe(
+    "opened",
+  );
+  await page
+    .getByRole("button", { name: "Continue with ChatGPT", exact: true })
+    .click();
+  await expect(
+    page.getByText("You’re using your ChatGPT plan", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Got it", exact: true }).click();
+  await page.getByRole("button", { name: "Discover", exact: true }).click();
+  await page.getByLabel("Model", { exact: true }).fill("test-chatgpt-model");
+  await page.screenshot({ path: "/tmp/noteboard-chatgpt-settings.png" });
+  await page.getByRole("button", { name: "Save settings" }).click();
+  await page.getByRole("button", { name: "New inquiry", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "Your question" })
+    .fill("My ChatGPT inquiry");
+  await expect(
+    page.getByText("Using ChatGPT plan", { exact: false }).first(),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Ask & explore" }).click();
+  await expect(page.locator(".note-card")).toHaveCount(1);
+  await page
+    .getByRole("button", { name: "My ChatGPT inquiry", exact: true })
+    .click();
+  await expect(page.locator(".reader-response")).toBeVisible();
+  await page.locator(".reader-response").evaluate((element) => {
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      const start = node.textContent?.indexOf("Connected ideas") ?? -1;
+      if (start >= 0) {
+        const range = document.createRange();
+        range.setStart(node, start);
+        range.setEnd(node, start + "Connected ideas".length);
+        const selection = window.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+        break;
+      }
+    }
+    element.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+  });
+  await page.getByRole("button", { name: "Explore this passage" }).click();
+  await page
+    .getByRole("button", { name: "Create branch", exact: true })
+    .click();
+  await expect(page.locator(".note-card")).toHaveCount(2);
+  const saved = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("test.boards") || "[]"),
+  );
+  const child = saved[0].notes.at(-1);
+  expect(child.versions[0].provider).toBe("chatgpt");
+  expect(
+    child.versions[0].context.map((message: { role: string }) => message.role),
+  ).toEqual(["developer", "user", "assistant", "user"]);
+  expect(child.versions[0].context).toEqual(
+    (
+      await page.evaluate(() =>
+        JSON.parse(localStorage.getItem("test.request") || "{}"),
+      )
+    ).messages,
+  );
+  await page.reload();
+  await expect(page.locator(".note-card")).toHaveCount(2);
+  await expect(page.getByText("ChatGPT plan", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Consolidate", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Create artefact", exact: true })
+    .click();
+  await expect(page.locator(".document-preview")).toBeVisible();
+  await page
+    .locator(".document-preview")
+    .getByRole("button", { name: "Source Note", exact: true })
+    .first()
+    .click();
+  await expect(page.locator(".reader h2").first()).toHaveText(
+    "My ChatGPT inquiry",
+  );
+
+  await page
+    .getByRole("button", { name: "Provider settings", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(
+    page.getByText("Signed out of this ChatGPT account."),
+  ).toBeVisible();
+});
