@@ -1,9 +1,9 @@
 ---
 name: inquiry-development
-description: Implement and review Inquiry features involving spatial Notes, Highlight provenance, ancestral context, local inference or synthesis. Use for work in this repository, not generic AI application development.
+description: Implement and review Noteboard features involving spatial Notes, Highlight provenance, ancestral context, local inference or synthesis. Use for work in this repository, not generic AI application development.
 ---
 
-# Inquiry development
+# Noteboard development
 
 Read [AGENTS.md](../../AGENTS.md) for project invariants and [architecture](../../docs/architecture.md) for the implementation boundaries. Consult [decisions](../../docs/decisions.md) when choosing interaction or storage behaviour.
 

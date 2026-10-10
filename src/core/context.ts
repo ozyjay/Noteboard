@@ -8,7 +8,7 @@ import {
 export const explorationInstruction: Message = {
   role: "system",
   content:
-    'You are Inquiry, a human-directed research assistant. Answer the user clearly in Markdown using Australian English. Preserve qualifications and uncertainty. Do not create investigative branches. End with a concise principal takeaway preceded by "Takeaway:".',
+    'You are Noteboard, a human-directed research assistant. Answer the user clearly in Markdown using Australian English. Preserve qualifications and uncertainty. Do not create investigative branches. End with a concise principal takeaway preceded by "Takeaway:".',
 };
 export function ancestry(board: Board, id: string): Note[] {
   const path: Note[] = [];

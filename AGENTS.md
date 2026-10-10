@@ -1,10 +1,10 @@
-# Inquiry project guidance
+# Noteboard project guidance
 
 Use Australian grammar and spelling. When Python tooling is needed, use `python3` from the active pyenv version.
 
 ## Product intent
 
-Inquiry is a human-directed, provider-independent spatial conversation environment. Read [the product plan](docs/product-plan.md) for scope and [architecture](docs/architecture.md) before changing data flow.
+Noteboard is a human-directed, provider-independent spatial conversation environment. Read [the product plan](docs/product-plan.md) for scope and [architecture](docs/architecture.md) before changing data flow.
 
 - Only a human creates branches. Never generate or rearrange investigative branches autonomously.
 - A Board is one directed rooted tree; each child has exactly one parent and each Edge preserves one exact Highlight.
@@ -31,4 +31,4 @@ Run relevant tests for changed behaviour, typecheck and build before delivery. T
 
 ## Project skills
 
-The project skill [inquiry-development](skills/inquiry-development/SKILL.md) describes the feature and verification workflow. Read it when implementing or reviewing Inquiry's graph, provider, provenance or synthesis behaviour. It is stored in `skills/` because this workspace's `.agents/` directory is read-only; AGENTS.md provides the explicit discovery route.
+The project skill [inquiry-development](skills/inquiry-development/SKILL.md) describes the feature and verification workflow. Read it when implementing or reviewing Noteboard's graph, provider, provenance or synthesis behaviour. It is stored in `skills/` because this workspace's `.agents/` directory is read-only; AGENTS.md provides the explicit discovery route.

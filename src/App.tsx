@@ -604,7 +604,7 @@ export default function App() {
             <Compass size={24} />
           </span>
           <span>
-            inquiry<span className="brand-dot">.</span>
+            Noteboard<span className="brand-dot">.</span>
           </span>
         </div>
         <div className="workspace-label">
@@ -750,7 +750,7 @@ export default function App() {
                         }
                       : board;
                   download(
-                    "inquiry-board.json",
+                    "noteboard-board.json",
                     JSON.stringify(exported, null, 2),
                     "application/json",
                   );
@@ -1104,7 +1104,7 @@ export default function App() {
                     <button
                       onClick={() =>
                         download(
-                          "inquiry-synthesis.md",
+                          "noteboard-synthesis.md",
                           documentText,
                           "text/markdown",
                         )

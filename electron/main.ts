@@ -31,7 +31,7 @@ function createWindow() {
     height: 950,
     minWidth: 960,
     minHeight: 650,
-    title: "Inquiry",
+    title: "Noteboard",
     backgroundColor: "#f7f6f2",
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
@@ -52,8 +52,10 @@ function createWindow() {
   else void window.loadFile(path.join(__dirname, "../dist/index.html"));
 }
 app.setName("Inquiry");
-if (process.env.INQUIRY_DATA_DIR)
-  app.setPath("userData", process.env.INQUIRY_DATA_DIR);
+// Retain the existing storage location when changing the displayed app name.
+const existingUserData = app.getPath("userData");
+app.setName("Noteboard");
+app.setPath("userData", process.env.INQUIRY_DATA_DIR || existingUserData);
 app.whenReady().then(() => {
   store = new Store(path.join(app.getPath("userData"), "inquiry.sqlite"));
   handle("boards:list", () => store.list());

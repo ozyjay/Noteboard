@@ -19,6 +19,8 @@ test("production desktop bridge saves and reopens an inquiry in SQLite", async (
       env,
     });
     let page = await app.firstWindow();
+    expect(await app.evaluate(({ app }) => app.getName())).toBe("Noteboard");
+    await expect(page).toHaveTitle("Noteboard — Follow your curiosity");
     await expect(page.locator(".note-card")).toHaveCount(3);
     expect(await page.evaluate(() => typeof window.inquiry?.saveBoard)).toBe(
       "function",

@@ -1,8 +1,8 @@
-# Inquiry
+# Noteboard
 
 Explore knowledge spatially and synthesise understanding linearly.
 
-Inquiry is a local-first Electron research prototype. Ask a question, read the response, highlight a passage and create an editable follow-up question. Your Board records the branching inquiry; synthesis turns chosen Notes into editable Markdown artefacts with source links.
+Noteboard is a local-first Electron research prototype. Ask a question, read the response, highlight a passage and create an editable follow-up question. Your Board records the branching inquiry; synthesis turns chosen Notes into editable Markdown artefacts with source links.
 
 ## Run
 

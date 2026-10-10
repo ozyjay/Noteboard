@@ -1,4 +1,4 @@
-# Inquiry
+# Noteboard
 
 ## Product and Development Plan — v0.1
 
@@ -9,7 +9,7 @@
 
 ## 1. Product vision
 
-**Inquiry is a human-directed, provider-independent, spatial GenAI conversation environment designed to support exploration, understanding and synthesis.**
+**Noteboard is a human-directed, provider-independent, spatial GenAI conversation environment designed to support exploration, understanding and synthesis.**
 
 Users investigate topics through interconnected sticky Notes. Each Note contains a user-authored prompt and a GenAI-generated response.
 
@@ -31,7 +31,7 @@ The application does not independently decide which questions should be investig
 
 | Term          | Definition                                                                          |
 | ------------- | ----------------------------------------------------------------------------------- |
-| **Inquiry**   | The application                                                                     |
+| **Noteboard** | The application                                                                     |
 | **Board**     | The spatial workspace containing an exploration                                     |
 | **Note**      | One human-authored prompt and its GenAI response                                    |
 | **Highlight** | One contiguous passage selected from a Note's response                              |
@@ -52,7 +52,7 @@ The application does not independently decide which questions should be investig
 1. The user creates a new Board.
 2. The user writes an initial question or prompt.
 3. The selected GenAI provider generates a response.
-4. Inquiry creates the starting Note.
+4. Noteboard creates the starting Note.
 5. The Note appears on the Board.
 
 A Board may contain a single Note or an extensive branching exploration.
@@ -65,7 +65,7 @@ While reading, they may encounter an unfamiliar term, interesting explanation, q
 
 The user selects a passage in the response.
 
-Inquiry presents a new Note composer containing:
+Noteboard presents a new Note composer containing:
 
 - The selected Highlight, displayed as contextual information.
 - A prefilled, editable prompt: `What is <Highlight>?`
@@ -79,12 +79,12 @@ No GenAI request is needed to generate this default prompt.
 
 When the user submits the new prompt:
 
-1. Inquiry determines the ancestral context.
+1. Noteboard determines the ancestral context.
 2. The selected provider generates a response.
 3. A new Note is created.
 4. An Edge connects the parent Note to the child.
 5. The Edge is labelled with the original Highlight.
-6. Inquiry positions the new Note near its parent.
+6. Noteboard positions the new Note near its parent.
 
 The original Note and its response remain unchanged.
 
@@ -142,7 +142,7 @@ The Takeaway should express the principal point of the response rather than mech
 
 Its length should account for response complexity and available display space.
 
-Initially, Inquiry can generate Takeaways through the selected provider or a lightweight summarisation mechanism. User correction should be possible.
+Initially, Noteboard can generate Takeaways through the selected provider or a lightweight summarisation mechanism. User correction should be possible.
 
 The original response must always remain accessible.
 
@@ -213,7 +213,7 @@ Notes belonging to unrelated branches are excluded by default.
 
 ### 6.1 Provider-independent assembly
 
-Inquiry constructs the context rather than relying on a provider's persistent conversation history.
+Noteboard constructs the context rather than relying on a provider's persistent conversation history.
 
 This allows different Notes to use different GenAI providers while preserving the logical exploration.
 
@@ -233,7 +233,7 @@ Introduce an optional, configurable soft depth reminder.
 
 **Proposed initial default: eight Edges from the root.**
 
-At the threshold, Inquiry may suggest consolidating a branch or continuing from a new starting Note.
+At the threshold, Noteboard may suggest consolidating a branch or continuing from a new starting Note.
 
 The user may dismiss the reminder and continue exploring, provided the context requirements can be met.
 
@@ -311,7 +311,7 @@ The application should preserve earlier document versions and provenance.
 
 ## 8. GenAI provider independence
 
-Inquiry should not be coupled to any single GenAI provider.
+Noteboard should not be coupled to any single GenAI provider.
 
 ### 8.1 Provider abstraction
 
@@ -472,7 +472,7 @@ Consider:
 
 **Goal:** Investigate the UX's effect on human understanding.
 
-Potential comparison: conventional linear GenAI chat versus Inquiry using comparable underlying models and learning tasks.
+Potential comparison: conventional linear GenAI chat versus Noteboard using comparable underlying models and learning tasks.
 
 Potential outcomes:
 
@@ -542,7 +542,7 @@ The prototype should also preserve the original human-authored prompts, generate
 
 ## 14. Guiding design statement
 
-**Inquiry allows people to explore knowledge spatially and synthesise understanding linearly.**
+**Noteboard allows people to explore knowledge spatially and synthesise understanding linearly.**
 
 Its fundamental interaction is:
 

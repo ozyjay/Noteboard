@@ -1,6 +1,6 @@
 # Architecture
 
-Inquiry separates a React renderer from an Electron main process. The sandboxed preload exposes only Board/settings persistence, model discovery, generation, cancellation and stream subscription. The renderer has no Node access and cannot call arbitrary remote inference endpoints. External navigation and new windows are blocked; rendered Markdown does not execute HTML or fetch images.
+Noteboard separates a React renderer from an Electron main process. The sandboxed preload exposes only Board/settings persistence, model discovery, generation, cancellation and stream subscription. The renderer has no Node access and cannot call arbitrary remote inference endpoints. External navigation and new windows are blocked; rendered Markdown does not execute HTML or fetch images.
 
 ## Domain records
 
