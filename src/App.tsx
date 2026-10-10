@@ -1,0 +1,1578 @@
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  type FormEvent,
+} from "react";
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  MiniMap,
+  useReactFlow,
+  useViewport,
+  useNodesInitialized,
+  MarkerType,
+  type Edge as FlowEdge,
+  type NodeChange,
+} from "@xyflow/react";
+import {
+  Plus,
+  ArrowUpRight,
+  ArrowLeft,
+  ArrowRight,
+  Settings2,
+  Layers,
+  GitBranch,
+  Search,
+  BookOpen,
+  X,
+  Download,
+  Upload,
+  Check,
+  LoaderCircle,
+  Square,
+  FileText,
+  ChevronDown,
+  Sparkles,
+  Compass,
+} from "lucide-react";
+import { bridge, desktop } from "./bridge";
+import {
+  type Board,
+  type Note,
+  type Highlight,
+  type Settings,
+  type Artefact,
+  newBoard,
+  uid,
+  now,
+  response,
+  defaults,
+  validateBoard,
+} from "./core/model";
+import {
+  ancestry,
+  buildContext,
+  assertBudget,
+  estimateTokens,
+  childPosition,
+  takeaway,
+} from "./core/context";
+import { selectMaterial, journey, synthesisContext } from "./core/synthesis";
+import { captureHighlight, findHighlightRange } from "./core/selection";
+import { exampleBoard } from "./core/example";
+import { NoteCard, type CardNode } from "./components/NoteCard";
+import { Markdown } from "./components/Markdown";
+const nodeTypes = { note: NoteCard };
+const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
+function download(name: string, text: string, type: string) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+export default function App() {
+  const [boards, setBoards] = useState<Board[]>([]),
+    [boardId, setBoardId] = useState(""),
+    [settings, setSettings] = useState<Settings>(defaults),
+    [ready, setReady] = useState(false);
+  const [error, setError] = useState(""),
+    [saveStatus, setSaveStatus] = useState("Saved locally"),
+    [mode, setMode] = useState<"explore" | "synthesis">("explore");
+  const [readerId, setReaderId] = useState<string>(),
+    [highlight, setHighlight] = useState<Highlight>(),
+    [anchor, setAnchor] = useState<Highlight>(),
+    [selected, setSelected] = useState<string[]>([]);
+  const [composer, setComposer] = useState<{ highlight?: Highlight } | null>(
+      null,
+    ),
+    [prompt, setPrompt] = useState("");
+  const [busy, setBusy] = useState(false),
+    [stream, setStream] = useState(""),
+    [providerOpen, setProviderOpen] = useState(false),
+    [synthOpen, setSynthOpen] = useState(false);
+  const [scope, setScope] = useState<"board" | "branch" | "selected">("board"),
+    [format, setFormat] = useState<Artefact["format"]>("explanation"),
+    [structure, setStructure] = useState("Study notes");
+  const [activeArtefact, setActiveArtefact] = useState<string>(),
+    [documentText, setDocumentText] = useState(""),
+    [editing, setEditing] = useState(true),
+    [documentDirty, setDocumentDirty] = useState(false);
+  const [nodePositions, setNodePositions] = useState<
+    Record<string, { x: number; y: number }>
+  >({});
+  const [nodeDimensions, setNodeDimensions] = useState<
+    Record<string, { width: number; height: number }>
+  >({});
+  const [search, setSearch] = useState(""),
+    [models, setModels] = useState<string[]>([]),
+    [settingsDraft, setSettingsDraft] = useState<Settings>(defaults),
+    [discovering, setDiscovering] = useState(false);
+  const generation = useRef<string | undefined>(undefined),
+    cancelled = useRef(false),
+    readerSurface = useRef<HTMLDivElement>(null),
+    fileInput = useRef<HTMLInputElement>(null),
+    saveQueue = useRef(Promise.resolve()),
+    loadStarted = useRef(false);
+  const { fitView, setCenter, setViewport } = useReactFlow();
+  const { zoom } = useViewport();
+  const nodesInitialised = useNodesInitialized();
+  const layoutBoard = useRef<string | undefined>(undefined);
+  const board = boards.find((b) => b.id === boardId);
+  const note = board?.notes.find((n) => n.id === readerId);
+  const artefact = board?.artefacts.find((a) => a.id === activeArtefact);
+  useEffect(() => {
+    if (loadStarted.current) return;
+    loadStarted.current = true;
+    (async () => {
+      try {
+        const [loaded, s] = await Promise.all([
+          bridge.listBoards(),
+          bridge.getSettings(),
+        ]);
+        const initial = loaded.length ? loaded : [exampleBoard()];
+        setBoards(initial);
+        setBoardId(initial[0].id);
+        setSettings(s);
+        setReady(true);
+      } catch (e) {
+        setError(`Could not open local data: ${errorText(e)}`);
+      }
+    })();
+  }, []);
+  useEffect(
+    () =>
+      bridge.onDelta(({ id, text }) => {
+        if (id === generation.current) setStream((t) => t + text);
+      }),
+    [],
+  );
+  useEffect(() => {
+    if (!ready) return;
+    setSaveStatus("Saving…");
+    const snapshot = boards;
+    saveQueue.current = saveQueue.current
+      .catch(() => {})
+      .then(async () => {
+        for (const b of snapshot) await bridge.saveBoard(b);
+        setSaveStatus("Saved locally");
+      })
+      .catch((e) => {
+        setSaveStatus("Save failed");
+        setError(
+          `Local save failed: ${errorText(e)}. Export the Board to keep a copy.`,
+        );
+      });
+  }, [boards, ready]);
+  useEffect(() => {
+    if (!board || !nodesInitialised || layoutBoard.current === boardId) return;
+    layoutBoard.current = boardId;
+    if (board.viewport) void setViewport(board.viewport);
+    else void fitView({ padding: 0.22 });
+  }, [boardId, ready, nodesInitialised, fitView, setViewport]);
+  useEffect(() => {
+    setHighlight(undefined);
+    if (!anchor || !note || !readerSurface.current) return;
+    const root = readerSurface.current;
+    let range = findHighlightRange(root, anchor);
+    if (!range) {
+      const sel = window.getSelection();
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      while (walker.nextNode()) {
+        const n = walker.currentNode as Text;
+        const start = n.data.indexOf(anchor.text);
+        if (start >= 0) {
+          range = document.createRange();
+          range.setStart(n, start);
+          range.setEnd(n, start + anchor.text.length);
+          break;
+        }
+      }
+      sel?.removeAllRanges();
+    }
+    if (range) {
+      const s = window.getSelection();
+      s?.removeAllRanges();
+      s?.addRange(range);
+      range.startContainer.parentElement?.scrollIntoView({
+        block: "center",
+        behavior: "smooth",
+      });
+    }
+  }, [readerId, anchor, note]);
+  useEffect(() => {
+    if (!composer && !providerOpen && !synthOpen) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const dialog = document.querySelector<HTMLElement>(".modal");
+    if (!dialog) return;
+    const focusable = () =>
+      Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]',
+        ),
+      );
+    (
+      dialog.querySelector<HTMLElement>("[autofocus]") ||
+      dialog.querySelector<HTMLElement>("textarea") ||
+      focusable()[0]
+    )?.focus();
+    const key = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !busy) {
+        setComposer(null);
+        setProviderOpen(false);
+        setSynthOpen(false);
+      }
+      if (event.key === "Tab") {
+        const elements = focusable(),
+          first = elements[0],
+          last = elements.at(-1);
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first?.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", key);
+    return () => {
+      document.removeEventListener("keydown", key);
+      previous?.focus();
+    };
+  }, [Boolean(composer), providerOpen, synthOpen, busy]);
+  function changeBoard(fn: (b: Board) => Board) {
+    setBoards((current) =>
+      current.map((b) =>
+        b.id === boardId ? { ...fn(b), updatedAt: now() } : b,
+      ),
+    );
+  }
+  const read = useCallback((id: string) => {
+    setMode("explore");
+    setReaderId(id);
+    setAnchor(undefined);
+    setHighlight(undefined);
+  }, []);
+  function goSource(id: string) {
+    if (!board?.notes.some((n) => n.id === id)) {
+      setError("The source Note is not in this Board");
+      return;
+    }
+    read(id);
+    const n = board.notes.find((n) => n.id === id)!;
+    void setCenter(n.position.x + 150, n.position.y + 100, {
+      zoom: 1,
+      duration: 300,
+    });
+  }
+  function choose(id: string) {
+    setSelected((ids) =>
+      ids.includes(id) ? ids.filter((i) => i !== id) : [...ids, id],
+    );
+  }
+  function resetPanels() {
+    setReaderId(undefined);
+    setHighlight(undefined);
+    setAnchor(undefined);
+    setSelected([]);
+    setMode("explore");
+    setActiveArtefact(undefined);
+    setDocumentText("");
+    setDocumentDirty(false);
+  }
+  function preserveDraft() {
+    if (documentDirty && artefact) saveDocument();
+  }
+  function createBoard() {
+    if (busy) return;
+    preserveDraft();
+    const b = newBoard();
+    setBoards((bs) => [b, ...bs]);
+    setBoardId(b.id);
+    resetPanels();
+    setPrompt("");
+    setComposer({});
+  }
+  async function generate(
+    messages: ReturnType<typeof buildContext>,
+    purpose: "explore" | "synthesis",
+  ) {
+    assertBudget(messages, settings.contextLimit);
+    const id = uid();
+    generation.current = id;
+    cancelled.current = false;
+    setBusy(true);
+    setStream("");
+    setError("");
+    try {
+      const result = await bridge.generate({ id, messages, settings, purpose });
+      if (cancelled.current)
+        throw new Error(
+          "Generation cancelled. No Note or document was created.",
+        );
+      return result;
+    } finally {
+      generation.current = undefined;
+      setBusy(false);
+    }
+  }
+  async function submitPrompt(event: FormEvent) {
+    event.preventDefault();
+    if (!board || !composer || !prompt.trim() || busy) return;
+    const snapshot = board;
+    const h = composer.highlight;
+    const question = prompt.trim();
+    try {
+      const context = buildContext(snapshot, question, h);
+      const result = await generate(context, "explore");
+      const parent = h
+        ? snapshot.notes.find((n) => n.id === h.sourceId)
+        : undefined;
+      const n: Note = {
+        id: uid(),
+        prompt: question,
+        takeaway: takeaway(result.text),
+        createdAt: now(),
+        position: parent ? childPosition(snapshot, parent) : { x: 100, y: 180 },
+        versions: [
+          {
+            id: uid(),
+            text: result.text,
+            createdAt: now(),
+            provider: settings.provider,
+            model: result.model,
+            context,
+            estimatedTokens: estimateTokens(context),
+            usage: result.usage,
+          },
+        ],
+      };
+      changeBoard((b) => ({
+        ...b,
+        title: b.notes.length ? b.title : question.slice(0, 200),
+        notes: [...b.notes, n],
+        edges: h
+          ? [
+              ...b.edges,
+              { id: uid(), source: h.sourceId, target: n.id, highlight: h },
+            ]
+          : b.edges,
+      }));
+      setComposer(null);
+      setPrompt("");
+      setReaderId(n.id);
+      setAnchor(undefined);
+      setHighlight(undefined);
+      setStream("");
+      void setCenter(n.position.x + 150, n.position.y + 100, {
+        zoom: 0.95,
+        duration: 350,
+      });
+    } catch (e) {
+      setError(errorText(e));
+    }
+  }
+  function branch(h: Highlight) {
+    setPrompt(`What is ${h.text}?`);
+    setComposer({ highlight: h });
+    setError("");
+  }
+  async function consolidate(event: FormEvent) {
+    event.preventDefault();
+    if (!board || busy) return;
+    try {
+      const ids = selectMaterial(
+        board,
+        scope,
+        selected.length ? selected : readerId ? [readerId] : [],
+      );
+      let text: string,
+        model: string,
+        provider: "demo" | "ollama" | "human",
+        context: ReturnType<typeof buildContext> = [];
+      if (format === "journey") {
+        text = journey(board, ids);
+        model = "verbatim";
+        provider = "human";
+      } else {
+        context = synthesisContext(board, ids, format, structure);
+        const result = await generate(context, "synthesis");
+        text = result.text;
+        model = result.model;
+        provider = settings.provider;
+      }
+      preserveDraft();
+      const a: Artefact = {
+        id: uid(),
+        title:
+          format === "journey"
+            ? "Learning journey"
+            : format === "explanation"
+              ? "Integrated explanation"
+              : structure,
+        format,
+        noteIds: ids,
+        sourceVersions: Object.fromEntries(
+          ids.map((id) => [
+            id,
+            response(board.notes.find((n) => n.id === id)!).id,
+          ]),
+        ),
+        versions: [
+          {
+            id: uid(),
+            text,
+            createdAt: now(),
+            kind: "generated",
+            provider,
+            model,
+            context,
+          },
+        ],
+      };
+      changeBoard((b) => ({ ...b, artefacts: [...b.artefacts, a] }));
+      setActiveArtefact(a.id);
+      setDocumentText(text);
+      setDocumentDirty(false);
+      setMode("synthesis");
+      setSynthOpen(false);
+      setStream("");
+    } catch (e) {
+      setError(errorText(e));
+    }
+  }
+  function saveDocument() {
+    if (!artefact || !documentDirty) return;
+    changeBoard((b) => ({
+      ...b,
+      artefacts: b.artefacts.map((a) =>
+        a.id === artefact.id
+          ? {
+              ...a,
+              versions: [
+                ...a.versions,
+                {
+                  id: uid(),
+                  text: documentText,
+                  createdAt: now(),
+                  kind: "edited",
+                  provider: "human",
+                  model: "editor",
+                  context: [],
+                },
+              ],
+            }
+          : a,
+      ),
+    }));
+    setDocumentDirty(false);
+  }
+  function openDocument(a: Artefact) {
+    preserveDraft();
+    setActiveArtefact(a.id);
+    setDocumentText(a.versions.at(-1)!.text);
+    setDocumentDirty(false);
+    setMode("synthesis");
+  }
+  async function discover() {
+    setDiscovering(true);
+    setError("");
+    try {
+      setModels(await bridge.models(settingsDraft));
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setDiscovering(false);
+    }
+  }
+  async function saveSettings(event: FormEvent) {
+    event.preventDefault();
+    try {
+      await bridge.saveSettings(settingsDraft);
+      setSettings(settingsDraft);
+      setProviderOpen(false);
+    } catch (e) {
+      setError(errorText(e));
+    }
+  }
+  const nodes: CardNode[] =
+    board?.notes.map((n, index) => ({
+      id: n.id,
+      type: "note",
+      position: nodePositions[`${boardId}:${n.id}`] || n.position,
+      measured: nodeDimensions[n.id],
+      selected: readerId === n.id,
+      data: {
+        note: n,
+        index,
+        children: board.edges.filter((e) => e.source === n.id).length,
+        chosen: selected.includes(n.id),
+        onRead: read,
+        onChoose: choose,
+      },
+    })) || [];
+  const trackDimensions = useCallback(
+    (changes: NodeChange<CardNode>[]) => {
+      const movements = changes.filter(
+        (change) => change.type === "position" && change.position,
+      );
+      if (movements.length)
+        setNodePositions((current) => {
+          const next = { ...current };
+          for (const change of movements)
+            if (change.type === "position" && change.position)
+              next[`${boardId}:${change.id}`] = change.position;
+          return next;
+        });
+      const settled = movements.filter(
+        (change) => change.type === "position" && !change.dragging,
+      );
+      if (settled.length)
+        changeBoard((b) => ({
+          ...b,
+          notes: b.notes.map((n) => {
+            const change = settled.find(
+              (change) => change.type === "position" && change.id === n.id,
+            );
+            return change?.type === "position" && change.position
+              ? { ...n, position: change.position }
+              : n;
+          }),
+        }));
+      const updates = changes.filter(
+        (change) => change.type === "dimensions" && change.dimensions,
+      );
+      if (!updates.length) return;
+      setNodeDimensions((current) => {
+        let next = current;
+        for (const change of updates) {
+          if (change.type !== "dimensions" || !change.dimensions) continue;
+          const previous = current[change.id];
+          if (
+            previous?.width !== change.dimensions.width ||
+            previous?.height !== change.dimensions.height
+          ) {
+            if (next === current) next = { ...current };
+            next[change.id] = change.dimensions;
+          }
+        }
+        return next;
+      });
+    },
+    [boardId],
+  );
+  const edges: FlowEdge[] =
+    board?.edges.map((e) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      label:
+        zoom > 0.55
+          ? e.highlight.text.length > 42
+            ? e.highlight.text.slice(0, 39) + "…"
+            : e.highlight.text
+          : undefined,
+      type: "smoothstep",
+      markerEnd: { type: MarkerType.ArrowClosed, color: "#9b9d90" },
+      style: { stroke: "#9b9d90", strokeWidth: 1.5 },
+      labelStyle: { fontSize: 11, fill: "#62685b" },
+      labelBgStyle: { fill: "#f7f6f2", fillOpacity: 0.95 },
+      labelBgPadding: [8, 5],
+      labelBgBorderRadius: 5,
+    })) || [];
+  const incoming = board?.edges.find((e) => e.target === readerId);
+  if (!ready)
+    return (
+      <main className="loading">
+        <Compass size={36} />
+        <p>{error || "Opening your workspace…"}</p>
+      </main>
+    );
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="brand">
+          <span className="brand-icon">
+            <Compass size={24} />
+          </span>
+          <span>
+            inquiry<span className="brand-dot">.</span>
+          </span>
+        </div>
+        <div className="workspace-label">
+          YOUR WORKSPACE <span>LOCAL</span>
+        </div>
+        <button className="new-board" onClick={createBoard} disabled={busy}>
+          <Plus size={16} /> New inquiry
+        </button>
+        <div className="sidebar-section">
+          <span>BOARDS</span>
+          <span>{boards.length}</span>
+        </div>
+        <nav className="boards">
+          {boards
+            .filter((b) => b.title.toLowerCase().includes(search.toLowerCase()))
+            .map((b) => (
+              <button
+                key={b.id}
+                disabled={busy}
+                className={b.id === boardId ? "active" : ""}
+                onClick={() => {
+                  preserveDraft();
+                  setBoardId(b.id);
+                  resetPanels();
+                }}
+              >
+                <Layers size={16} />
+                <span>
+                  {b.title}
+                  <small>{b.notes.length} Notes</small>
+                </span>
+              </button>
+            ))}
+        </nav>
+        <label className="board-search">
+          <Search size={14} />
+          <input
+            placeholder="Find a Board"
+            aria-label="Find a Board"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </label>
+        <div className="sidebar-spacer" />
+        <div className="sidebar-section">
+          <span>YOUR ARTEFACTS</span>
+          <FileText size={13} />
+        </div>
+        <div className="artefact-list">
+          {board?.artefacts.length ? (
+            board.artefacts.map((a) => (
+              <button
+                key={a.id}
+                disabled={busy}
+                onClick={() => openDocument(a)}
+              >
+                <FileText size={15} />
+                {a.title}
+              </button>
+            ))
+          ) : (
+            <p>
+              Your exploration, brought together.
+              <br />
+              Consolidate Notes to create a document.
+            </p>
+          )}
+        </div>
+        <div className="provider-card">
+          <span className="status-dot" />
+          <div>
+            <strong>
+              {settings.provider === "demo"
+                ? "Demo workspace"
+                : "Ollama · local"}
+            </strong>
+            <small>
+              {settings.provider === "demo"
+                ? "Synthetic example responses"
+                : settings.model || "Choose a model"}
+            </small>
+          </div>
+          <button
+            aria-label="Provider settings"
+            disabled={busy}
+            onClick={() => {
+              setSettingsDraft(settings);
+              setProviderOpen(true);
+            }}
+          >
+            <Settings2 size={16} />
+          </button>
+        </div>
+        <div className="local-status">
+          <Check size={12} />
+          {saveStatus}
+        </div>
+      </aside>
+      <main className="workspace">
+        <header className="topbar">
+          <div className="breadcrumb">
+            Workspace <span>/</span>
+            <strong>{board?.title}</strong>
+          </div>
+          <div className="topbar-actions">
+            <button
+              title="Import a Board"
+              aria-label="Import a Board"
+              disabled={busy}
+              onClick={() => fileInput.current?.click()}
+            >
+              <Upload size={16} />
+            </button>
+            <button
+              title="Export Board"
+              aria-label="Export Board"
+              onClick={() => {
+                if (board) {
+                  preserveDraft();
+                  const exported =
+                    documentDirty && artefact
+                      ? {
+                          ...board,
+                          artefacts: board.artefacts.map((a) =>
+                            a.id === artefact.id
+                              ? {
+                                  ...a,
+                                  versions: [
+                                    ...a.versions,
+                                    {
+                                      id: uid(),
+                                      text: documentText,
+                                      createdAt: now(),
+                                      kind: "edited" as const,
+                                      provider: "human" as const,
+                                      model: "editor",
+                                      context: [],
+                                    },
+                                  ],
+                                }
+                              : a,
+                          ),
+                        }
+                      : board;
+                  download(
+                    "inquiry-board.json",
+                    JSON.stringify(exported, null, 2),
+                    "application/json",
+                  );
+                }
+              }}
+            >
+              <Download size={16} />
+            </button>
+            <span className="avatar">Y</span>
+          </div>
+        </header>
+        <div className="board-heading">
+          <div>
+            <div className="eyebrow">FOLLOW YOUR CURIOSITY</div>
+            <h1>{board?.title}</h1>
+            <p>Every good question opens another door.</p>
+          </div>
+          <button
+            className="primary"
+            disabled={busy || !board?.notes.length}
+            onClick={() => {
+              setScope(selected.length ? "selected" : "board");
+              setSynthOpen(true);
+            }}
+          >
+            <Sparkles size={15} /> Consolidate <ArrowUpRight size={15} />
+          </button>
+        </div>
+        <div className="modebar">
+          <div className="mode-tabs">
+            <button
+              className={mode === "explore" ? "active" : ""}
+              onClick={() => {
+                preserveDraft();
+                setMode("explore");
+              }}
+            >
+              <GitBranch size={15} /> Explore
+            </button>
+            <button
+              className={mode === "synthesis" ? "active" : ""}
+              onClick={() => setMode("synthesis")}
+            >
+              <BookOpen size={15} /> Synthesis{" "}
+              {board?.artefacts.length ? (
+                <span>{board.artefacts.length}</span>
+              ) : null}
+            </button>
+          </div>
+          <div className="board-info">
+            {selected.length ? `${selected.length} selected · ` : ""}
+            {board?.notes.length} Notes <span>·</span> {board?.edges.length}{" "}
+            connections
+          </div>
+        </div>
+        {error && (
+          <div className="error-banner" role="alert">
+            {error}
+            <button aria-label="Dismiss error" onClick={() => setError("")}>
+              <X size={14} />
+            </button>
+          </div>
+        )}
+        {!desktop && (
+          <div className="preview-banner">
+            Browser preview · demo responses and browser storage. Use the
+            desktop app for SQLite and Ollama.
+          </div>
+        )}
+        {mode === "explore" ? (
+          <div className="exploration">
+            <div className="canvas">
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                nodeTypes={nodeTypes}
+                onNodesChange={trackDimensions}
+                minZoom={0.2}
+                maxZoom={1.5}
+                nodesConnectable={false}
+                deleteKeyCode={null}
+                onNodeDoubleClick={(_, n) => read(n.id)}
+                onNodeDragStop={(_, n) =>
+                  changeBoard((b) => ({
+                    ...b,
+                    notes: b.notes.map((note) =>
+                      note.id === n.id
+                        ? { ...note, position: n.position }
+                        : note,
+                    ),
+                  }))
+                }
+                onEdgeClick={(_, edge) => {
+                  const e = board!.edges.find((e) => e.id === edge.id)!;
+                  setReaderId(e.source);
+                  setAnchor(e.highlight);
+                  setHighlight(undefined);
+                }}
+                onMoveEnd={(_, viewport) =>
+                  changeBoard((b) => ({ ...b, viewport }))
+                }
+              >
+                <Background color="#c8cdc0" gap={24} size={1} />
+                <Controls showInteractive={false} />
+                <MiniMap
+                  nodeColor={(n) =>
+                    ["#eee5aa", "#dce8cf", "#e5dded", "#d8e5e9"][
+                      (n.data as CardNode["data"]).index % 4
+                    ]
+                  }
+                  maskColor="rgba(247,246,242,.65)"
+                  pannable
+                  zoomable
+                />
+              </ReactFlow>
+              {!board?.notes.length && (
+                <div className="empty-board">
+                  <span>
+                    <Compass size={34} />
+                  </span>
+                  <h2>Where will your curiosity take you?</h2>
+                  <p>
+                    Start with a question. Follow the ideas that interest you.
+                  </p>
+                  <button
+                    className="primary"
+                    onClick={() => {
+                      setPrompt("");
+                      setComposer({});
+                    }}
+                  >
+                    <Plus size={16} /> Ask your first question
+                  </button>
+                </div>
+              )}
+              <div className="canvas-guide">
+                <span className="guide-dot" />{" "}
+                {board?.notes.length
+                  ? "Open a Note. Highlight a passage. Follow a new branch."
+                  : "Your inquiry starts with you."}
+              </div>
+            </div>
+            {note && (
+              <aside className="reader">
+                <div className="panel-head">
+                  <span>
+                    <BookOpen size={15} /> NOTE{" "}
+                    {String(board!.notes.indexOf(note) + 1).padStart(2, "0")}
+                  </span>
+                  <button
+                    aria-label="Close Note"
+                    onClick={() => {
+                      setReaderId(undefined);
+                      setAnchor(undefined);
+                      setHighlight(undefined);
+                    }}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+                <div className="reader-scroll">
+                  {incoming && (
+                    <button
+                      className="parent-link"
+                      onClick={() => {
+                        setReaderId(incoming.source);
+                        setAnchor(incoming.highlight);
+                      }}
+                    >
+                      <ArrowLeft size={13} /> From “
+                      {incoming.highlight.text.slice(0, 60)}”
+                    </button>
+                  )}
+                  <h2>{note.prompt}</h2>
+                  <div className="note-meta">
+                    <span>
+                      {response(note).provider === "demo"
+                        ? "SYNTHETIC DEMO"
+                        : response(note).model}
+                    </span>
+                    <span>
+                      v{note.versions.length} ·{" "}
+                      {ancestry(board!, note.id).length - 1} steps from root
+                    </span>
+                  </div>
+                  <div
+                    className="reader-response prose"
+                    ref={readerSurface}
+                    onMouseUp={() => {
+                      const h = captureHighlight(
+                        readerSurface.current!,
+                        note,
+                        window.getSelection(),
+                      );
+                      setHighlight(h);
+                    }}
+                    onKeyUp={() =>
+                      setHighlight(
+                        captureHighlight(
+                          readerSurface.current!,
+                          note,
+                          window.getSelection(),
+                        ),
+                      )
+                    }
+                  >
+                    <Markdown text={response(note).text} onSource={goSource} />
+                  </div>
+                  {anchor && (
+                    <div className="anchor-info">
+                      Source Highlight: “{anchor.text}”
+                    </div>
+                  )}
+                  <label className="takeaway-editor">
+                    TAKEAWAY{" "}
+                    <textarea
+                      aria-label="Edit Takeaway"
+                      value={note.takeaway}
+                      onChange={(e) =>
+                        changeBoard((b) => ({
+                          ...b,
+                          notes: b.notes.map((n) =>
+                            n.id === note.id
+                              ? { ...n, takeaway: e.target.value }
+                              : n,
+                          ),
+                        }))
+                      }
+                    />
+                  </label>
+                  {board!.edges.filter((e) => e.source === note.id).length >
+                    0 && (
+                    <div className="existing-branches">
+                      <h3>EXPLORED FROM THIS NOTE</h3>
+                      {board!.edges
+                        .filter((e) => e.source === note.id)
+                        .map((e) => (
+                          <div key={e.id}>
+                            <button onClick={() => setAnchor(e.highlight)}>
+                              “{e.highlight.text}”
+                            </button>
+                            <button
+                              aria-label={`Open branch ${e.highlight.text}`}
+                              onClick={() => read(e.target)}
+                            >
+                              <ArrowRight size={14} />
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                  <details className="context-details">
+                    <summary>
+                      Generation record · ~
+                      {response(note).estimatedTokens.toLocaleString()} context
+                      tokens
+                    </summary>
+                    <p>
+                      {new Date(response(note).createdAt).toLocaleString(
+                        "en-AU",
+                      )}
+                      {response(note).usage &&
+                        ` · ${response(note).usage?.input || 0} input / ${response(note).usage?.output || 0} output tokens`}
+                    </p>
+                    {response(note).context.map((m, i) => (
+                      <div key={i}>
+                        <strong>{m.role}</strong>
+                        <pre>{m.content}</pre>
+                      </div>
+                    ))}
+                  </details>
+                </div>
+                <div className="reader-footer">
+                  {highlight ? (
+                    <>
+                      <p>
+                        “
+                        {highlight.text.length > 90
+                          ? highlight.text.slice(0, 87) + "…"
+                          : highlight.text}
+                        ”
+                      </p>
+                      <button
+                        className="primary"
+                        disabled={busy}
+                        onClick={() => branch(highlight)}
+                      >
+                        <GitBranch size={15} /> Explore this passage{" "}
+                        <ArrowUpRight size={15} />
+                      </button>
+                    </>
+                  ) : (
+                    <p>
+                      Select a passage in the response to begin a new branch.
+                    </p>
+                  )}
+                </div>
+              </aside>
+            )}
+          </div>
+        ) : (
+          <section className="synthesis-workspace">
+            {artefact ? (
+              <>
+                <div className="document-toolbar">
+                  <div>
+                    <span className="eyebrow">
+                      {artefact.noteIds.length} SOURCE NOTES
+                    </span>
+                    <h2>{artefact.title}</h2>
+                  </div>
+                  <div>
+                    <select
+                      aria-label="Document version"
+                      value=""
+                      onChange={(e) => {
+                        if (!e.target.value) return;
+                        preserveDraft();
+                        setDocumentText(
+                          artefact.versions.find(
+                            (v) => v.id === e.target.value,
+                          )!.text,
+                        );
+                        setDocumentDirty(true);
+                      }}
+                    >
+                      <option value="">
+                        History · {artefact.versions.length} versions
+                      </option>
+                      {artefact.versions.map((v, i) => (
+                        <option key={v.id} value={v.id}>
+                          v{i + 1} · {v.kind} ·{" "}
+                          {new Date(v.createdAt).toLocaleString("en-AU")}
+                        </option>
+                      ))}
+                    </select>
+                    <button onClick={() => setEditing((v) => !v)}>
+                      {editing ? "Preview" : "Edit"}
+                    </button>
+                    <button
+                      onClick={() =>
+                        download(
+                          "inquiry-synthesis.md",
+                          documentText,
+                          "text/markdown",
+                        )
+                      }
+                      aria-label="Export synthesis"
+                    >
+                      <Download size={16} />
+                    </button>
+                    <button
+                      className="primary"
+                      disabled={!documentDirty}
+                      onClick={saveDocument}
+                    >
+                      Save revision
+                    </button>
+                  </div>
+                </div>
+                {editing ? (
+                  <textarea
+                    className="document-editor"
+                    aria-label="Synthesis document"
+                    value={documentText}
+                    onChange={(e) => {
+                      setDocumentText(e.target.value);
+                      setDocumentDirty(true);
+                    }}
+                  />
+                ) : (
+                  <div className="document-preview prose">
+                    <Markdown
+                      text={documentText}
+                      onSource={(id) => {
+                        preserveDraft();
+                        goSource(id);
+                      }}
+                    />
+                  </div>
+                )}
+                <div className="document-sources">
+                  <span>Source Notes</span>
+                  {artefact.noteIds.map((id) => (
+                    <button
+                      key={id}
+                      onClick={() => {
+                        preserveDraft();
+                        goSource(id);
+                      }}
+                    >
+                      {board!.notes.find((n) => n.id === id)?.prompt}
+                      <ArrowUpRight size={12} />
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="synthesis-empty">
+                <BookOpen size={36} />
+                <h2>Bring your exploration together.</h2>
+                <p>
+                  Create a learning journey, an integrated explanation, or a
+                  structured artefact.
+                  <br />
+                  Your original Board stays connected and intact.
+                </p>
+                <button
+                  className="primary"
+                  disabled={!board?.notes.length}
+                  onClick={() => setSynthOpen(true)}
+                >
+                  Consolidate Notes <ArrowUpRight size={15} />
+                </button>
+              </div>
+            )}
+          </section>
+        )}
+      </main>
+      <input
+        type="file"
+        accept="application/json,.json"
+        hidden
+        ref={fileInput}
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          try {
+            if (file.size > 20 * 1024 * 1024)
+              throw new Error("Board files must be under 20 MB");
+            const b = validateBoard(JSON.parse(await file.text()));
+            preserveDraft();
+            const imported = {
+              ...b,
+              id: uid(),
+              title: `${b.title.slice(0, 189)} (imported)`,
+              updatedAt: now(),
+            };
+            setBoards((bs) => [imported, ...bs]);
+            setBoardId(imported.id);
+            resetPanels();
+          } catch (err) {
+            setError(`Import failed: ${errorText(err)}`);
+          }
+          e.target.value = "";
+        }}
+      />
+      {composer && (
+        <div className="modal-backdrop">
+          <section
+            className="modal composer"
+            role="dialog"
+            aria-modal="true"
+            aria-label={
+              composer.highlight ? "Explore a passage" : "Start an inquiry"
+            }
+          >
+            <div className="panel-head">
+              <span>
+                <GitBranch size={16} />
+                {composer.highlight
+                  ? "FOLLOW A NEW THREAD"
+                  : "START AN INQUIRY"}
+              </span>
+              <button
+                aria-label="Close composer"
+                disabled={busy}
+                onClick={() => {
+                  setComposer(null);
+                  setStream("");
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <h2>
+              {composer.highlight
+                ? "What would you like to explore?"
+                : "Begin with a question."}
+            </h2>
+            {composer.highlight && (
+              <blockquote>{composer.highlight.text}</blockquote>
+            )}
+            <form onSubmit={submitPrompt}>
+              <label>
+                Your question
+                <textarea
+                  autoFocus
+                  required
+                  maxLength={30000}
+                  value={prompt}
+                  disabled={busy}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="What are you curious about?"
+                />
+              </label>
+              {composer.highlight &&
+                board &&
+                ancestry(board, composer.highlight.sourceId).length >=
+                  settings.depthReminder && (
+                  <p className="reminder">
+                    This branch will reach{" "}
+                    {ancestry(board, composer.highlight.sourceId).length} steps.
+                    Consider consolidating when you are ready; you can continue
+                    exploring.
+                  </p>
+                )}
+              <div className="composer-meta">
+                <span>
+                  {settings.provider === "demo"
+                    ? "Synthetic demo"
+                    : settings.model}{" "}
+                  · ~
+                  {board
+                    ? estimateTokens(
+                        buildContext(board, prompt, composer.highlight),
+                      ).toLocaleString()
+                    : 0}{" "}
+                  context tokens
+                </span>
+                <span>History stays complete</span>
+              </div>
+              {error && (
+                <p className="form-error" role="alert">
+                  {error}
+                </p>
+              )}
+              {busy && (
+                <div className="stream-preview prose">
+                  {stream || "Waiting for the model…"}
+                </div>
+              )}
+              <div className="modal-actions">
+                {busy ? (
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => {
+                      cancelled.current = true;
+                      if (generation.current)
+                        void bridge.cancel(generation.current);
+                    }}
+                  >
+                    <Square size={13} /> Cancel generation
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => setComposer(null)}
+                  >
+                    Cancel
+                  </button>
+                )}
+                <button className="primary" disabled={busy || !prompt.trim()}>
+                  {busy ? (
+                    <LoaderCircle className="spin" size={16} />
+                  ) : (
+                    <ArrowUpRight size={16} />
+                  )}{" "}
+                  {busy
+                    ? "Exploring…"
+                    : composer.highlight
+                      ? "Create branch"
+                      : "Ask & explore"}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+      {providerOpen && (
+        <div className="modal-backdrop">
+          <section
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Provider settings"
+          >
+            <div className="panel-head">
+              <span>
+                <Settings2 size={16} /> PROVIDER SETTINGS
+              </span>
+              <button
+                aria-label="Close provider settings"
+                onClick={() => setProviderOpen(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <h2>Your model. Your inquiry.</h2>
+            <p className="muted">
+              Choose the connection used for your next Note. Existing Notes keep
+              their original model and context.
+            </p>
+            <form onSubmit={saveSettings}>
+              <label>
+                Provider
+                <select
+                  aria-label="Provider"
+                  value={settingsDraft.provider}
+                  onChange={(e) =>
+                    setSettingsDraft((s) => ({
+                      ...s,
+                      provider: e.target.value as Settings["provider"],
+                    }))
+                  }
+                >
+                  <option value="demo">Demo — synthetic responses</option>
+                  <option value="ollama" disabled={!desktop}>
+                    Ollama — local inference
+                  </option>
+                </select>
+              </label>
+              {settingsDraft.provider === "ollama" && (
+                <>
+                  <label>
+                    Local server address
+                    <input
+                      value={settingsDraft.endpoint}
+                      required
+                      onChange={(e) =>
+                        setSettingsDraft((s) => ({
+                          ...s,
+                          endpoint: e.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                  <label>
+                    Model
+                    <div className="model-input">
+                      <input
+                        required
+                        list="installed-models"
+                        placeholder="Select or enter an installed model"
+                        value={settingsDraft.model}
+                        onChange={(e) =>
+                          setSettingsDraft((s) => ({
+                            ...s,
+                            model: e.target.value,
+                          }))
+                        }
+                      />
+                      <button
+                        type="button"
+                        className="secondary"
+                        disabled={discovering}
+                        onClick={discover}
+                      >
+                        {discovering ? "Checking…" : "Discover"}
+                      </button>
+                    </div>
+                    <datalist id="installed-models">
+                      {models.map((m) => (
+                        <option key={m} value={m} />
+                      ))}
+                    </datalist>
+                  </label>
+                </>
+              )}
+              <div className="form-columns">
+                <label>
+                  Context budget (tokens)
+                  <input
+                    type="number"
+                    min={1024}
+                    max={1000000}
+                    required
+                    value={settingsDraft.contextLimit}
+                    onChange={(e) =>
+                      setSettingsDraft((s) => ({
+                        ...s,
+                        contextLimit: Number(e.target.value),
+                      }))
+                    }
+                  />
+                </label>
+                <label>
+                  Depth reminder (steps)
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    required
+                    value={settingsDraft.depthReminder}
+                    onChange={(e) =>
+                      setSettingsDraft((s) => ({
+                        ...s,
+                        depthReminder: Number(e.target.value),
+                      }))
+                    }
+                  />
+                </label>
+              </div>
+              <p className="muted small">
+                Budgets include a 1,024-token response reserve. Context is
+                estimated; no historical Notes are silently removed. Ollama
+                model capability is checked before generation.
+              </p>
+              {error && <p className="form-error">{error}</p>}
+              <div className="modal-actions">
+                <button className="primary">
+                  Save settings <Check size={15} />
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+      {synthOpen && (
+        <div className="modal-backdrop">
+          <section
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Consolidate Notes"
+          >
+            <div className="panel-head">
+              <span>
+                <Sparkles size={16} /> CONSOLIDATE
+              </span>
+              <button
+                aria-label="Close synthesis settings"
+                disabled={busy}
+                onClick={() => setSynthOpen(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <h2>Turn your path into an account.</h2>
+            <form onSubmit={consolidate}>
+              <label>
+                Source material
+                <select
+                  aria-label="Source material"
+                  value={scope}
+                  disabled={busy}
+                  onChange={(e) => setScope(e.target.value as typeof scope)}
+                >
+                  <option value="board">
+                    Entire Board ({board?.notes.length} Notes)
+                  </option>
+                  <option
+                    value="branch"
+                    disabled={!selected.length && !readerId}
+                  >
+                    Ancestral branch to the{" "}
+                    {selected.length ? "first selected" : "open"} Note
+                  </option>
+                  <option value="selected" disabled={!selected.length}>
+                    Selected Notes ({selected.length})
+                  </option>
+                </select>
+              </label>
+              <label>
+                Output
+                <select
+                  aria-label="Output"
+                  value={format}
+                  disabled={busy}
+                  onChange={(e) =>
+                    setFormat(e.target.value as Artefact["format"])
+                  }
+                >
+                  <option value="journey">
+                    Learning journey — original prompts and responses
+                  </option>
+                  <option value="explanation">Integrated explanation</option>
+                  <option value="structured">Structured artefact</option>
+                </select>
+              </label>
+              {format === "structured" && (
+                <label>
+                  Document structure
+                  <input
+                    value={structure}
+                    required
+                    disabled={busy}
+                    onChange={(e) => setStructure(e.target.value)}
+                    placeholder="Study notes, research brief, tutorial…"
+                  />
+                </label>
+              )}
+              <p className="muted small">
+                {format === "journey"
+                  ? "Learning journeys preserve the original text and require no model request."
+                  : settings.provider === "demo"
+                    ? "Demo synthesis groups takeaways. Choose Ollama for a model-generated explanation."
+                    : "Your model will organise the sources and retain links to each Note."}{" "}
+                Earlier artefacts are kept when you consolidate again.
+              </p>
+              {error && <p className="form-error">{error}</p>}
+              {busy && (
+                <div className="stream-preview">
+                  {stream || "Organising your sources…"}
+                </div>
+              )}
+              <div className="modal-actions">
+                {busy && (
+                  <button
+                    className="secondary"
+                    type="button"
+                    onClick={() => {
+                      cancelled.current = true;
+                      if (generation.current)
+                        void bridge.cancel(generation.current);
+                    }}
+                  >
+                    Cancel generation
+                  </button>
+                )}
+                <button className="primary" disabled={busy}>
+                  {busy ? (
+                    <LoaderCircle size={16} className="spin" />
+                  ) : (
+                    <Sparkles size={15} />
+                  )}{" "}
+                  {busy ? "Synthesising…" : "Create artefact"}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}

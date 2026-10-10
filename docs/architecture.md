@@ -1,0 +1,31 @@
+# Architecture
+
+Inquiry separates a React renderer from an Electron main process. The sandboxed preload exposes only Board/settings persistence, model discovery, generation, cancellation and stream subscription. The renderer has no Node access and cannot call arbitrary remote inference endpoints. External navigation and new windows are blocked; rendered Markdown does not execute HTML or fetch images.
+
+## Domain records
+
+A `Board` has a schema version, title, timestamps, spatial Notes, directed Edges, document artefacts and a viewport. Zod validates saved/imported records. Additional graph validation rejects cycles, multiple roots, duplicate identifiers, missing sources and invalid Highlight ranges.
+
+Each `Note` preserves its prompt, position, editable Takeaway and immutable response versions. Each version records text, provider, model, timestamp, effective context, token estimate and available usage. An `Edge` owns one Highlight identifying the source Note/version, exact text, offsets and the text surface used for those offsets. A passage may motivate several independent branches.
+
+Selections in formatted Markdown use DOM Range offsets into the complete rendered text snapshot. This avoids guessing Markdown offsets or choosing the first repeated substring. Text surfaces are version-specific. Example Notes use Markdown-surface anchors; the reader locates their passage in the rendered surface when possible and always shows the complete source Highlight separately.
+
+## Context and providers
+
+`buildContext` reconstructs root-to-parent ancestry, then appends the selected passage and new user prompt. Sibling Notes are excluded. The request is recorded on the resulting response version. A conservative UTF-8 byte estimate and 1,024-token output reserve provide a preflight budget check, not exact tokenisation. There is no automatic context reduction.
+
+The `Provider` interface declares streaming, model discovery and authentication capabilities. Demo generation is explicitly synthetic. The Ollama adapter runs in the main process and accepts only loopback endpoints. It discovers `/api/tags`, checks model context capability with `/api/show`, and streams `/api/chat` as newline-delimited JSON. Complete records are committed only after the stream's completion marker. Aborting or failing leaves the source Board untouched.
+
+## Persistence
+
+Electron stores `inquiry.sqlite` in `app.getPath('userData')`. SQLite uses WAL and two tables: `boards` (validated JSON snapshots with sortable title/update metadata), and separate `settings`. Schema version 1 is the initial storage format. Individual saves are atomic SQLite upserts; the renderer queues snapshots to preserve write order. This favours a straightforward prototype over a prematurely normalised graph schema.
+
+JSON export includes exploration and artefacts, not provider settings. Import validates the tree and anchors and gives the imported Board a new ID. Browser preview uses localStorage and demo inference only, explicitly identified in the interface.
+
+## Synthesis
+
+A learning journey is deterministic and preserves original prompts/responses. Integrated explanations and structured artefacts use the configured provider with user-selected source Notes. Artefacts store source IDs and response version IDs, generated context and a history of generated/edited Markdown document versions. Source links use `inquiry://note/ID` and reopen the Note. The editor supports Markdown plus formatted preview. Returning to Explore or another artefact saves a changed revision in memory and queues local persistence.
+
+## Boundaries
+
+SQLite/network operations remain in Electron; graph, ancestry and selection behaviour are independently testable. No autonomous branching, agent orchestration, shared Boards, paid fallbacks or credential persistence is present. Provider protocol documentation: [Ollama chat](https://docs.ollama.com/api/chat), [model listing](https://docs.ollama.com/api/tags). Desktop isolation follows [Electron context isolation](https://www.electronjs.org/docs/latest/tutorial/context-isolation).

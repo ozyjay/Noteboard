@@ -1,0 +1,11 @@
+# Initial decisions
+
+- **Detailed Notes:** a side reading panel preserves the Board arrangement and offers a comfortable selectable reading surface.
+- **Child placement:** place to the parent's right, scan down for collisions, retain all manually positioned Notes. No automatic whole-Board rearrangement.
+- **Anchoring:** rendered-text snapshots plus exact DOM Range offsets. Source responses are immutable; a new response would need a new version ID rather than editing an anchored response.
+- **Takeaways:** request an explicit principal Takeaway from Ollama. If absent, use the first substantive paragraph as a lightweight fallback, never the final sentence. Users can correct it.
+- **Synthesis:** Markdown editing and rendered preview are the structured editor MVP. Regeneration creates another artefact; saved edits append revisions. Earlier versions remain available.
+- **Context:** show estimates and configured budgets, check Ollama model capability before requesting inference, and reject requests that exceed estimates. Estimates may differ from provider tokenisation; exact token budgeting is future work.
+- **Providers:** implement Ollama first, plus a clearly labelled synthetic interaction provider. ChatGPT subscription eligibility and hosted paid APIs require separate validation and configuration.
+- **Persistence:** atomic Board JSON snapshots in SQLite, independent settings table, schema version 1. No credentials exist in the initial provider configurations.
+- **Skills:** keep a small repository-specific skill under `skills/` and reference it from AGENTS.md. The managed workspace does not allow writing `.agents/`; no global agent configuration is changed.
