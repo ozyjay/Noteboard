@@ -10,6 +10,8 @@ Each `Note` preserves its prompt, position, editable Takeaway and immutable resp
 
 Selections in formatted Markdown use DOM Range offsets into the complete rendered text snapshot. This avoids guessing Markdown offsets or choosing the first repeated substring. Text surfaces are version-specific. Example Notes use Markdown-surface anchors; the reader locates their passage in the rendered surface when possible and always shows the complete source Highlight separately.
 
+Notes and synthesis share GitHub-flavoured Markdown and local KaTeX rendering. Maths supports `$…$`, `$$…$$`, `\(…\)` and `\[…\]`; alternative delimiters are normalised for display outside code, leaving stored source text unchanged. KaTeX CSS/fonts are bundled locally; trusted TeX commands are disabled. Invalid equations remain visible as source text. A Highlight intersecting a typeset equation expands to the whole equation and records its exact LaTeX in `latexSources`, which is included in the follow-up request. Its `displayText` uses LaTeX for readable labels and learning journeys while its original text and offsets retain the complete rendered snapshot. New anchors identify the maths-enabled rendered surface with `renderedMath`; reopening an older rendered anchor uses the original non-maths renderer to retain its saved offsets and snapshot. No saved anchor is migrated.
+
 ## Context and providers
 
 `buildContext` reconstructs root-to-parent ancestry, then appends the selected passage and new user prompt. Sibling Notes are excluded. The request is recorded on the resulting response version. A conservative UTF-8 byte estimate and 1,024-token output reserve provide a preflight budget check, not exact tokenisation. There is no automatic context reduction.

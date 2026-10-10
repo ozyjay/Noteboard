@@ -5,6 +5,7 @@
 - **Anchoring:** rendered-text snapshots plus exact DOM Range offsets. Source responses are immutable; a new response would need a new version ID rather than editing an anchored response.
 - **Takeaways:** request an explicit principal Takeaway from Ollama. If absent, use the first substantive paragraph as a lightweight fallback, never the final sentence. Users can correct it.
 - **Synthesis:** Markdown editing and rendered preview are the structured editor MVP. Regeneration creates another artefact; saved edits append revisions. Earlier versions remain available.
+- **Maths and reading:** Notes and synthesis use locally bundled KaTeX, with trusted commands disabled and bounded expansion. Synthesis opens in formatted preview; Edit exposes Markdown/LaTeX source. Equation selections preserve full equations and their exact LaTeX alongside rendered anchors. Older rendered anchors reopen with the original renderer rather than changing their text surface.
 - **Context:** show estimates and configured budgets, check Ollama model capability before requesting inference, and reject requests that exceed estimates. Estimates may differ from provider tokenisation; exact token budgeting is future work.
 - **Providers:** implement Ollama first, plus a clearly labelled synthetic interaction provider. ChatGPT subscription eligibility and hosted paid APIs require separate validation and configuration.
 - **Persistence:** atomic Board JSON snapshots in SQLite, independent settings table, schema version 1. No credentials exist in the initial provider configurations.

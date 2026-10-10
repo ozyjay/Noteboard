@@ -49,6 +49,7 @@ import {
   uid,
   now,
   response,
+  highlightLabel,
   defaults,
   validateBoard,
 } from "./core/model";
@@ -100,7 +101,7 @@ export default function App() {
     [structure, setStructure] = useState("Study notes");
   const [activeArtefact, setActiveArtefact] = useState<string>(),
     [documentText, setDocumentText] = useState(""),
-    [editing, setEditing] = useState(true),
+    [editing, setEditing] = useState(false),
     [documentDirty, setDocumentDirty] = useState(false);
   const [nodePositions, setNodePositions] = useState<
     Record<string, { x: number; y: number }>
@@ -378,7 +379,7 @@ export default function App() {
     }
   }
   function branch(h: Highlight) {
-    setPrompt(`What is ${h.text}?`);
+    setPrompt(`What is ${highlightLabel(h)}?`);
     setComposer({ highlight: h });
     setError("");
   }
@@ -438,6 +439,7 @@ export default function App() {
       changeBoard((b) => ({ ...b, artefacts: [...b.artefacts, a] }));
       setActiveArtefact(a.id);
       setDocumentText(text);
+      setEditing(false);
       setDocumentDirty(false);
       setMode("synthesis");
       setSynthOpen(false);
@@ -476,6 +478,7 @@ export default function App() {
     preserveDraft();
     setActiveArtefact(a.id);
     setDocumentText(a.versions.at(-1)!.text);
+    setEditing(false);
     setDocumentDirty(false);
     setMode("synthesis");
   }
@@ -573,9 +576,9 @@ export default function App() {
       target: e.target,
       label:
         zoom > 0.55
-          ? e.highlight.text.length > 42
-            ? e.highlight.text.slice(0, 39) + "…"
-            : e.highlight.text
+          ? highlightLabel(e.highlight).length > 42
+            ? highlightLabel(e.highlight).slice(0, 39) + "…"
+            : highlightLabel(e.highlight)
           : undefined,
       type: "smoothstep",
       markerEnd: { type: MarkerType.ArrowClosed, color: "#9b9d90" },
@@ -918,7 +921,7 @@ export default function App() {
                       }}
                     >
                       <ArrowLeft size={13} /> From “
-                      {incoming.highlight.text.slice(0, 60)}”
+                      {highlightLabel(incoming.highlight).slice(0, 60)}”
                     </button>
                   )}
                   <h2>{note.prompt}</h2>
@@ -935,6 +938,9 @@ export default function App() {
                   </div>
                   <div
                     className="reader-response prose"
+                    data-maths={
+                      !(anchor?.surface === "rendered" && !anchor.renderedMath)
+                    }
                     ref={readerSurface}
                     onMouseUp={() => {
                       const h = captureHighlight(
@@ -954,11 +960,19 @@ export default function App() {
                       )
                     }
                   >
-                    <Markdown text={response(note).text} onSource={goSource} />
+                    <Markdown
+                      text={response(note).text}
+                      onSource={goSource}
+                      maths={
+                        !(
+                          anchor?.surface === "rendered" && !anchor.renderedMath
+                        )
+                      }
+                    />
                   </div>
                   {anchor && (
                     <div className="anchor-info">
-                      Source Highlight: “{anchor.text}”
+                      Source Highlight: “{highlightLabel(anchor)}”
                     </div>
                   )}
                   <label className="takeaway-editor">
@@ -987,10 +1001,10 @@ export default function App() {
                         .map((e) => (
                           <div key={e.id}>
                             <button onClick={() => setAnchor(e.highlight)}>
-                              “{e.highlight.text}”
+                              “{highlightLabel(e.highlight)}”
                             </button>
                             <button
-                              aria-label={`Open branch ${e.highlight.text}`}
+                              aria-label={`Open branch ${highlightLabel(e.highlight)}`}
                               onClick={() => read(e.target)}
                             >
                               <ArrowRight size={14} />
@@ -1025,9 +1039,9 @@ export default function App() {
                     <>
                       <p>
                         “
-                        {highlight.text.length > 90
-                          ? highlight.text.slice(0, 87) + "…"
-                          : highlight.text}
+                        {highlightLabel(highlight).length > 90
+                          ? highlightLabel(highlight).slice(0, 87) + "…"
+                          : highlightLabel(highlight)}
                         ”
                       </p>
                       <button
@@ -1229,7 +1243,7 @@ export default function App() {
                 : "Begin with a question."}
             </h2>
             {composer.highlight && (
-              <blockquote>{composer.highlight.text}</blockquote>
+              <blockquote>{highlightLabel(composer.highlight)}</blockquote>
             )}
             <form onSubmit={submitPrompt}>
               <label>

@@ -45,7 +45,7 @@ export function buildContext(
   messages.push({
     role: "user",
     content: highlight
-      ? `Selected passage from the preceding response:\n<highlight>\n${highlight.text}\n</highlight>\n\n${prompt}`
+      ? `Selected passage from the preceding response:\n<highlight>\n${highlight.text}\n</highlight>${highlight.latexSources?.length ? `\n\nExact LaTeX for selected equations:\n${highlight.latexSources.map((source) => `\\[${source}\\]`).join("\n")}` : ""}\n\n${prompt}`
       : prompt,
   });
   return messages;

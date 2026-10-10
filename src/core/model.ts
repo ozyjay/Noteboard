@@ -53,8 +53,13 @@ export const HighlightSchema = z.object({
   end: z.number().int().positive(),
   surface: z.enum(["markdown", "rendered"]),
   renderedText: z.string().optional(),
+  renderedMath: z.boolean().optional(),
+  latexSources: z.array(z.string()).optional(),
+  displayText: z.string().optional(),
 });
 export type Highlight = z.infer<typeof HighlightSchema>;
+export const highlightLabel = (highlight: Highlight) =>
+  highlight.displayText ?? highlight.text;
 export const EdgeSchema = z.object({
   id: z.string(),
   source: z.string(),

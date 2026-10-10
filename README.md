@@ -30,7 +30,9 @@ npm start
 3. Edit the suggested `What is <Highlight>?` question and create the branch.
 4. Drag Notes, pan and zoom. Click an Edge label to revisit its source Highlight.
 5. Select Note checkboxes, then **Consolidate**. Choose a full Board, an ancestral branch or selected Notes.
-6. Edit the document, save a revision, preview source links and return to Explore.
+6. Read the formatted document, choose **Edit** to change its Markdown/LaTeX source, save a revision, and follow source links to return to Explore.
+
+Responses and synthesis render Markdown and LaTeX maths. Use `$x^2$` or `\(x^2\)` inline, and `$$` on separate lines or `\[x^2\]` for display equations. Code remains literal. Selecting part of an equation explores the complete equation and preserves its LaTeX for the follow-up. Markdown export retains the original source notation.
 
 Provider settings support the synthetic demo and a locally running Ollama server. Use **Discover** to list installed models. Context limits are checked before generation; history is never silently shortened. No API keys or subscriptions are required by this version.
 

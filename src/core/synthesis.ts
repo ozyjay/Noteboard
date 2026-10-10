@@ -1,4 +1,10 @@
-import { type Board, type Message, type Artefact, response } from "./model";
+import {
+  type Board,
+  type Message,
+  type Artefact,
+  response,
+  highlightLabel,
+} from "./model";
 import { ancestry } from "./context";
 export function selectMaterial(
   board: Board,
@@ -21,7 +27,7 @@ export function journey(board: Board, ids: string[]): string {
       .map((id, i) => {
         const n = board.notes.find((n) => n.id === id)!;
         const h = board.edges.find((e) => e.target === id)?.highlight;
-        return `## ${i + 1}. ${n.prompt}\n\n[Open source Note](inquiry://note/${id})${h ? `\n\nExplored passage: “${h.text}”` : ""}\n\n${response(n).text}`;
+        return `## ${i + 1}. ${n.prompt}\n\n[Open source Note](inquiry://note/${id})${h ? `\n\nExplored passage: “${highlightLabel(h)}”` : ""}\n\n${response(n).text}`;
       })
       .join("\n\n---\n\n")
   );
