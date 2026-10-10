@@ -41,6 +41,7 @@ Provider settings support the synthetic demo, local Ollama and eligible ChatGPT 
 - [Product plan](docs/product-plan.md)
 - [Architecture](docs/architecture.md) and [decisions](docs/decisions.md)
 - [Development](docs/development.md), [testing](docs/testing.md) and [roadmap](docs/roadmap.md)
+- [Ideas and feature requests](docs/ideas.md) — exploratory ideas rather than the implementation backlog
 - [Agent instructions](AGENTS.md) and [project development skill](skills/inquiry-development/SKILL.md)
 
 The initial exploration and synthesis MVPs are implemented. Separately billed hosted providers, rich-text editing, automatic continuation roots, packaged installers and research evaluation remain future work. Live Ollama requires a locally installed model; the included examples are explicitly synthetic.

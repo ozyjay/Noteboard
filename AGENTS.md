@@ -29,6 +29,15 @@ Renderer code must not gain direct filesystem, Node or network access. Validate 
 
 Run relevant tests for changed behaviour, typecheck and build before delivery. Test branching, source navigation and reopening data when changing anchors or persistence. Update architecture/decisions when the design changes. Do not claim live inference validation from synthetic or mocked tests.
 
+## Ideas and approved work
+
+[docs/ideas.md](docs/ideas.md) is the human-maintained ideas inbox. Entries are exploratory proposals, not approved requirements or implementation instructions.
+
+- Consult relevant entries when explicitly asked to brainstorm, review ideas, evaluate possible features or plan future work. Do not routinely load the entire inbox for unrelated implementation tasks.
+- When reviewing ideas, consider existing product requirements, architectural constraints and design decisions.
+- Implementation or promotion requires explicit user direction. Do not automatically implement ideas, create GitHub Issues or promote entries into authoritative documentation.
+- Preserve original ideas unless the user explicitly requests their removal or modification.
+
 ## Project skills
 
 The project skill [inquiry-development](skills/inquiry-development/SKILL.md) describes the feature and verification workflow. Read it when implementing or reviewing Noteboard's graph, provider, provenance or synthesis behaviour. It is stored in `skills/` because this workspace's `.agents/` directory is read-only; AGENTS.md provides the explicit discovery route.
