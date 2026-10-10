@@ -731,12 +731,24 @@ h1 {
 .reader-footer .primary {
   width: 100%;
 }
+.takeaway-controls {
+  margin-top: 28px;
+  color: var(--text-secondary);
+}
+.takeaway-controls summary {
+  cursor: pointer;
+  font-size: 11px;
+}
+.takeaway-controls summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
 .takeaway-editor {
   display: block;
   font-size: 9px;
   letter-spacing: 1px;
   color: var(--text-secondary);
-  margin-top: 28px;
+  margin-top: 12px;
 }
 .takeaway-editor textarea {
   display: block;

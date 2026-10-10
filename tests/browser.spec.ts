@@ -1,4 +1,42 @@
 import { test, expect } from "@playwright/test";
+test("takeaway editing is collapsed and preserves the original response after reopening", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.getByText("Saved locally", { exact: true })).toBeVisible();
+  const readBoard = () =>
+    page.evaluate(() => JSON.parse(localStorage.getItem("inquiry.boards")!)[0]);
+  const original = await readBoard();
+  await page
+    .getByRole("button", { name: "How do complex systems work?", exact: true })
+    .click();
+  const editor = page.getByLabel("Edit Takeaway", { exact: true });
+  await expect(editor).toBeHidden();
+  await expect(page.locator(".reader-response")).toContainText(
+    original.notes[0].takeaway,
+  );
+  const renderedResponse = await page.locator(".reader-response").textContent();
+  await page.locator(".takeaway-controls summary").click();
+  await expect(editor).toHaveValue(original.notes[0].takeaway);
+  await editor.fill("Examine the relationships between the parts.");
+  await expect(page.getByText("Saved locally", { exact: true })).toBeVisible();
+  const edited = await readBoard();
+  expect(edited.notes[0].takeaway).toBe(
+    "Examine the relationships between the parts.",
+  );
+  expect(edited.notes[0].versions).toEqual(original.notes[0].versions);
+  expect(edited.edges).toEqual(original.edges);
+  await expect(page.locator(".reader-response")).toHaveText(renderedResponse!);
+  await page.reload();
+  await page
+    .getByRole("button", { name: "How do complex systems work?", exact: true })
+    .click();
+  await expect(editor).toBeHidden();
+  await page.locator(".takeaway-controls summary").click();
+  await expect(editor).toHaveValue(edited.notes[0].takeaway);
+  await expect(page.locator(".reader-response")).toHaveText(renderedResponse!);
+});
+
 test("maths survives equation branching, synthesis editing and reopening", async ({
   page,
 }, testInfo) => {

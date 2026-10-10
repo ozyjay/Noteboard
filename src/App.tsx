@@ -1070,23 +1070,26 @@ export default function App() {
                       Source Highlight: “{highlightLabel(anchor)}”
                     </div>
                   )}
-                  <label className="takeaway-editor">
-                    TAKEAWAY{" "}
-                    <textarea
-                      aria-label="Edit Takeaway"
-                      value={note.takeaway}
-                      onChange={(e) =>
-                        changeBoard((b) => ({
-                          ...b,
-                          notes: b.notes.map((n) =>
-                            n.id === note.id
-                              ? { ...n, takeaway: e.target.value }
-                              : n,
-                          ),
-                        }))
-                      }
-                    />
-                  </label>
+                  <details className="takeaway-controls" key={note.id}>
+                    <summary>Edit takeaway</summary>
+                    <label className="takeaway-editor">
+                      TAKEAWAY{" "}
+                      <textarea
+                        aria-label="Edit Takeaway"
+                        value={note.takeaway}
+                        onChange={(e) =>
+                          changeBoard((b) => ({
+                            ...b,
+                            notes: b.notes.map((n) =>
+                              n.id === note.id
+                                ? { ...n, takeaway: e.target.value }
+                                : n,
+                            ),
+                          }))
+                        }
+                      />
+                    </label>
+                  </details>
                   {board!.edges.filter((e) => e.source === note.id).length >
                     0 && (
                     <div className="existing-branches">
