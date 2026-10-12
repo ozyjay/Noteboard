@@ -42,7 +42,7 @@ export function NoteCard({ data, selected }: NodeProps<CardNode>) {
         className="note-prompt nodrag"
         onClick={() => data.onRead(data.note.id)}
       >
-        {data.note.prompt}
+        {data.note.title ?? data.note.prompt}
       </button>
       {zoom > 0.55 && (
         <>

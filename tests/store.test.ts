@@ -66,6 +66,7 @@ it("reopens SQLite with spatial positions, exact anchors, effective context and 
   try {
     const b = exampleBoard();
     b.notes[0].position = { x: 123, y: 456 };
+    b.notes[0].title = "Systems overview";
     b.artefacts.push({
       id: uid(),
       title: "Study notes",

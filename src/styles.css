@@ -830,6 +830,45 @@ h1 {
   color: var(--text-secondary);
   margin: 17px 0 24px;
 }
+.note-title form,
+.note-title label,
+.note-navigation {
+  display: grid;
+  gap: 8px;
+}
+.note-title input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: var(--surface);
+  color: var(--text);
+}
+.title-actions {
+  display: flex;
+  gap: 8px;
+}
+.original-prompt {
+  margin-top: 16px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.note-navigation {
+  margin-top: 20px;
+  padding: 12px 0;
+  border-block: 1px solid var(--border);
+}
+.note-navigation button {
+  justify-content: flex-start;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.note-navigation svg {
+  flex-shrink: 0;
+}
+.note-navigation p {
+  margin: 0;
+}
 .prose {
   font-size: 12px;
   line-height: 1.85;

@@ -78,6 +78,7 @@ import { captureHighlight, findHighlightRange } from "./core/selection";
 import { exampleBoard } from "./core/example";
 import { NoteCard, type CardNode } from "./components/NoteCard";
 import { NoteReader } from "./components/NoteReader";
+import { NoteTitle } from "./components/NoteTitle";
 import { Markdown } from "./components/Markdown";
 const nodeTypes = { note: NoteCard };
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -1081,7 +1082,55 @@ export default function App() {
                       {edgeLabel(incoming).slice(0, 60)}”
                     </button>
                   )}
-                  <h2>{note.prompt}</h2>
+                  <NoteTitle
+                    key={`title-${note.id}`}
+                    note={note}
+                    onSave={(title) =>
+                      changeBoard((b) => ({
+                        ...b,
+                        notes: b.notes.map((n) =>
+                          n.id === note.id ? { ...n, title } : n,
+                        ),
+                      }))
+                    }
+                  />
+                  <nav className="note-navigation" aria-label="Connected notes">
+                    <strong>Previous note</strong>
+                    {incoming ? (
+                      <button
+                        onClick={() => {
+                          read(incoming.source);
+                          setAnchor(incoming.highlight);
+                        }}
+                      >
+                        <ArrowLeft size={14} />
+                        {board!.notes.find((n) => n.id === incoming.source)!
+                          .title ??
+                          board!.notes.find((n) => n.id === incoming.source)!
+                            .prompt}
+                      </button>
+                    ) : (
+                      <p className="muted">This is the starting note.</p>
+                    )}
+                    <strong>Subsequent notes</strong>
+                    {board!.edges.some((e) => e.source === note.id) ? (
+                      board!.edges
+                        .filter((e) => e.source === note.id)
+                        .map((e) => {
+                          const child = board!.notes.find(
+                            (n) => n.id === e.target,
+                          )!;
+                          return (
+                            <button key={e.id} onClick={() => read(child.id)}>
+                              <ArrowRight size={14} />
+                              {child.title ?? child.prompt}
+                            </button>
+                          );
+                        })
+                    ) : (
+                      <p className="muted">No subsequent notes yet.</p>
+                    )}
+                  </nav>
                   {response(note).origin === "imported" && (
                     <p className="muted">
                       Imported from ChatGPT · Model:{" "}

@@ -89,6 +89,7 @@ export type ResponseVersion = z.infer<typeof VersionSchema>;
 export const NoteSchema = z.object({
   id: z.string(),
   prompt: z.string().min(1),
+  title: z.string().trim().min(1).max(200).optional(),
   takeaway: z.string(),
   position: PositionSchema,
   versions: z.array(VersionSchema).min(1),
