@@ -16,7 +16,8 @@
     "format": "prettier --write src electron scripts tests docs skills AGENTS.md README.md *.json *.ts",
     "format:check": "prettier --check src electron scripts tests docs skills AGENTS.md README.md *.json *.ts",
     "package:macos": "pwsh -NoProfile -File scripts/package-macos.ps1",
-    "install:macos": "pwsh -NoProfile -File scripts/package-macos.ps1 -Install"
+    "install:macos": "pwsh -NoProfile -File scripts/package-macos.ps1 -Install",
+    "reinstall:macos": "pwsh -NoProfile -File scripts/reinstall-macos.ps1"
   },
   "dependencies": {
     "@xyflow/react": "^12.12.0",

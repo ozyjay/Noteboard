@@ -23,7 +23,15 @@ open (Join-Path $HOME 'Applications/Noteboard.app')
 
 This builds a standalone app at `release/Noteboard.app`, signs it locally with an ad hoc signature and copies it into `~/Applications`. The installed app runs without the repository, Node or a development server. It uses the existing Inquiry desktop data directory, preserving Boards and provider settings. This local build has no Developer ID signing or notarisation for distribution.
 
-`npm run package:macos` builds without installing. Installation refuses to overwrite an existing bundle. To update, quit Noteboard, move or remove only `~/Applications/Noteboard.app`, then rerun installation. Saved data is stored separately and must be retained.
+`npm run package:macos` builds without installing. Installation refuses to overwrite an existing bundle. To reinstall or update, quit Noteboard, then run:
+
+```powershell
+pwsh -NoProfile -File ./scripts/reinstall-macos.ps1
+# Alternatively:
+npm run reinstall:macos
+```
+
+The reinstall script builds before replacing `~/Applications/Noteboard.app`, verifies the installed signature and opens the app. It also works for a first installation. Saved Boards, settings and credentials are stored separately and are retained.
 
 ## Local Ollama
 
