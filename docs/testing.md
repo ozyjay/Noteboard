@@ -8,6 +8,8 @@ npm run test:e2e
 
 Unit/integration tests cover ancestry isolation, context limits, graph validation, immutable Highlight anchors, synthesis source selection, SQLite reopen, and Ollama stream/error/cancellation paths with a local mock server. ChatGPT tests cover effective-message transmission, split SSE, usage, terminal errors, cancellation, signed identity validation, state rejection, encrypted credential reopening, refresh serialisation and registration retention on sign-out. They use mocked OpenAI endpoints and do not establish live ChatGPT eligibility or live model quality.
 
+Custom-instruction checks cover older settings defaults, explicitly blank values, length validation, SQLite reopening, exact instruction inclusion in exploration/synthesis context and budget checks without altering ancestry or prior versions. Browser checks exercise Save, Cancel, Restore, reopening and recorded future contexts using scripted demo responses. These verify request construction and persistence, not live response style or parity with ChatGPT.
+
 Playwright starts the browser preview and exercises selection, branching, persistence, source navigation and synthesis editing. Desktop smoke tests use Playwright's Electron launcher against a production build to check the isolated preload and SQLite-backed data. Browser binaries are development tooling, not runtime app dependencies.
 
 For a manual desktop check, run `npm run dev`: create a Board, ask a question, highlight formatted response text, create two branches, click an Edge label, drag a Note, close/reopen the app, then consolidate selected Notes and follow a source link. Use a locally installed Ollama model to verify real inference and cancellation separately from demo/mocked tests.

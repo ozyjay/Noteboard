@@ -1,6 +1,18 @@
 import { describe, it, expect } from "vitest";
 import { exampleBoard } from "../src/core/example";
-import { validateBoard, response, uid, newBoard } from "../src/core/model";
+import {
+  validateBoard,
+  response,
+  uid,
+  newBoard,
+  defaults,
+  SettingsSchema,
+} from "../src/core/model";
+import {
+  defaultCustomInstructions,
+  MAX_CUSTOM_INSTRUCTIONS,
+} from "../src/core/instructions";
+import { providerMessages } from "../src/core/providers";
 import {
   ancestry,
   buildContext,
@@ -14,6 +26,75 @@ import {
   synthesisContext,
 } from "../src/core/synthesis";
 describe("Inquiry domain", () => {
+  it("defaults old settings, preserves blank instructions and rejects oversized instructions", () => {
+    const { customInstructions: _custom, ...legacy } = defaults;
+    expect(SettingsSchema.parse(legacy).customInstructions).toBe(
+      defaultCustomInstructions,
+    );
+    expect(
+      SettingsSchema.parse({ ...legacy, customInstructions: "" })
+        .customInstructions,
+    ).toBe("");
+    expect(() =>
+      SettingsSchema.parse({
+        ...defaults,
+        customInstructions: "x".repeat(MAX_CUSTOM_INSTRUCTIONS + 1),
+      }),
+    ).toThrow();
+  });
+  it("records exact custom instructions without changing history, sources or previous versions", () => {
+    const b = exampleBoard();
+    const before = structuredClone(b);
+    const instructions =
+      "  Answer naturally.\nPreserve uncertainty and source identities.  ";
+    const baseline = buildContext(b, "Why?", b.edges[0].highlight, "");
+    const customised = buildContext(
+      b,
+      "Why?",
+      b.edges[0].highlight,
+      instructions,
+    );
+    expect(customised[0].content).toContain(
+      `User custom instructions:\n${instructions}`,
+    );
+    expect(customised.slice(1)).toEqual(baseline.slice(1));
+    expect(
+      customised.some((m) => m.content === response(b.notes[2]).text),
+    ).toBe(false);
+    expect(baseline[0].content).not.toContain("User custom instructions:");
+    expect(baseline[0].content).toContain(
+      'a "Where this fits" section is optional',
+    );
+    expect(baseline[0].content).toContain(
+      "Do not require a concluding Takeaway section",
+    );
+    expect(baseline[0].content).toContain("No web search");
+    expect(baseline[0].content).toContain("outside ChatGPT projects");
+    const effective = providerMessages(customised, "chatgpt");
+    expect(effective[0]).toEqual({ ...customised[0], role: "developer" });
+    expect(() =>
+      assertBudget(
+        buildContext(
+          b,
+          "Why?",
+          b.edges[0].highlight,
+          "x".repeat(MAX_CUSTOM_INSTRUCTIONS),
+        ),
+        2048,
+      ),
+    ).toThrow(/No history has been removed/);
+    const synthesis = synthesisContext(
+      b,
+      [b.notes[0].id],
+      "explanation",
+      "",
+      instructions,
+    );
+    expect(synthesis[0].content).toContain(instructions);
+    expect(synthesis[1].content).toContain(response(b.notes[0]).text);
+    expect(journey(b, [b.notes[0].id])).not.toContain(instructions);
+    expect(b).toEqual(before);
+  });
   it("includes root-to-parent history and excludes unrelated siblings", () => {
     const b = exampleBoard();
     const child = b.notes[1],

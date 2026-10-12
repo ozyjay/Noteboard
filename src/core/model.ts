@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  defaultCustomInstructions,
+  MAX_CUSTOM_INSTRUCTIONS,
+} from "./instructions";
 export const MessageSchema = z.object({
   role: z.enum(["system", "developer", "user", "assistant"]),
   content: z.string(),
@@ -31,6 +35,10 @@ export const SettingsSchema = z.object({
   chatgptAccountId: z.string().max(200).optional(),
   model: z.string().max(100),
   reasoningEffort: ReasoningEffortSchema.optional(),
+  customInstructions: z
+    .string()
+    .max(MAX_CUSTOM_INSTRUCTIONS)
+    .default(defaultCustomInstructions),
   contextLimit: z.number().int().min(1024).max(1000000),
   appearance: AppearanceSchema.default(defaultAppearance),
   depthReminder: z.number().int().min(1).max(100),
@@ -43,6 +51,7 @@ export const defaults: Settings = {
   contextLimit: 8192,
   depthReminder: 8,
   appearance: defaultAppearance,
+  customInstructions: defaultCustomInstructions,
 };
 const PositionSchema = z.object({
   x: z.number().finite(),

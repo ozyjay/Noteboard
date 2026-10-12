@@ -79,6 +79,10 @@ import { exampleBoard } from "./core/example";
 import { NoteCard, type CardNode } from "./components/NoteCard";
 import { NoteReader } from "./components/NoteReader";
 import { NoteTitle } from "./components/NoteTitle";
+import {
+  defaultCustomInstructions,
+  MAX_CUSTOM_INSTRUCTIONS,
+} from "./core/instructions";
 import { Markdown } from "./components/Markdown";
 const nodeTypes = { note: NoteCard };
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -137,7 +141,6 @@ export default function App() {
     ),
     [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState(false),
-    [stream, setStream] = useState(""),
     [providerOpen, setProviderOpen] = useState(false),
     [synthOpen, setSynthOpen] = useState(false);
   const [scope, setScope] = useState<"board" | "branch" | "selected">("board"),
@@ -197,13 +200,6 @@ export default function App() {
       }
     })();
   }, []);
-  useEffect(
-    () =>
-      bridge.onDelta(({ id, text }) => {
-        if (id === generation.current) setStream((t) => t + text);
-      }),
-    [],
-  );
   useEffect(() => {
     if (!ready) return;
     setSaveStatus("Saving…");
@@ -385,7 +381,6 @@ export default function App() {
     generation.current = id;
     cancelled.current = false;
     setBusy(true);
-    setStream("");
     setError("");
     try {
       const result = await bridge.generate({ id, messages, settings, purpose });
@@ -407,7 +402,7 @@ export default function App() {
     const question = prompt.trim();
     try {
       const context = providerMessages(
-        buildContext(snapshot, question, h),
+        buildContext(snapshot, question, h, settings.customInstructions),
         settings.provider,
       );
       const result = await generate(context, "explore");
@@ -457,7 +452,6 @@ export default function App() {
       setReaderId(n.id);
       setAnchor(undefined);
       setHighlight(undefined);
-      setStream("");
       void setCenter(n.position.x + 150, n.position.y + 100, {
         zoom: 0.95,
         duration: 350,
@@ -491,7 +485,13 @@ export default function App() {
         provider = "human";
       } else {
         context = providerMessages(
-          synthesisContext(board, ids, format, structure),
+          synthesisContext(
+            board,
+            ids,
+            format,
+            structure,
+            settings.customInstructions,
+          ),
           settings.provider,
         );
         const result = await generate(context, "synthesis");
@@ -537,7 +537,6 @@ export default function App() {
       setDocumentDirty(false);
       setMode("synthesis");
       setSynthOpen(false);
-      setStream("");
     } catch (e) {
       setError(errorText(e));
     }
@@ -599,8 +598,9 @@ export default function App() {
   async function saveSettings(event: FormEvent) {
     event.preventDefault();
     try {
-      await bridge.saveSettings(settingsDraft);
-      setSettings(settingsDraft);
+      const validated = SettingsSchema.parse(settingsDraft);
+      await bridge.saveSettings(validated);
+      setSettings(validated);
       setProviderOpen(false);
     } catch (e) {
       setError(errorText(e));
@@ -1572,7 +1572,6 @@ export default function App() {
                 disabled={busy}
                 onClick={() => {
                   setComposer(null);
-                  setStream("");
                 }}
               >
                 <X size={18} />
@@ -1637,7 +1636,12 @@ export default function App() {
                   · ~
                   {board
                     ? estimateTokens(
-                        buildContext(board, prompt, composer.highlight),
+                        buildContext(
+                          board,
+                          prompt,
+                          composer.highlight,
+                          settings.customInstructions,
+                        ),
                       ).toLocaleString()
                     : 0}{" "}
                   context tokens
@@ -1667,8 +1671,9 @@ export default function App() {
                 </p>
               )}
               {busy && (
-                <div className="stream-preview prose">
-                  {stream || "Waiting for the model…"}
+                <div className="generation-progress" role="status">
+                  <LoaderCircle className="spin" size={18} aria-hidden="true" />
+                  Generating your response…
                 </div>
               )}
               <div className="modal-actions">
@@ -1923,6 +1928,44 @@ export default function App() {
                   </p>
                 </>
               )}
+              <label>
+                Custom instructions
+                <textarea
+                  aria-label="Custom instructions"
+                  maxLength={MAX_CUSTOM_INSTRUCTIONS}
+                  rows={8}
+                  value={settingsDraft.customInstructions}
+                  onChange={(e) =>
+                    setSettingsDraft((s) => ({
+                      ...s,
+                      customInstructions: e.target.value,
+                    }))
+                  }
+                />
+              </label>
+              <p className="muted small">
+                Apply to future Notes and generated synthesis across providers.
+                Leave blank for the basic Noteboard guidance. Changes take
+                effect when you save. Demo responses are scripted and do not
+                follow these instructions.
+              </p>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() =>
+                  setSettingsDraft((s) => ({
+                    ...s,
+                    customInstructions: defaultCustomInstructions,
+                  }))
+                }
+              >
+                Restore response preferences
+              </button>
+              <p className="muted small">
+                Noteboard cannot browse the web or access your ChatGPT projects
+                or personalisation. Instructions used for a response are
+                recorded with it and included in Board exports.
+              </p>
               <div className="form-columns">
                 <label>
                   Context budget (tokens)
@@ -1966,6 +2009,14 @@ export default function App() {
               <div className="modal-actions">
                 <button className="primary" disabled={accountBusy}>
                   Save settings <Check size={15} />
+                </button>
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={accountBusy}
+                  onClick={() => setProviderOpen(false)}
+                >
+                  Cancel
                 </button>
               </div>
             </form>
@@ -2056,8 +2107,9 @@ export default function App() {
               </p>
               {error && <p className="form-error">{error}</p>}
               {busy && (
-                <div className="stream-preview">
-                  {stream || "Organising your sources…"}
+                <div className="generation-progress" role="status">
+                  <LoaderCircle className="spin" size={18} aria-hidden="true" />
+                  Synthesising your sources…
                 </div>
               )}
               <div className="modal-actions">

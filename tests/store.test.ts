@@ -101,6 +101,7 @@ it("reopens SQLite with spatial positions, exact anchors, effective context and 
       provider: "ollama",
       model: "local-test",
       reasoningEffort: "high",
+      customInstructions: "Lead with the answer.\nKeep uncertainty visible.",
       appearance: {
         noteStyle: "sticky",
         theme: "dark",
@@ -125,6 +126,10 @@ it("reopens SQLite with spatial positions, exact anchors, effective context and 
     });
     expect(store.settings().model).toBe("local-test");
     expect(store.settings().reasoningEffort).toBe("high");
+    expect(store.settings().customInstructions).toBe(
+      "Lead with the answer.\nKeep uncertainty visible.",
+    );
+    expect(JSON.stringify(store.list())).not.toContain("Lead with the answer.");
     expect(JSON.stringify(store.list())).not.toContain("local-test");
     expect(JSON.stringify(store.list())).not.toContain("appearance");
     store.close();
