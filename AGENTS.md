@@ -9,7 +9,8 @@ Use PowerShell (`pwsh`) for terminal scripts and all shell/script examples in ch
 Noteboard is a human-directed, provider-independent spatial conversation environment. Read [the product plan](docs/product-plan.md) for scope and [architecture](docs/architecture.md) before changing data flow.
 
 - Only a human creates branches. Never generate or rearrange investigative branches autonomously.
-- A Board is one directed rooted tree; each child has exactly one parent and each Edge preserves one exact Highlight.
+- A Board is one directed rooted tree; each child has exactly one parent. Highlight branches preserve one exact Highlight. Imported continuation Edges preserve chronological source message references and may have an explicitly confirmed retrospective Highlight.
+- Imported responses preserve original visible text and source identities. Unknown original generation context, model and usage must remain unknown; never manufacture generation records or automatically apply exported instructions.
 - Keep original prompts and response versions immutable. Editing a Takeaway changes only the Takeaway.
 - Include the complete ancestral path, selected Highlight and new prompt in generation context. Exclude siblings. Record exactly the messages sent.
 - Never silently truncate, summarise or discard context to fit a model. Depth reminders are advisory and independent of context limits.

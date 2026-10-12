@@ -29,17 +29,17 @@ The application does not independently decide which questions should be investig
 
 ## 2. Core terminology
 
-| Term          | Definition                                                                          |
-| ------------- | ----------------------------------------------------------------------------------- |
-| **Noteboard** | The application                                                                     |
-| **Board**     | The spatial workspace containing an exploration                                     |
-| **Note**      | One human-authored prompt and its GenAI response                                    |
-| **Highlight** | One contiguous passage selected from a Note's response                              |
-| **Edge**      | A directed connection from a parent Note to a child Note, labelled by one Highlight |
-| **Branch**    | A path of connected Notes arising from successive human-directed investigations     |
-| **Takeaway**  | A concise representation of the principal point of a response                       |
-| **Explore**   | The spatial, nonlinear interaction mode                                             |
-| **Synthesis** | The mode for producing linear artefacts from an exploration                         |
+| Term          | Definition                                                                                 |
+| ------------- | ------------------------------------------------------------------------------------------ |
+| **Noteboard** | The application                                                                            |
+| **Board**     | The spatial workspace containing an exploration                                            |
+| **Note**      | One human-authored prompt and its GenAI response                                           |
+| **Highlight** | One contiguous passage selected from a Note's response                                     |
+| **Edge**      | A parent-to-child connection: a Highlight branch or an imported chronological continuation |
+| **Branch**    | A path of connected Notes arising from successive human-directed investigations            |
+| **Takeaway**  | A concise representation of the principal point of a response                              |
+| **Explore**   | The spatial, nonlinear interaction mode                                                    |
+| **Synthesis** | The mode for producing linear artefacts from an exploration                                |
 
 **Consolidate** is the user action that initiates synthesis.
 
@@ -169,7 +169,7 @@ Each exploration forms a directed, rooted tree.
 - A starting Note has no parent.
 - Every child Note has exactly one parent.
 - A Note may have any number of children.
-- Each Edge represents exactly one Highlight.
+- Each Highlight branch Edge represents exactly one Highlight. Imported continuation Edges record original chronology and may carry an explicitly confirmed retrospective Highlight.
 - No multi-Highlight selection is required to create a Note.
 - The same source passage may support multiple independent branches.
 
@@ -177,7 +177,7 @@ This avoids multi-parent context ambiguity and hypergraph complexity in the init
 
 ### 5.2 Highlight provenance
 
-Each Edge must preserve:
+Each Highlight branch Edge must preserve:
 
 - Source Note identifier.
 - Source response version.
@@ -188,6 +188,8 @@ Each Edge must preserve:
 Selecting an Edge should allow the user to find the original Highlight in its parent response.
 
 Highlights are persisted when used to create branches. Ordinary temporary text selection does not need to create permanent annotations.
+
+Imported ChatGPT text conversations may be imported as one user-selected chain of Notes. Preserve original visible prompts/responses and available source identities, distinguish unknown generation context, and never invent Highlight provenance. Chronological continuations can be annotated retrospectively without changing the original messages. See [conversation import](chatgpt-import.md) for the approved first-version workflow.
 
 ### 5.3 Edge presentation
 

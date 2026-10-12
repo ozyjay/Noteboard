@@ -64,3 +64,5 @@ Desktop Boards and settings live in `inquiry.sqlite` under the existing Electron
 Generation errors retain the entered question for retry. Cancellation creates no partial Note or artefact. Persistence errors appear in the workspace; export the Board if saving fails. Only one generation runs at a time; changing Boards/provider settings is disabled during inference.
 
 See [testing](testing.md) for validation commands and [roadmap](roadmap.md) for remaining scope.
+
+See [ChatGPT conversation import](chatgpt-import.md) for importing a text conversation as a Note chain and adding retrospective Highlights.

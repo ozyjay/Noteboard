@@ -19,3 +19,5 @@ Changes to response rendering must retain the exact rendered text snapshot or in
 On macOS arm64 with Node 24, typechecking, production build and 15 domain/persistence/provider tests passed. Four browser scenarios verified the complete branching/synthesis cycle, selection across inline formatting, exact offsets for a repeated passage, and manual placement after reopening. A production Electron smoke test verified the isolated preload, SQLite saving and reopening.
 
 A separate live Ollama adapter smoke test with the installed `qwen3:1.7b` model received 23 content chunks and input/output usage metadata. This confirms protocol integration, not explanation quality or research outcomes. Tests use isolated temporary desktop data directories and leave existing user Boards untouched.
+
+Conversation import tests use sanitised synthetic export fixtures. They cover selected paths, unsupported content, limits, version 1 migration, import provenance, retrospective anchors, inherited context and SQLite reopening. Browser/desktop checks verify preview, cancellation, navigation, branching and synthesis without live ChatGPT inference.

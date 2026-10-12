@@ -2,6 +2,103 @@ import { test, expect, _electron as electron } from "@playwright/test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { chatGPTExportFixture } from "./fixtures/chatgpt-export";
+
+test("desktop imports a chain, keeps retrospective anchors and reopens spatial Notes", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "inquiry-desktop-import-"));
+  const env: Record<string, string> = Object.fromEntries(
+    Object.entries(process.env).filter(
+      (entry): entry is [string, string] => entry[1] !== undefined,
+    ),
+  );
+  env.INQUIRY_DEV = "0";
+  env.INQUIRY_DATA_DIR = dir;
+  delete env.ELECTRON_RUN_AS_NODE;
+  let app;
+  try {
+    app = await electron.launch({ args: ["."], env });
+    let page = await app.firstWindow();
+    await page
+      .getByRole("button", { name: "Import ChatGPT conversation", exact: true })
+      .click();
+    await page.getByLabel("ChatGPT export file").setInputFiles({
+      name: "conversations.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify(chatGPTExportFixture)),
+    });
+    await page.getByLabel("Conversation", { exact: true }).selectOption("0");
+    await page
+      .getByRole("button", { name: "Import conversation", exact: true })
+      .click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await page
+      .getByRole("button", { name: "Explain café systems", exact: true })
+      .click();
+    await page.locator(".reader-response").evaluate((root) => {
+      const range = document.createRange();
+      range.selectNodeContents(root.querySelector("strong")!);
+      getSelection()!.removeAllRanges();
+      getSelection()!.addRange(range);
+      root.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+    });
+    await page
+      .getByRole("button", {
+        name: "Attach Highlight to imported follow-up",
+        exact: true,
+      })
+      .click();
+    await expect(page.locator(".existing-branches")).toContainText(
+      "Retrospective Highlight",
+    );
+    const before = await page.evaluate(async () =>
+      (await window.inquiry!.listBoards()).find(
+        (b) => b.title === "Imported café conversation",
+      ),
+    );
+    const card = page.locator(".note-card").first();
+    const box = (await card.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + 8);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2 + 65, box.y + 70, {
+      steps: 10,
+    });
+    await page.mouse.up();
+    await expect
+      .poll(async () =>
+        page.evaluate(
+          async () =>
+            (await window.inquiry!.listBoards()).find(
+              (b) => b.title === "Imported café conversation",
+            )!.notes[0].position,
+        ),
+      )
+      .not.toEqual(before!.notes[0].position);
+    const saved = await page.evaluate(async () =>
+      (await window.inquiry!.listBoards()).find(
+        (b) => b.title === "Imported café conversation",
+      ),
+    );
+    await app.close();
+    app = await electron.launch({ args: ["."], env });
+    page = await app.firstWindow();
+    await expect(page.locator(".note-card")).toHaveCount(2);
+    const reopened = await page.evaluate(async () =>
+      (await window.inquiry!.listBoards()).find(
+        (b) => b.title === "Imported café conversation",
+      ),
+    );
+    expect({ ...reopened, updatedAt: saved!.updatedAt }).toEqual(saved);
+    await page.getByRole("button", { name: "Fit View", exact: true }).click();
+    await page.locator(".react-flow__edge").click();
+    expect(await page.evaluate(() => getSelection()?.toString())).toBe("term");
+    await expect(page.locator(".reader-scroll")).toContainText(
+      "Imported from ChatGPT",
+    );
+  } finally {
+    await app?.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 test("production desktop bridge saves and reopens an inquiry in SQLite", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "inquiry-desktop-"));
   let app;

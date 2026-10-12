@@ -72,7 +72,7 @@ describe("Inquiry domain", () => {
     const b = exampleBoard();
     expect(validateBoard(b)).toEqual(b);
     const altered = structuredClone(b);
-    altered.edges[0].highlight.start++;
+    altered.edges[0].highlight!.start++;
     expect(() => validateBoard(altered)).toThrow(/provenance/);
     const multi = structuredClone(b);
     multi.edges.push({ ...multi.edges[0], id: uid() });
@@ -87,7 +87,7 @@ describe("Inquiry domain", () => {
       source: cyclic.notes[1].id,
       target: cyclic.notes[0].id,
       highlight: {
-        ...cyclic.edges[0].highlight,
+        ...cyclic.edges[0].highlight!,
         sourceId: cyclic.notes[1].id,
         versionId: response(cyclic.notes[1]).id,
         text: response(cyclic.notes[1]).text.slice(0, 5),
@@ -107,6 +107,7 @@ describe("Inquiry domain", () => {
     const child = { ...structuredClone(n), id: uid() };
     b.notes.push(child);
     b.edges.push({
+      kind: "highlight",
       id: uid(),
       source: n.id,
       target: child.id,
@@ -119,7 +120,7 @@ describe("Inquiry domain", () => {
         surface: "markdown",
       },
     });
-    expect(validateBoard(b).edges[0].highlight.start).toBe(9);
+    expect(validateBoard(b).edges[0].highlight!.start).toBe(9);
   });
   it("keeps manual positions while finding room for a child", () => {
     const b = exampleBoard(),

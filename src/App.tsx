@@ -41,6 +41,9 @@ import {
   Maximize2,
   Minimize2,
 } from "lucide-react";
+import { ChatGPTImport } from "./components/ChatGPTImport";
+import { annotateContinuation, MAX_EXPORT_BYTES } from "./core/chatgpt-import";
+import { edgeLabel } from "./core/model";
 import { AppearanceSettings } from "./components/AppearanceSettings";
 import { ChatGPTSettings } from "./components/ChatGPTSettings";
 import { providerMessages } from "./core/providers";
@@ -90,6 +93,9 @@ export default function App() {
     [boardId, setBoardId] = useState(""),
     [settings, setSettings] = useState<Settings>(defaults),
     [ready, setReady] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importSaving, setImportSaving] = useState(false);
+  const [continuationTarget, setContinuationTarget] = useState("");
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [appearanceDraft, setAppearanceDraft] = useState<Appearance>(
     defaults.appearance,
@@ -161,10 +167,12 @@ export default function App() {
   const nodesInitialised = useNodesInitialized();
   const layoutBoard = useRef<string | undefined>(undefined);
   useEffect(() => {
+    setContinuationTarget("");
     if (!readerId) setReaderExpanded(false);
   }, [readerId]);
   const board = boards.find((b) => b.id === boardId);
   const note = board?.notes.find((n) => n.id === readerId);
+  const version = note ? response(note) : undefined;
   const artefact = board?.artefacts.find((a) => a.id === activeArtefact);
   useEffect(() => {
     if (loadStarted.current) return;
@@ -246,7 +254,14 @@ export default function App() {
     }
   }, [readerId, anchor, note]);
   useEffect(() => {
-    if (!composer && !providerOpen && !synthOpen && !appearanceOpen) return;
+    if (
+      !composer &&
+      !providerOpen &&
+      !synthOpen &&
+      !appearanceOpen &&
+      !importOpen
+    )
+      return;
     const previous = document.activeElement as HTMLElement | null;
     const dialog = document.querySelector<HTMLElement>(".modal");
     if (!dialog) return;
@@ -266,12 +281,14 @@ export default function App() {
         event.key === "Escape" &&
         !busy &&
         !accountBusy &&
-        !appearanceSaving
+        !appearanceSaving &&
+        !importSaving
       ) {
         setComposer(null);
         setProviderOpen(false);
         setSynthOpen(false);
         setAppearanceOpen(false);
+        setImportOpen(false);
       }
       if (event.key === "Tab") {
         const elements = focusable(),
@@ -299,6 +316,8 @@ export default function App() {
     busy,
     accountBusy,
     appearanceSaving,
+    importOpen,
+    importSaving,
   ]);
   function changeBoard(fn: (b: Board) => Board) {
     setBoards((current) =>
@@ -405,6 +424,7 @@ export default function App() {
             provider: settings.provider,
             model: result.model,
             context,
+            origin: "generated",
             estimatedTokens: estimateTokens(context),
             usage: result.usage,
           },
@@ -417,7 +437,13 @@ export default function App() {
         edges: h
           ? [
               ...b.edges,
-              { id: uid(), source: h.sourceId, target: n.id, highlight: h },
+              {
+                kind: "highlight",
+                id: uid(),
+                source: h.sourceId,
+                target: n.id,
+                highlight: h,
+              },
             ]
           : b.edges,
       }));
@@ -636,13 +662,17 @@ export default function App() {
       target: e.target,
       label:
         zoom > 0.55
-          ? highlightLabel(e.highlight).length > 42
-            ? highlightLabel(e.highlight).slice(0, 39) + "…"
-            : highlightLabel(e.highlight)
+          ? edgeLabel(e).length > 42
+            ? edgeLabel(e).slice(0, 39) + "…"
+            : edgeLabel(e)
           : undefined,
       type: "smoothstep",
       markerEnd: { type: MarkerType.ArrowClosed, color: "var(--edge)" },
-      style: { stroke: "var(--edge)", strokeWidth: 1.5 },
+      style: {
+        stroke: "var(--edge)",
+        strokeWidth: 1.5,
+        ...(e.kind === "continuation" ? { strokeDasharray: "6 4" } : {}),
+      },
       labelStyle: { fontSize: 11, fill: "var(--text-secondary)" },
       labelBgStyle: { fill: "var(--canvas)", fillOpacity: 0.95 },
       labelBgPadding: [8, 5],
@@ -792,6 +822,17 @@ export default function App() {
               onClick={() => fileInput.current?.click()}
             >
               <Upload size={16} />
+            </button>
+            <button
+              aria-label="Import ChatGPT conversation"
+              title="Import ChatGPT conversation"
+              disabled={busy || importSaving}
+              onClick={() => {
+                setImportOpen(true);
+                setError("");
+              }}
+            >
+              <Upload size={16} /> ChatGPT
             </button>
             <button
               title="Export Board"
@@ -1021,15 +1062,22 @@ export default function App() {
                       }}
                     >
                       <ArrowLeft size={13} /> From “
-                      {highlightLabel(incoming.highlight).slice(0, 60)}”
+                      {edgeLabel(incoming).slice(0, 60)}”
                     </button>
                   )}
                   <h2>{note.prompt}</h2>
+                  {response(note).origin === "imported" && (
+                    <p className="muted">
+                      Imported from ChatGPT · Model:{" "}
+                      {response(note).model ?? "Unknown"}. Original generation
+                      context, token estimates and usage are unknown.
+                    </p>
+                  )}
                   <div className="note-meta">
                     <span>
                       {response(note).provider === "demo"
                         ? "SYNTHETIC DEMO"
-                        : response(note).model}
+                        : (response(note).model ?? "Unknown")}
                     </span>
                     <span>
                       v{note.versions.length} ·{" "}
@@ -1104,10 +1152,25 @@ export default function App() {
                         .map((e) => (
                           <div key={e.id}>
                             <button onClick={() => setAnchor(e.highlight)}>
-                              “{highlightLabel(e.highlight)}”
+                              “{edgeLabel(e)}”
                             </button>
+                            {e.kind === "continuation" && e.highlight && (
+                              <button
+                                disabled={busy}
+                                aria-label={`Remove retrospective Highlight for ${board!.notes.find((n) => n.id === e.target)!.prompt}`}
+                                onClick={() => {
+                                  changeBoard((b) =>
+                                    annotateContinuation(b, e.id),
+                                  );
+                                  setAnchor(undefined);
+                                  setHighlight(undefined);
+                                }}
+                              >
+                                Remove Highlight
+                              </button>
+                            )}
                             <button
-                              aria-label={`Open branch ${highlightLabel(e.highlight)}`}
+                              aria-label={`Open branch ${edgeLabel(e)}`}
                               onClick={() => read(e.target)}
                             >
                               <ArrowRight size={14} />
@@ -1118,18 +1181,38 @@ export default function App() {
                   )}
                   <details className="context-details">
                     <summary>
-                      Generation record · ~
-                      {response(note).estimatedTokens.toLocaleString()} context
-                      tokens
+                      {version?.origin === "imported"
+                        ? "Import record · "
+                        : "Generation record · ~"}
+                      {response(note).estimatedTokens?.toLocaleString() ??
+                        "Unknown"}{" "}
+                      context tokens
                     </summary>
                     <p>
                       {new Date(response(note).createdAt).toLocaleString(
                         "en-AU",
                       )}
-                      {response(note).usage &&
-                        ` · ${response(note).usage?.input || 0} input / ${response(note).usage?.output || 0} output tokens`}
+                      {version?.origin === "generated" &&
+                        version.usage &&
+                        ` · ${version.usage.input || 0} input / ${version.usage.output || 0} output tokens`}
+                      {version?.origin === "imported" && (
+                        <span>
+                          {" "}
+                          · Imported{" "}
+                          {new Date(
+                            version.provenance.importedAt,
+                          ).toLocaleString("en-AU")}{" "}
+                          · Conversation {version.provenance.conversationId} ·
+                          Question {version.provenance.promptMessageId} · Answer{" "}
+                          {version.provenance.responseMessageId} · Original
+                          question date:{" "}
+                          {version.provenance.promptCreatedAt || "Unknown"} ·
+                          Original answer date:{" "}
+                          {version.provenance.responseCreatedAt || "Unknown"}
+                        </span>
+                      )}
                     </p>
-                    {response(note).context.map((m, i) => (
+                    {(response(note).context ?? []).map((m, i) => (
                       <div key={i}>
                         <strong>{m.role}</strong>
                         <pre>{m.content}</pre>
@@ -1147,6 +1230,77 @@ export default function App() {
                           : highlightLabel(highlight)}
                         ”
                       </p>
+                      {board!.edges.some(
+                        (e) =>
+                          e.kind === "continuation" && e.source === note.id,
+                      ) && (
+                        <>
+                          <label>
+                            Imported follow-up
+                            <select
+                              aria-label="Imported follow-up"
+                              value={continuationTarget}
+                              onChange={(e) =>
+                                setContinuationTarget(e.target.value)
+                              }
+                            >
+                              <option value="">Choose follow-up</option>
+                              {board!.edges
+                                .filter(
+                                  (e) =>
+                                    e.kind === "continuation" &&
+                                    e.source === note.id,
+                                )
+                                .map((e) => (
+                                  <option key={e.id} value={e.id}>
+                                    {
+                                      board!.notes.find(
+                                        (n) => n.id === e.target,
+                                      )!.prompt
+                                    }
+                                  </option>
+                                ))}
+                            </select>
+                          </label>
+                          <button
+                            disabled={
+                              busy ||
+                              (board!.edges.filter(
+                                (e) =>
+                                  e.kind === "continuation" &&
+                                  e.source === note.id,
+                              ).length > 1 &&
+                                !board!.edges.some(
+                                  (e) =>
+                                    e.id === continuationTarget &&
+                                    e.source === note.id,
+                                ))
+                            }
+                            onClick={() => {
+                              const candidates = board!.edges.filter(
+                                (e) =>
+                                  e.kind === "continuation" &&
+                                  e.source === note.id,
+                              );
+                              const target =
+                                candidates.length === 1
+                                  ? candidates[0]
+                                  : candidates.find(
+                                      (e) => e.id === continuationTarget,
+                                    );
+                              if (target) {
+                                changeBoard((b) =>
+                                  annotateContinuation(b, target.id, highlight),
+                                );
+                                setAnchor(highlight);
+                                setHighlight(undefined);
+                              }
+                            }}
+                          >
+                            Attach Highlight to imported follow-up
+                          </button>
+                        </>
+                      )}
                       <button
                         className="primary"
                         disabled={busy}
@@ -1293,8 +1447,8 @@ export default function App() {
           const file = e.target.files?.[0];
           if (!file) return;
           try {
-            if (file.size > 20 * 1024 * 1024)
-              throw new Error("Board files must be under 20 MB");
+            if (file.size > MAX_EXPORT_BYTES)
+              throw new Error("Board files must be at most 50 MiB");
             const b = validateBoard(JSON.parse(await file.text()));
             preserveDraft();
             const imported = {
@@ -1312,6 +1466,21 @@ export default function App() {
           e.target.value = "";
         }}
       />
+      {importOpen && (
+        <ChatGPTImport
+          onClose={() => setImportOpen(false)}
+          onSaving={setImportSaving}
+          onImport={async (imported) => {
+            await saveQueue.current.catch(() => {});
+            await bridge.saveBoard(imported);
+            preserveDraft();
+            setBoards((bs) => [imported, ...bs]);
+            setBoardId(imported.id);
+            resetPanels();
+            setImportOpen(false);
+          }}
+        />
+      )}
       {composer && (
         <div className="modal-backdrop">
           <section

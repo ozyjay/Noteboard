@@ -83,6 +83,43 @@
 * {
   box-sizing: border-box;
 }
+.modal.import-modal {
+  width: min(850px, 94vw);
+  display: flex;
+  flex-direction: column;
+}
+.import-body {
+  min-height: 0;
+  overflow: auto;
+  padding-right: 5px;
+}
+.import-modal > .panel-head,
+.import-modal > .modal-actions {
+  flex-shrink: 0;
+}
+.import-preview {
+  max-height: 40vh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  padding: 16px;
+  margin: 16px 0;
+}
+.import-preview pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
+.import-preview article + article {
+  border-top: 1px solid var(--border);
+}
+.reader-footer label {
+  display: block;
+  margin: 8px 0;
+}
+.reader-footer select {
+  max-width: 100%;
+  background: var(--surface);
+}
 body {
   margin: 0;
 }

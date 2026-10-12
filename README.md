@@ -47,3 +47,5 @@ Provider settings support the synthetic demo, local Ollama and eligible ChatGPT 
 - [Agent instructions](AGENTS.md) and [project development skill](skills/inquiry-development/SKILL.md)
 
 The initial exploration and synthesis MVPs are implemented. Separately billed hosted providers, rich-text editing, automatic continuation roots, packaged installers and research evaluation remain future work. Live Ollama requires a locally installed model; the included examples are explicitly synthetic.
+
+See [ChatGPT conversation import](docs/chatgpt-import.md) for importing a text conversation as a Note chain and adding retrospective Highlights.

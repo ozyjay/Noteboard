@@ -6,11 +6,15 @@ Noteboard separates a React renderer from an Electron main process. The sandboxe
 
 A `Board` has a schema version, title, timestamps, spatial Notes, directed Edges, document artefacts and a viewport. Zod validates saved/imported records. Additional graph validation rejects cycles, multiple roots, duplicate identifiers, missing sources and invalid Highlight ranges.
 
-Each `Note` preserves its prompt, position, editable Takeaway and immutable response versions. Each version records text, provider, model, timestamp, effective context, token estimate and available usage. An `Edge` owns one Highlight identifying the source Note/version, exact text, offsets and the text surface used for those offsets. A passage may motivate several independent branches.
+Each `Note` preserves its prompt, position, editable Takeaway and immutable response versions. Generated versions record text, provider, model, timestamp, effective context, token estimate and available usage. Imported versions preserve visible text and source message identities, available dates and model metadata; original context, estimates and usage remain unknown. An `Edge` is either a Highlight branch with one exact source anchor, or an imported continuation with chronological message references and an optional retrospectively confirmed Highlight. A passage may motivate several independent branches.
 
 Selections in formatted Markdown use DOM Range offsets into the complete rendered text snapshot. This avoids guessing Markdown offsets or choosing the first repeated substring. Text surfaces are version-specific. Example Notes use Markdown-surface anchors; the reader locates their passage in the rendered surface when possible and always shows the complete source Highlight separately.
 
 Notes and synthesis share GitHub-flavoured Markdown and local KaTeX rendering. Maths supports `$…$`, `$$…$$`, `\(…\)` and `\[…\]`; alternative delimiters are normalised for display outside code, leaving stored source text unchanged. KaTeX CSS/fonts are bundled locally; trusted TeX commands are disabled. Invalid equations remain visible as source text. A Highlight intersecting a typeset equation expands to the whole equation and records its exact LaTeX in `latexSources`, which is included in the follow-up request. Its `displayText` uses LaTeX for readable labels and learning journeys while its original text and offsets retain the complete rendered snapshot. New anchors identify the maths-enabled rendered surface with `renderedMath`; reopening an older rendered anchor uses the original non-maths renderer to retain its saved offsets and snapshot. No saved anchor is migrated.
+
+## Conversation import
+
+The local ChatGPT export importer validates conversation mapping graphs, previews one selected path, and saves a complete new Board before opening it. It uses browser File APIs and the existing persistence bridge. Only complete alternating text turns are accepted; excluded system/developer records are reported, while unsupported content and invalid paths are rejected. Imported continuations retain chronology even when a user adds, replaces or removes a retrospective Highlight. Normal branches traverse imported ancestry unchanged; historical generation requests are not reconstructed. See [import documentation](chatgpt-import.md) for limits and compatibility.
 
 ## Context and providers
 
@@ -24,7 +28,7 @@ ChatGPT model discovery uses the selected account’s token. Inference sends com
 
 ## Persistence
 
-Electron stores `inquiry.sqlite` in `app.getPath('userData')`. SQLite uses WAL and two tables: `boards` (validated JSON snapshots with sortable title/update metadata), and separate `settings`. Schema version 1 is the initial storage format. Individual saves are atomic SQLite upserts; the renderer queues snapshots to preserve write order. This favours a straightforward prototype over a prematurely normalised graph schema.
+Electron stores `inquiry.sqlite` in `app.getPath('userData')`. SQLite uses WAL and two tables: `boards` (validated JSON snapshots with sortable title/update metadata), and separate `settings`. Board JSON schema version 2 adds response provenance and connection kinds. Validated version 1 records migrate deterministically in memory without changing identifiers or anchors; subsequent writes and exports use version 2. SQLite tables and user_version remain unchanged. Individual saves are atomic SQLite upserts; the renderer queues snapshots to preserve write order. This favours a straightforward prototype over a prematurely normalised graph schema.
 
 Appearance preferences (Note style, theme, accent colour, reading text size, independent interface/reading fonts and canvas grid) share the validated settings record, with defaults for older records. The renderer applies semantic CSS tokens and listens to system colour-scheme changes when requested. The expanded Note reader overlays the workspace body while retaining the mounted canvas and its viewport.
 

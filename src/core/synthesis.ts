@@ -26,8 +26,9 @@ export function journey(board: Board, ids: string[]): string {
     ids
       .map((id, i) => {
         const n = board.notes.find((n) => n.id === id)!;
-        const h = board.edges.find((e) => e.target === id)?.highlight;
-        return `## ${i + 1}. ${n.prompt}\n\n[Open source Note](inquiry://note/${id})${h ? `\n\nExplored passage: “${highlightLabel(h)}”` : ""}\n\n${response(n).text}`;
+        const edge = board.edges.find((e) => e.target === id);
+        const h = edge?.highlight;
+        return `## ${i + 1}. ${n.prompt}\n\n[Open source Note](inquiry://note/${id})${edge?.kind === "continuation" ? "\n\nImported continuation." : ""}${h ? `\n\n${edge?.kind === "continuation" ? "Retrospective Highlight" : "Explored passage"}: “${highlightLabel(h)}”` : ""}\n\n${response(n).text}`;
       })
       .join("\n\n---\n\n")
   );

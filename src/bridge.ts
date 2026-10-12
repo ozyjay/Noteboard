@@ -50,9 +50,9 @@ const preview: InquiryBridge = {
   chatgptSignOut: desktopOnly,
   chatgptUsage: desktopOnly,
   async listBoards() {
-    return JSON.parse(localStorage.getItem("inquiry.boards") || "[]").map(
-      validateBoard,
-    );
+    return JSON.parse(localStorage.getItem("inquiry.boards") || "[]")
+      .map(validateBoard)
+      .sort((a: Board, b: Board) => b.updatedAt.localeCompare(a.updatedAt));
   },
   async saveBoard(board) {
     validateBoard(board);

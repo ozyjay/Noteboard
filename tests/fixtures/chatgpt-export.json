@@ -1,0 +1,180 @@
+[
+  {
+    "id": "sanitised-conversation",
+    "title": "Imported café conversation",
+    "create_time": 1700000000,
+    "current_node": "a2",
+    "mapping": {
+      "root": {
+        "id": "root",
+        "parent": null,
+        "children": ["system"],
+        "message": null
+      },
+      "system": {
+        "id": "system",
+        "parent": "root",
+        "children": ["u1"],
+        "message": {
+          "id": "system",
+          "author": {
+            "role": "system"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": ["Original private instructions: not imported."]
+          },
+          "create_time": 1700000000,
+          "status": "finished_successfully"
+        }
+      },
+      "u1": {
+        "id": "u1",
+        "parent": "system",
+        "children": ["a1"],
+        "message": {
+          "id": "u1",
+          "author": {
+            "role": "user"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": ["Explain café systems"]
+          },
+          "create_time": 1700000000,
+          "status": "finished_successfully"
+        }
+      },
+      "a1": {
+        "id": "a1",
+        "parent": "u1",
+        "children": ["u2", "u2-alt"],
+        "message": {
+          "id": "a1",
+          "author": {
+            "role": "assistant"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": ["First term and **term**.\n\nEquation: $x^2$."]
+          },
+          "create_time": 1700000000,
+          "status": "finished_successfully",
+          "metadata": {
+            "model_slug": "exported-model"
+          }
+        }
+      },
+      "u2": {
+        "id": "u2",
+        "parent": "a1",
+        "children": ["a2"],
+        "message": {
+          "id": "u2",
+          "author": {
+            "role": "user"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": ["Explain the second term"]
+          },
+          "create_time": 1700000000,
+          "status": "finished_successfully"
+        }
+      },
+      "a2": {
+        "id": "a2",
+        "parent": "u2",
+        "children": [],
+        "message": {
+          "id": "a2",
+          "author": {
+            "role": "assistant"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": ["It is the second occurrence."]
+          },
+          "create_time": 1700000000,
+          "status": "finished_successfully"
+        }
+      },
+      "u2-alt": {
+        "id": "u2-alt",
+        "parent": "a1",
+        "children": ["a2-alt"],
+        "message": {
+          "id": "u2-alt",
+          "author": {
+            "role": "user"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": ["Explain the equation instead"]
+          },
+          "create_time": 1700000000,
+          "status": "finished_successfully"
+        }
+      },
+      "a2-alt": {
+        "id": "a2-alt",
+        "parent": "u2-alt",
+        "children": [],
+        "message": {
+          "id": "a2-alt",
+          "author": {
+            "role": "assistant"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": ["The exponent is two."]
+          },
+          "create_time": 1700000000,
+          "status": "finished_successfully"
+        }
+      }
+    }
+  },
+  {
+    "id": "other",
+    "title": "Other conversation",
+    "mapping": {
+      "root": {
+        "id": "root",
+        "parent": null,
+        "children": ["question"],
+        "message": null
+      },
+      "question": {
+        "id": "question",
+        "parent": "root",
+        "children": ["answer"],
+        "message": {
+          "id": "question",
+          "author": {
+            "role": "user"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": ["Another question"]
+          }
+        }
+      },
+      "answer": {
+        "id": "answer",
+        "parent": "question",
+        "children": [],
+        "message": {
+          "id": "answer",
+          "author": {
+            "role": "assistant"
+          },
+          "content": {
+            "content_type": "text",
+            "parts": ["Another answer"]
+          }
+        }
+      }
+    }
+  }
+]

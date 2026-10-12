@@ -35,13 +35,20 @@ export function exampleBoard(): Board {
           provider: "demo",
           model: "synthetic-demo",
           context,
+          origin: "generated",
           estimatedTokens: estimateTokens(context),
         },
       ],
     };
     b.notes.push(n);
     if (parent && highlight)
-      b.edges.push({ id: uid(), source: parent.id, target: n.id, highlight });
+      b.edges.push({
+        kind: "highlight",
+        id: uid(),
+        source: parent.id,
+        target: n.id,
+        highlight,
+      });
     return n;
   }
   const root = add(

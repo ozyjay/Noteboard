@@ -37,7 +37,8 @@ const PositionSchema = z.object({
   x: z.number().finite(),
   y: z.number().finite(),
 });
-export const VersionSchema = z.object({
+const GeneratedVersionSchema = z.object({
+  origin: z.literal("generated"),
   id: z.string(),
   text: z.string(),
   createdAt: z.string(),
@@ -49,6 +50,29 @@ export const VersionSchema = z.object({
     .object({ input: z.number().optional(), output: z.number().optional() })
     .optional(),
 });
+export const ImportedVersionSchema = z.object({
+  origin: z.literal("imported"),
+  id: z.string(),
+  text: z.string(),
+  createdAt: z.string(),
+  provider: z.literal("chatgpt"),
+  model: z.string().nullable(),
+  context: z.null(),
+  estimatedTokens: z.null(),
+  provenance: z.object({
+    source: z.literal("chatgpt-export"),
+    conversationId: z.string().min(1),
+    promptMessageId: z.string().min(1),
+    responseMessageId: z.string().min(1),
+    promptCreatedAt: z.string().optional(),
+    responseCreatedAt: z.string().optional(),
+    importedAt: z.string(),
+  }),
+});
+export const VersionSchema = z.discriminatedUnion("origin", [
+  GeneratedVersionSchema,
+  ImportedVersionSchema,
+]);
 export type ResponseVersion = z.infer<typeof VersionSchema>;
 export const NoteSchema = z.object({
   id: z.string(),
@@ -74,12 +98,32 @@ export const HighlightSchema = z.object({
 export type Highlight = z.infer<typeof HighlightSchema>;
 export const highlightLabel = (highlight: Highlight) =>
   highlight.displayText ?? highlight.text;
-export const EdgeSchema = z.object({
+const BranchEdgeSchema = z.object({
+  kind: z.literal("highlight"),
   id: z.string(),
   source: z.string(),
   target: z.string(),
   highlight: HighlightSchema,
 });
+export const ContinuationEdgeSchema = z.object({
+  kind: z.literal("continuation"),
+  id: z.string(),
+  source: z.string(),
+  target: z.string(),
+  sourceMessageId: z.string().min(1),
+  targetMessageId: z.string().min(1),
+  highlight: HighlightSchema.optional(),
+});
+export const EdgeSchema = z.discriminatedUnion("kind", [
+  BranchEdgeSchema,
+  ContinuationEdgeSchema,
+]);
+export const edgeLabel = (edge: z.infer<typeof EdgeSchema>) =>
+  edge.kind === "continuation"
+    ? edge.highlight
+      ? "Retrospective Highlight: " + highlightLabel(edge.highlight)
+      : "Imported continuation"
+    : highlightLabel(edge.highlight);
 export type InquiryEdge = z.infer<typeof EdgeSchema>;
 export const DocumentVersionSchema = z.object({
   id: z.string(),
@@ -100,7 +144,7 @@ export const ArtefactSchema = z.object({
 });
 export type Artefact = z.infer<typeof ArtefactSchema>;
 export const BoardSchema = z.object({
-  schemaVersion: z.literal(1),
+  schemaVersion: z.literal(2),
   id: z.string(),
   title: z.string().min(1).max(200),
   createdAt: z.string(),
@@ -118,7 +162,7 @@ export const now = () => new Date().toISOString();
 export const response = (note: Note) => note.versions[note.versions.length - 1];
 export function newBoard(title = "Untitled inquiry"): Board {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     id: uid(),
     title,
     createdAt: now(),
@@ -129,8 +173,33 @@ export function newBoard(title = "Untitled inquiry"): Board {
   };
 }
 export function validateBoard(value: unknown): Board {
-  const b = BoardSchema.parse(value);
-  const ids = new Set(b.notes.map((n) => n.id));
+  // Legacy records are validated before adding discriminators; no IDs or anchors change.
+  const legacy = BoardSchema.extend({
+    schemaVersion: z.literal(1),
+    notes: z.array(
+      NoteSchema.extend({
+        versions: z.array(GeneratedVersionSchema.omit({ origin: true })).min(1),
+      }),
+    ),
+    edges: z.array(BranchEdgeSchema.omit({ kind: true })),
+  });
+  const header = z.object({ schemaVersion: z.number() }).parse(value);
+  const migrated = header.schemaVersion === 1 ? legacy.parse(value) : undefined;
+  const b = BoardSchema.parse(
+    migrated
+      ? {
+          ...migrated,
+          schemaVersion: 2,
+          notes: migrated.notes.map((n) => ({
+            ...n,
+            versions: n.versions.map((v) => ({ ...v, origin: "generated" })),
+          })),
+          edges: migrated.edges.map((e) => ({ ...e, kind: "highlight" })),
+        }
+      : value,
+  );
+  const noteById = new Map(b.notes.map((n) => [n.id, n]));
+  const ids = new Set(noteById.keys());
   if (ids.size !== b.notes.length)
     throw new Error("Duplicate Note identifiers");
   if (
@@ -148,9 +217,23 @@ export function validateBoard(value: unknown): Board {
     )
       throw new Error("Each child must have one existing parent");
     parents.set(e.target, e.source);
-    const n = b.notes.find((n) => n.id === e.source)!;
-    const v = n.versions.find((v) => v.id === e.highlight.versionId);
+    const n = noteById.get(e.source)!;
+    if (e.kind === "continuation") {
+      const target = noteById.get(e.target)!;
+      const from = n.versions[0];
+      const to = target.versions[0];
+      if (
+        from.origin !== "imported" ||
+        to.origin !== "imported" ||
+        from.provenance.conversationId !== to.provenance.conversationId ||
+        from.provenance.responseMessageId !== e.sourceMessageId ||
+        to.provenance.promptMessageId !== e.targetMessageId
+      )
+        throw new Error("Invalid imported continuation provenance");
+    }
     const h = e.highlight;
+    if (!h) continue;
+    const v = n.versions.find((v) => v.id === h.versionId);
     const surface = h.surface === "rendered" ? h.renderedText : v?.text;
     if (
       h.sourceId !== e.source ||
@@ -160,14 +243,16 @@ export function validateBoard(value: unknown): Board {
     )
       throw new Error("Invalid Highlight provenance");
   }
+  const completed = new Set<string>();
   for (const id of ids) {
     const visited = new Set<string>();
     let current: string | undefined = id;
-    while (current) {
+    while (current && !completed.has(current)) {
       if (visited.has(current)) throw new Error("Cycles are not allowed");
       visited.add(current);
       current = parents.get(current);
     }
+    for (const id of visited) completed.add(id);
   }
   if (b.notes.length && b.notes.length - b.edges.length !== 1)
     throw new Error("A Board must contain one rooted tree");
