@@ -73,6 +73,7 @@ import { selectMaterial, journey, synthesisContext } from "./core/synthesis";
 import { captureHighlight, findHighlightRange } from "./core/selection";
 import { exampleBoard } from "./core/example";
 import { NoteCard, type CardNode } from "./components/NoteCard";
+import { NoteReader } from "./components/NoteReader";
 import { Markdown } from "./components/Markdown";
 const nodeTypes = { note: NoteCard };
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -974,7 +975,8 @@ export default function App() {
               </div>
             </div>
             {note && (
-              <aside
+              <NoteReader
+                expanded={readerExpanded}
                 className={`reader colour-${board!.notes.findIndex((n) => n.id === note.id) % 4} ${readerExpanded ? "reader-expanded" : ""}`}
               >
                 <div className="panel-head">
@@ -1160,7 +1162,7 @@ export default function App() {
                     </p>
                   )}
                 </div>
-              </aside>
+              </NoteReader>
             )}
           </div>
         ) : (

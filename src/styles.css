@@ -665,13 +665,44 @@ h1 {
   border-radius: 50%;
 }
 .reader {
+  position: relative;
   width: 410px;
-  max-width: 47%;
+  max-width: calc(100% - min(240px, 30%));
+  flex-shrink: 0;
   border-left: 1px solid var(--border);
   background: var(--surface);
   display: flex;
   flex-direction: column;
   z-index: 4;
+}
+.reader-resize-handle {
+  position: absolute;
+  inset: 0 auto 0 -5px;
+  width: 10px;
+  z-index: 5;
+  cursor: col-resize;
+  touch-action: none;
+}
+.reader-resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 3px;
+  height: 36px;
+  border-radius: 3px;
+  background: var(--text-secondary);
+  opacity: 0.5;
+}
+.reader-resize-handle:hover,
+.reader-resize-handle:focus-visible,
+.reader-resizing .reader-resize-handle {
+  background: color-mix(in srgb, var(--accent), transparent 70%);
+  outline: 1px solid var(--accent);
+}
+.exploration:has(.reader-resizing) {
+  user-select: none;
+  cursor: col-resize;
 }
 .panel-head {
   display: flex;

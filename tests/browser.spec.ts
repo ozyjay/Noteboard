@@ -681,6 +681,57 @@ test("appearance previews, cancels, saves and follows system changes after reope
   );
 });
 
+test("Note reader resizes by dragging and keyboard and keeps its width after expanding", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "How do complex systems work?", exact: true })
+    .click();
+  const reader = page.locator(".reader");
+  const handle = page.getByRole("separator", { name: "Resize Note reader" });
+  const source = await page.locator(".reader-response").textContent();
+  const original = (await reader.boundingBox())!;
+  const grip = (await handle.boundingBox())!;
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(grip.x - 180, grip.y + grip.height / 2, { steps: 8 });
+  await page.mouse.up();
+  const wider = (await reader.boundingBox())!.width;
+  expect(wider).toBeGreaterThan(original.width + 170);
+  await expect(reader).not.toHaveClass(/reader-resizing/);
+  await expect(page.locator(".reader-response")).toHaveText(source!);
+  await handle.focus();
+  await handle.press("ArrowRight");
+  expect((await reader.boundingBox())!.width).toBe(wider - 32);
+  const resized = (await reader.boundingBox())!.width;
+  await page.getByRole("button", { name: "Expand Note", exact: true }).click();
+  await expect(handle).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Collapse Note", exact: true })
+    .click();
+  expect((await reader.boundingBox())!.width).toBe(resized);
+  await page.screenshot({
+    path: testInfo.outputPath("resized-note-reader.png"),
+  });
+  await handle.focus();
+  await handle.press("Home");
+  expect((await reader.boundingBox())!.width).toBe(320);
+  await handle.press("End");
+  expect(
+    (await page.locator(".canvas").boundingBox())!.width,
+  ).toBeGreaterThanOrEqual(239);
+  await page.setViewportSize({ width: 900, height: 800 });
+  await expect
+    .poll(async () => {
+      const panel = (await reader.boundingBox())!;
+      const workspace = (await page.locator(".exploration").boundingBox())!;
+      return panel.width < workspace.width && panel.x >= workspace.x;
+    })
+    .toBe(true);
+  await expect(page.locator(".reader-response")).toHaveText(source!);
+});
+
 test("expanded Note fills the workspace and retains passage navigation", async ({
   page,
 }, testInfo) => {
