@@ -568,6 +568,11 @@ test("appearance previews, cancels, saves and follows system changes after reope
     .getByRole("button", { name: "Appearance settings", exact: true })
     .click();
   await page.getByLabel("Theme", { exact: true }).selectOption("dark");
+  await page.getByLabel("Note style").selectOption("sticky");
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-note-style",
+    "sticky",
+  );
   await page.getByLabel("Accent colour").selectOption("blue");
   await page.getByLabel("Interface font").selectOption("monospace");
   await page.getByLabel("Reading font").selectOption("serif");
@@ -583,6 +588,10 @@ test("appearance previews, cancels, saves and follows system changes after reope
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-note-style",
+    "classic",
+  );
   await expect(page.locator("html")).toHaveAttribute("data-accent", "sage");
   await expect(page.locator("html")).toHaveAttribute(
     "data-interface-font",
@@ -596,6 +605,7 @@ test("appearance previews, cancels, saves and follows system changes after reope
     .getByRole("button", { name: "Appearance settings", exact: true })
     .click();
   await page.getByLabel("Theme", { exact: true }).selectOption("system");
+  await page.getByLabel("Note style").selectOption("sticky");
   await page.getByLabel("Accent colour").selectOption("plum");
   await page.getByLabel("Reading text size").selectOption("larger");
   await page.getByLabel("Show canvas grid").uncheck();
@@ -607,6 +617,17 @@ test("appearance previews, cancels, saves and follows system changes after reope
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-accent", "plum");
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-note-style",
+    "sticky",
+  );
+  expect(
+    await page
+      .locator(".note-card")
+      .first()
+      .evaluate((el) => getComputedStyle(el, "::after").pointerEvents),
+  ).toBe("none");
+  await page.screenshot({ path: testInfo.outputPath("sticky-light.png") });
   await expect(page.locator("html")).toHaveAttribute(
     "data-text-size",
     "larger",
@@ -637,6 +658,7 @@ test("appearance previews, cancels, saves and follows system changes after reope
   );
   expect(stored.provider).toBe("demo");
   expect(stored.appearance).toEqual({
+    noteStyle: "sticky",
     theme: "system",
     accent: "plum",
     textSize: "larger",
@@ -653,6 +675,10 @@ test("appearance previews, cancels, saves and follows system changes after reope
     .click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await expect(page.locator(".react-flow__background")).toHaveCount(1);
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-note-style",
+    "classic",
+  );
 });
 
 test("expanded Note fills the workspace and retains passage navigation", async ({

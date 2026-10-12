@@ -5,6 +5,7 @@ export const MessageSchema = z.object({
 });
 export type Message = z.infer<typeof MessageSchema>;
 export const AppearanceSchema = z.object({
+  noteStyle: z.enum(["classic", "sticky"]).default("classic"),
   theme: z.enum(["light", "dark", "system"]).default("light"),
   accent: z.enum(["sage", "blue", "plum"]).default("sage"),
   textSize: z.enum(["standard", "large", "larger"]).default("standard"),

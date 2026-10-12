@@ -35,7 +35,7 @@ The reinstall script builds before replacing `~/Applications/Noteboard.app`, ver
 
 ## Appearance
 
-Open **Appearance settings** in the sidebar to choose Light, Dark or Follow system, accent colour, reading text size and grid visibility. Interface fonts offer Standard or Monospace; reading fonts offer Sans-serif, Serif or Monospace. Monospace uses Consolas when installed, then Menlo, Monaco or the system monospace font. Changes preview immediately; Save retains them across Boards and restarts, Cancel restores saved preferences, and Reset defaults restores the original appearance.
+Open **Appearance settings** in the sidebar to choose Light, Dark or Follow system, accent colour, reading text size and grid visibility. Note style offers Classic (the default) or Sticky notes, with paper colours, adhesive strips, folded corners and deeper shadows on the canvas, plus a subtle matching tint in the reader. Both styles support light and dark themes. Interface fonts offer Standard or Monospace; reading fonts offer Sans-serif, Serif or Monospace. Monospace uses Consolas when installed, then Menlo, Monaco or the system monospace font. Changes preview immediately; Save retains them across Boards and restarts, Cancel restores saved preferences, and Reset defaults restores the original appearance.
 
 ## Local Ollama
 

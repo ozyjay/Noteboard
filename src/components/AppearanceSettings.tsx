@@ -49,6 +49,22 @@ export function AppearanceSettings({
         >
           <fieldset className="appearance-fields" disabled={saving}>
             <label>
+              Note style
+              <select
+                aria-label="Note style"
+                value={value.noteStyle}
+                onChange={(event) =>
+                  onChange({
+                    ...value,
+                    noteStyle: event.target.value as Appearance["noteStyle"],
+                  })
+                }
+              >
+                <option value="classic">Classic</option>
+                <option value="sticky">Sticky notes</option>
+              </select>
+            </label>
+            <label>
               Theme
               <select
                 aria-label="Theme"

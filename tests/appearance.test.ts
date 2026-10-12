@@ -18,6 +18,7 @@ it("rejects invalid appearance settings at the persistence boundary", () => {
     { showGrid: "false" },
     { interfaceFont: "url(https://example.com)" },
     { readingFont: "unknown" },
+    { noteStyle: "unknown" },
   ]) {
     expect(() => SettingsSchema.parse({ ...defaults, appearance })).toThrow();
   }
@@ -34,5 +35,6 @@ it("defaults font choices for existing appearance records", () => {
     ...appearance,
     interfaceFont: "standard",
     readingFont: "sans",
+    noteStyle: "classic",
   });
 });

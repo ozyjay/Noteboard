@@ -107,6 +107,7 @@ export default function App() {
             : "light"
           : appearance.theme;
       root.dataset.accent = appearance.accent;
+      root.dataset.noteStyle = appearance.noteStyle;
       root.dataset.textSize = appearance.textSize;
       root.dataset.interfaceFont = appearance.interfaceFont;
       root.dataset.readingFont = appearance.readingFont;
@@ -974,7 +975,7 @@ export default function App() {
             </div>
             {note && (
               <aside
-                className={`reader ${readerExpanded ? "reader-expanded" : ""}`}
+                className={`reader colour-${board!.notes.findIndex((n) => n.id === note.id) % 4} ${readerExpanded ? "reader-expanded" : ""}`}
               >
                 <div className="panel-head">
                   <span>

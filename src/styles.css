@@ -508,6 +508,79 @@ h1 {
 .note-card.colour-3 {
   background: var(--note-3);
 }
+.colour-0 {
+  --note-paper: var(--note-0);
+}
+.colour-1 {
+  --note-paper: var(--note-1);
+}
+.colour-2 {
+  --note-paper: var(--note-2);
+}
+.colour-3 {
+  --note-paper: var(--note-3);
+}
+:root[data-note-style="sticky"] {
+  --note-0: #fff0a6;
+  --note-1: #e2efbb;
+  --note-2: #f3d9e4;
+  --note-3: #d7edf2;
+}
+:root[data-note-style="sticky"][data-theme="dark"] {
+  --note-0: #51492e;
+  --note-1: #3d4b32;
+  --note-2: #513b47;
+  --note-3: #334c54;
+}
+:root[data-note-style="sticky"] .note-card {
+  position: relative;
+  min-height: 270px;
+  padding: 24px 22px 28px;
+  border-radius: 2px 2px 5px 2px;
+  border-color: color-mix(in srgb, var(--note-paper), var(--text) 12%);
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--note-paper), var(--text) 6%) 0 38px,
+    var(--note-paper) 38px,
+    color-mix(in srgb, var(--note-paper), var(--surface) 12%) 100%
+  );
+  box-shadow:
+    1px 3px 4px #00000016,
+    3px 12px 18px -6px #00000030;
+}
+:root[data-note-style="sticky"] .note-card::after {
+  content: "";
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 20px;
+  height: 20px;
+  border-radius: 3px 0 4px 0;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--note-paper), var(--text) 16%) 48%,
+    color-mix(in srgb, var(--note-paper), var(--surface) 45%) 51%,
+    var(--note-paper) 100%
+  );
+  box-shadow: -2px -2px 4px #00000012;
+  pointer-events: none;
+}
+:root[data-note-style="sticky"] .note-card.focused,
+:root[data-note-style="sticky"] .note-card.chosen {
+  box-shadow:
+    0 0 0 2px var(--accent),
+    3px 12px 18px -6px #00000040;
+}
+:root[data-note-style="sticky"] .note-card.overview {
+  min-height: 120px;
+}
+:root[data-note-style="sticky"] .reader {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--note-paper), var(--surface) 70%),
+    var(--surface) 240px
+  );
+}
 .note-card.focused,
 .note-card.chosen {
   box-shadow:

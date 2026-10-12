@@ -45,6 +45,7 @@ it("reopens SQLite with spatial positions, exact anchors, effective context and 
       provider: "ollama",
       model: "local-test",
       appearance: {
+        noteStyle: "sticky",
         theme: "dark",
         accent: "blue",
         textSize: "large",
@@ -57,6 +58,7 @@ it("reopens SQLite with spatial positions, exact anchors, effective context and 
     store = new Store(db);
     expect(store.list()).toEqual([b]);
     expect(store.settings().appearance).toEqual({
+      noteStyle: "sticky",
       theme: "dark",
       accent: "blue",
       textSize: "large",
