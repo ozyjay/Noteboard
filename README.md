@@ -6,9 +6,9 @@ Noteboard is a local-first Electron research prototype. Ask a question, read the
 
 ## Run
 
-Requires Node.js 24+ and npm.
+Requires Node.js 24+, npm and PowerShell (`pwsh`). Terminal examples use PowerShell.
 
-```sh
+```powershell
 npm ci
 npx install-electron --no
 npm run dev
@@ -16,12 +16,14 @@ npm run dev
 
 For a production build:
 
-```sh
+```powershell
 npm run build
 npm start
 ```
 
 `npm run dev:web` opens a browser-only demo at http://127.0.0.1:5173. The preview uses browser storage and synthetic responses; the desktop app uses SQLite and supports Ollama and ChatGPT plan usage.
+
+On macOS, `npm run install:macos` installs a standalone app in `~/Applications/Noteboard.app`. See [local installation](docs/development.md#local-macos-installation) for updating and launching it.
 
 ## Try the workflow
 

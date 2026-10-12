@@ -1,8 +1,8 @@
 # Development
 
-Use Node 24+ and npm. Python is only needed for optional skill validation; use active pyenv `python3`.
+Use Node 24+, npm and PowerShell (`pwsh`) for terminal commands and script examples. Python is only needed for optional skill validation; use active pyenv `python3`.
 
-```sh
+```powershell
 npm ci
 npx install-electron --no
 npm run dev
@@ -11,6 +11,19 @@ npm run dev
 Development bundles Electron main/preload with esbuild, starts Vite on loopback port 5173 and launches Electron. React hot reloads; restart the command after changing main/preload code. Production builds run TypeScript checking, Vite and esbuild. `npm start` requires a completed build.
 
 `npm run format` applies the repository formatting; `npm run format:check` verifies it. GitHub Actions runs formatting, typechecking, build, domain tests and browser/desktop smoke tests. Electron 44 downloads its binary on first use; the explicit install command prepares it in advance.
+
+## Local macOS installation
+
+Run these commands in PowerShell from the repository root:
+
+```powershell
+npm run install:macos
+open (Join-Path $HOME 'Applications/Noteboard.app')
+```
+
+This builds a standalone app at `release/Noteboard.app`, signs it locally with an ad hoc signature and copies it into `~/Applications`. The installed app runs without the repository, Node or a development server. It uses the existing Inquiry desktop data directory, preserving Boards and provider settings. This local build has no Developer ID signing or notarisation for distribution.
+
+`npm run package:macos` builds without installing. Installation refuses to overwrite an existing bundle. To update, quit Noteboard, move or remove only `~/Applications/Noteboard.app`, then rerun installation. Saved data is stored separately and must be retained.
 
 ## Local Ollama
 

@@ -1,6 +1,6 @@
 # Verification
 
-```sh
+```powershell
 npm run check
 npx playwright install chromium
 npm run test:e2e

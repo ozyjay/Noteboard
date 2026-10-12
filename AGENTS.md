@@ -2,6 +2,8 @@
 
 Use Australian grammar and spelling. When Python tooling is needed, use `python3` from the active pyenv version.
 
+Use PowerShell (`pwsh`) for terminal scripts and all shell/script examples in chat and documentation. Use PowerShell syntax for environment variables and paths. Keep application build tooling in JavaScript where appropriate; run it from `pwsh`.
+
 ## Product intent
 
 Noteboard is a human-directed, provider-independent spatial conversation environment. Read [the product plan](docs/product-plan.md) for scope and [architecture](docs/architecture.md) before changing data flow.
