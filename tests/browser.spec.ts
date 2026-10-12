@@ -41,8 +41,21 @@ test("Note prompts send on Enter while preserving multiline and composed input",
   await expect(page.locator(".reader h2").first()).toHaveText(
     "First line\nSecond line",
   );
+  await expect(page.locator(".reader-response")).toContainText(
+    "Where this fits",
+  );
+  await expect(page.locator(".reader-response")).toContainText("Takeaway:");
+  await expect(page.locator(".note-takeaway")).not.toContainText(
+    "Where this fits",
+  );
   await page.reload();
   await expect(page.locator(".note-card")).toHaveCount(1);
+  await page
+    .getByRole("button", { name: "First line Second line", exact: true })
+    .click();
+  await expect(page.locator(".reader-response")).toContainText(
+    "Where this fits",
+  );
 });
 
 test("ChatGPT import previews paths, cancels and rejects unsupported input", async ({
@@ -798,6 +811,7 @@ test("ChatGPT account settings and effective context survive branching and reope
   const child = saved[0].notes.at(-1);
   expect(child.versions[0].provider).toBe("chatgpt");
   expect(child.versions[0].reasoningEffort).toBe("high");
+  expect(child.versions[0].context[0].content).toContain("## Where this fits");
   expect(
     child.versions[0].context.map((message: { role: string }) => message.role),
   ).toEqual(["developer", "user", "assistant", "user"]);

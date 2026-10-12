@@ -55,6 +55,8 @@ The model dropdown shows the account’s available model names. **Thinking effor
 
 In a Note prompt, press **Enter** to send or **Shift+Enter** to add a line. Empty questions and IME composition do not submit.
 
+New Notes ask the selected model for a direct answer, a short **Where this fits** section explaining the broader topic and how related concepts connect, and a principal **Takeaway** for the canvas. Follow-up answers can relate the question to its selected passage and earlier conversation. You can highlight passages in the orientation just like the rest of the response. It does not create branches automatically. Existing and imported responses stay as originally recorded; demo responses illustrate the format with synthetic content. Models may vary in how closely they follow the requested format.
+
 Credentials are encrypted with Electron `safeStorage`, written atomically with owner-only permissions to `chatgpt-credentials.bin` in the app’s user-data directory, and excluded from SQLite, renderer state and Board exports. Platforms without secure credential storage are refused, including Linux’s plaintext fallback. Refreshes are serialised within the process. A single-instance lock prevents concurrent desktop processes from racing credential rotation.
 
 ChatGPT inference uses account-specific model discovery and `POST /v1/responses` with `store: false`, `stream: true` and complete effective messages. System instructions become developer messages before both transmission and provenance recording. The local context estimate includes a 1,024-token reserve; this preview does not support an output cap or exact model-budget discovery, so the service may still reject a request or generate a longer response. No context is automatically reduced.
