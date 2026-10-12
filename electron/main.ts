@@ -29,7 +29,15 @@ function handle(channel: string, fn: (...args: unknown[]) => unknown) {
   });
 }
 function createWindow() {
+  const icon = path.join(
+    __dirname,
+    process.env.INQUIRY_DEV === "1"
+      ? "../public/noteboard-icon.png"
+      : "../dist/noteboard-icon.png",
+  );
+  app.dock?.setIcon(icon);
   window = new BrowserWindow({
+    icon,
     width: 1480,
     height: 950,
     minWidth: 960,

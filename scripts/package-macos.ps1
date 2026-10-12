@@ -13,6 +13,7 @@ try {
     & /usr/bin/ditto 'node_modules/electron/dist/Electron.app' $bundle
     if ($LASTEXITCODE -ne 0) { throw 'Electron bundle copy failed.' }
     $resources = Join-Path $bundle 'Contents/Resources'
+    Copy-Item 'assets/branding/Noteboard.icns' (Join-Path $resources 'Noteboard.icns')
     $appRoot = Join-Path $resources 'app'
     New-Item -ItemType Directory -Force $appRoot | Out-Null
     Copy-Item 'dist', 'dist-electron' $appRoot -Recurse
@@ -27,6 +28,7 @@ try {
         CFBundleName = 'Noteboard'
         CFBundleDisplayName = 'Noteboard'
         CFBundleIdentifier = 'app.noteboard.desktop'
+        CFBundleIconFile = 'Noteboard.icns'
         CFBundleShortVersionString = $package.version
         CFBundleVersion = $package.version
     }.GetEnumerator()) {
