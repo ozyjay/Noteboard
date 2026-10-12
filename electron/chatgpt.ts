@@ -20,6 +20,10 @@ function failure(status: number, code?: unknown) {
     return new Error(
       "ChatGPT plan access was denied. Check account permissions and availability.",
     );
+  if (status === 400)
+    return new Error(
+      "ChatGPT rejected the request. Check the selected model and thinking effort in provider settings; try Model default if that effort is unsupported. No completed response was saved.",
+    );
   return new Error(
     `ChatGPT request failed${status ? ` (HTTP ${status})` : ""}. No completed response was saved. Try again later.`,
   );
@@ -82,7 +86,7 @@ export function chatGPTProvider(
       });
       return ModelCatalog.parse(await response.json())
         .models.filter((m) => m.visibility === "list")
-        .map((m) => m.slug);
+        .map((m) => ({ id: m.slug, name: m.display_name }));
     },
     async generate(req, onDelta, signal) {
       signal.throwIfAborted();
@@ -105,6 +109,9 @@ export function chatGPTProvider(
           input: req.messages,
           store: false,
           stream: true,
+          ...(req.settings.reasoningEffort
+            ? { reasoning: { effort: req.settings.reasoningEffort } }
+            : {}),
         }),
       });
       if (!response.body)
@@ -171,7 +178,14 @@ export function chatGPTProvider(
             "ChatGPT stream ended before completion. Retry the question.",
           );
         if (!text.trim()) throw new Error("ChatGPT returned an empty response");
-        return { text, model, usage };
+        return {
+          text,
+          model,
+          usage,
+          ...(req.settings.reasoningEffort
+            ? { reasoningEffort: req.settings.reasoningEffort }
+            : {}),
+        };
       } finally {
         await reader.cancel().catch(() => {});
         reader.releaseLock();

@@ -572,27 +572,42 @@ h1 {
 :root[data-note-style="sticky"] .note-card {
   position: relative;
   min-height: 270px;
-  padding: 24px 22px 28px;
-  border-radius: 2px 2px 5px 2px;
+  padding: 34px 22px 30px;
+  border-radius: 1px 2px 18px 2px;
   border-color: color-mix(in srgb, var(--note-paper), var(--text) 12%);
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--note-paper), var(--text) 6%) 0 38px,
-    var(--note-paper) 38px,
-    color-mix(in srgb, var(--note-paper), var(--surface) 12%) 100%
-  );
+  background:
+    repeating-linear-gradient(0deg, transparent 0 3px, #00000002 3px 4px),
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--note-paper), var(--text) 9%) 0,
+      var(--note-paper) 52px,
+      color-mix(in srgb, var(--note-paper), var(--surface) 12%) 100%
+    );
   box-shadow:
-    1px 3px 4px #00000016,
-    3px 12px 18px -6px #00000030;
+    0 1px 2px #00000018,
+    2px 16px 15px -9px #00000045;
+}
+:root[data-note-style="sticky"] .note-card::before {
+  content: "";
+  position: absolute;
+  top: -10px;
+  left: calc(50% - 39px);
+  width: 78px;
+  height: 25px;
+  background: color-mix(in srgb, var(--surface), transparent 38%);
+  border: 1px solid color-mix(in srgb, var(--text), transparent 90%);
+  box-shadow: 0 1px 2px #00000008;
+  transform: rotate(-3deg);
+  pointer-events: none;
 }
 :root[data-note-style="sticky"] .note-card::after {
   content: "";
   position: absolute;
   right: -1px;
   bottom: -1px;
-  width: 20px;
-  height: 20px;
-  border-radius: 3px 0 4px 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 2px 0 16px 0;
   background: linear-gradient(
     135deg,
     color-mix(in srgb, var(--note-paper), var(--text) 16%) 48%,
@@ -610,6 +625,27 @@ h1 {
 }
 :root[data-note-style="sticky"] .note-card.overview {
   min-height: 120px;
+}
+:root[data-note-style="sticky"] .note-top {
+  margin-bottom: 20px;
+}
+:root[data-note-style="sticky"] .note-bottom {
+  border-top-style: dashed;
+}
+:root[data-note-style="sticky"] .canvas {
+  background-image: radial-gradient(
+    color-mix(in srgb, var(--text), transparent 96%) 0.6px,
+    transparent 0.6px
+  );
+  background-size: 5px 5px;
+}
+.keyboard-hint {
+  margin: 6px 0 16px;
+  font-size: 11px;
+}
+.model-input select {
+  flex: 1;
+  min-width: 0;
 }
 :root[data-note-style="sticky"] .reader {
   background: linear-gradient(

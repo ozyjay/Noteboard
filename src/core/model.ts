@@ -15,11 +15,22 @@ export const AppearanceSchema = z.object({
 });
 export type Appearance = z.infer<typeof AppearanceSchema>;
 export const defaultAppearance: Appearance = AppearanceSchema.parse({});
+export const ReasoningEffortSchema = z.enum([
+  "none",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+]);
+export type ReasoningEffort = z.infer<typeof ReasoningEffortSchema>;
 export const SettingsSchema = z.object({
   provider: z.enum(["demo", "ollama", "chatgpt"]),
   endpoint: z.string().max(300),
   chatgptAccountId: z.string().max(200).optional(),
   model: z.string().max(100),
+  reasoningEffort: ReasoningEffortSchema.optional(),
   contextLimit: z.number().int().min(1024).max(1000000),
   appearance: AppearanceSchema.default(defaultAppearance),
   depthReminder: z.number().int().min(1).max(100),
@@ -44,6 +55,7 @@ const GeneratedVersionSchema = z.object({
   createdAt: z.string(),
   provider: z.enum(["demo", "ollama", "chatgpt"]),
   model: z.string(),
+  reasoningEffort: ReasoningEffortSchema.optional(),
   context: z.array(MessageSchema),
   estimatedTokens: z.number(),
   usage: z
@@ -132,6 +144,7 @@ export const DocumentVersionSchema = z.object({
   kind: z.enum(["generated", "edited"]),
   provider: z.enum(["demo", "ollama", "chatgpt", "human"]),
   model: z.string(),
+  reasoningEffort: ReasoningEffortSchema.optional(),
   context: z.array(MessageSchema),
 });
 export const ArtefactSchema = z.object({

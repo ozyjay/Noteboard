@@ -46,13 +46,14 @@ import { annotateContinuation, MAX_EXPORT_BYTES } from "./core/chatgpt-import";
 import { edgeLabel } from "./core/model";
 import { AppearanceSettings } from "./components/AppearanceSettings";
 import { ChatGPTSettings } from "./components/ChatGPTSettings";
-import { providerMessages } from "./core/providers";
+import { providerMessages, type ModelChoice } from "./core/providers";
 import { bridge, desktop } from "./bridge";
 import {
   type Board,
   type Note,
   type Highlight,
   type Settings,
+  type ReasoningEffort,
   type Appearance,
   SettingsSchema,
   type Artefact,
@@ -152,7 +153,7 @@ export default function App() {
     Record<string, { width: number; height: number }>
   >({});
   const [search, setSearch] = useState(""),
-    [models, setModels] = useState<string[]>([]),
+    [models, setModels] = useState<ModelChoice[]>([]),
     [settingsDraft, setSettingsDraft] = useState<Settings>(defaults),
     [discovering, setDiscovering] = useState(false),
     [accountBusy, setAccountBusy] = useState(false);
@@ -162,6 +163,8 @@ export default function App() {
     fileInput = useRef<HTMLInputElement>(null),
     saveQueue = useRef(Promise.resolve()),
     loadStarted = useRef(false);
+  const currentSettingsDraft = useRef(settingsDraft);
+  currentSettingsDraft.current = settingsDraft;
   const { fitView, setCenter, setViewport } = useReactFlow();
   const { zoom } = useViewport();
   const nodesInitialised = useNodesInitialized();
@@ -423,6 +426,7 @@ export default function App() {
             createdAt: now(),
             provider: settings.provider,
             model: result.model,
+            reasoningEffort: result.reasoningEffort,
             context,
             origin: "generated",
             estimatedTokens: estimateTokens(context),
@@ -477,6 +481,7 @@ export default function App() {
       );
       let text: string,
         model: string,
+        reasoningEffort: ReasoningEffort | undefined,
         provider: "demo" | "ollama" | "chatgpt" | "human",
         context: ReturnType<typeof buildContext> = [];
       if (format === "journey") {
@@ -491,6 +496,7 @@ export default function App() {
         const result = await generate(context, "synthesis");
         text = result.text;
         model = result.model;
+        reasoningEffort = result.reasoningEffort;
         provider = settings.provider;
       }
       preserveDraft();
@@ -518,6 +524,7 @@ export default function App() {
             kind: "generated",
             provider,
             model,
+            reasoningEffort,
             context,
           },
         ],
@@ -571,10 +578,19 @@ export default function App() {
   async function discover() {
     setDiscovering(true);
     setError("");
+    const matchesCurrent = () => {
+      const current = currentSettingsDraft.current;
+      return (
+        current.provider === settingsDraft.provider &&
+        current.chatgptAccountId === settingsDraft.chatgptAccountId &&
+        current.endpoint === settingsDraft.endpoint
+      );
+    };
     try {
-      setModels(await bridge.models(settingsDraft));
+      const choices = await bridge.models(settingsDraft);
+      if (matchesCurrent()) setModels(choices);
     } catch (e) {
-      setError(errorText(e));
+      if (matchesCurrent()) setError(errorText(e));
     } finally {
       setDiscovering(false);
     }
@@ -1078,6 +1094,10 @@ export default function App() {
                       {response(note).provider === "demo"
                         ? "SYNTHETIC DEMO"
                         : (response(note).model ?? "Unknown")}
+                      {version?.origin === "generated" &&
+                      version.reasoningEffort
+                        ? ` · ${version.reasoningEffort} thinking`
+                        : ""}
                     </span>
                     <span>
                       v{note.versions.length} ·{" "}
@@ -1527,9 +1547,25 @@ export default function App() {
                   value={prompt}
                   disabled={busy}
                   onChange={(e) => setPrompt(e.target.value)}
+                  aria-describedby="prompt-keyboard-hint"
+                  onKeyDown={(e) => {
+                    if (
+                      e.key === "Enter" &&
+                      !e.shiftKey &&
+                      !e.nativeEvent.isComposing &&
+                      e.nativeEvent.keyCode !== 229
+                    ) {
+                      e.preventDefault();
+                      if (!e.repeat && !busy && prompt.trim())
+                        e.currentTarget.form?.requestSubmit();
+                    }
+                  }}
                   placeholder="What are you curious about?"
                 />
               </label>
+              <p id="prompt-keyboard-hint" className="muted keyboard-hint">
+                Enter to send · Shift+Enter for a new line
+              </p>
               {composer.highlight &&
                 board &&
                 ancestry(board, composer.highlight.sourceId).length >=
@@ -1546,6 +1582,9 @@ export default function App() {
                   {settings.provider === "demo"
                     ? "Synthetic demo"
                     : settings.model}{" "}
+                  {settings.provider === "chatgpt" && settings.reasoningEffort
+                    ? `· ${settings.reasoningEffort} thinking `
+                    : ""}
                   · ~
                   {board
                     ? estimateTokens(
@@ -1683,6 +1722,7 @@ export default function App() {
                     setSettingsDraft((s) => ({
                       ...s,
                       model: "",
+                      reasoningEffort: undefined,
                       provider: e.target.value as Settings["provider"],
                     }));
                   }}
@@ -1705,6 +1745,7 @@ export default function App() {
                       ...s,
                       chatgptAccountId: id,
                       model: "",
+                      reasoningEffort: undefined,
                     }));
                   }}
                   onError={setError}
@@ -1733,23 +1774,55 @@ export default function App() {
                   <label>
                     Model
                     <div className="model-input">
-                      <input
-                        required
-                        list="installed-models"
-                        aria-label="Model"
-                        placeholder={
-                          settingsDraft.provider === "chatgpt"
-                            ? "Discover available ChatGPT models"
-                            : "Select or enter an installed model"
-                        }
-                        value={settingsDraft.model}
-                        onChange={(e) =>
-                          setSettingsDraft((s) => ({
-                            ...s,
-                            model: e.target.value,
-                          }))
-                        }
-                      />
+                      {settingsDraft.provider === "chatgpt" ? (
+                        <select
+                          required
+                          aria-label="Model"
+                          value={settingsDraft.model}
+                          disabled={discovering || accountBusy}
+                          onChange={(e) =>
+                            setSettingsDraft((s) => ({
+                              ...s,
+                              model: e.target.value,
+                              reasoningEffort: undefined,
+                            }))
+                          }
+                        >
+                          <option value="">Discover and select a model</option>
+                          {settingsDraft.model &&
+                            !models.some(
+                              (m) =>
+                                (typeof m === "string" ? m : m.id) ===
+                                settingsDraft.model,
+                            ) && (
+                              <option value={settingsDraft.model}>
+                                {settingsDraft.model}
+                              </option>
+                            )}
+                          {models.map((m) => {
+                            const id = typeof m === "string" ? m : m.id;
+                            return (
+                              <option key={id} value={id}>
+                                {typeof m === "string" ? m : m.name}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      ) : (
+                        <input
+                          required
+                          list="installed-models"
+                          aria-label="Model"
+                          placeholder="Select or enter an installed model"
+                          value={settingsDraft.model}
+                          onChange={(e) =>
+                            setSettingsDraft((s) => ({
+                              ...s,
+                              model: e.target.value,
+                            }))
+                          }
+                        />
+                      )}
                       <button
                         type="button"
                         className="secondary"
@@ -1760,11 +1833,45 @@ export default function App() {
                       </button>
                     </div>
                     <datalist id="installed-models">
-                      {models.map((m) => (
-                        <option key={m} value={m} />
-                      ))}
+                      {models.map((m) => {
+                        const id = typeof m === "string" ? m : m.id;
+                        return <option key={id} value={id} />;
+                      })}
                     </datalist>
                   </label>
+                </>
+              )}
+              {settingsDraft.provider === "chatgpt" && (
+                <>
+                  <label>
+                    Thinking effort
+                    <select
+                      aria-label="Thinking effort"
+                      value={settingsDraft.reasoningEffort ?? ""}
+                      disabled={accountBusy || !settingsDraft.model}
+                      onChange={(e) =>
+                        setSettingsDraft((s) => ({
+                          ...s,
+                          reasoningEffort: (e.target.value || undefined) as
+                            ReasoningEffort | undefined,
+                        }))
+                      }
+                    >
+                      <option value="">Model default</option>
+                      <option value="none">None</option>
+                      <option value="minimal">Minimal</option>
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="xhigh">Extra high</option>
+                      <option value="max">Maximum</option>
+                    </select>
+                  </label>
+                  <p className="muted">
+                    Higher effort can take longer and use more of your plan.
+                    Supported levels vary by model; Model default lets the model
+                    choose.
+                  </p>
                 </>
               )}
               <div className="form-columns">

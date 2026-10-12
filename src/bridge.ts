@@ -9,6 +9,7 @@ import {
   demoProvider,
   type GenerationRequest,
   type GenerationResult,
+  type ModelChoice,
 } from "./core/providers";
 export interface ChatGPTAccount {
   id: string;
@@ -26,7 +27,7 @@ export interface InquiryBridge {
   saveBoard(board: Board): Promise<void>;
   getSettings(): Promise<Settings>;
   saveSettings(settings: Settings): Promise<void>;
-  models(settings: Settings): Promise<string[]>;
+  models(settings: Settings): Promise<ModelChoice[]>;
   generate(request: GenerationRequest): Promise<GenerationResult>;
   cancel(id: string): Promise<void>;
   onDelta(listener: (event: { id: string; text: string }) => void): () => void;

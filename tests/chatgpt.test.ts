@@ -112,7 +112,9 @@ describe("ChatGPT plan provider", () => {
     const accessToken = vi.fn(async () => "private-access");
     const provider = chatGPTProvider({ accessToken });
     const req = request();
-    expect(await provider.models(req.settings)).toEqual(["account-model"]);
+    expect(await provider.models(req.settings)).toEqual([
+      { id: "account-model", name: "Account Model" },
+    ]);
     const deltas: string[] = [];
     expect(
       await provider.generate(
@@ -136,6 +138,54 @@ describe("ChatGPT plan provider", () => {
     expect(req.messages[0].role).toBe("developer");
     expect(deltas).toEqual(["Hello 🌏"]);
     expect(accessToken).toHaveBeenCalledWith("issued-client");
+  });
+  it.each(["low", "medium", "high", "xhigh", "max"] as const)(
+    "transmits and records explicit %s thinking effort",
+    async (effort) => {
+      const req = request();
+      req.settings.reasoningEffort = effort;
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (_url, init: RequestInit) => {
+          expect(JSON.parse(init.body as string)).toMatchObject({
+            model: req.settings.model,
+            input: req.messages,
+            reasoning: { effort },
+            store: false,
+            stream: true,
+          });
+          return stream([
+            { type: "response.output_text.delta", delta: "Answer" },
+            { type: "response.completed", response: {} },
+          ]);
+        }),
+      );
+      const result = await chatGPTProvider({
+        accessToken: async () => "token",
+      }).generate(req, () => {}, new AbortController().signal);
+      expect(result.reasoningEffort).toBe(effort);
+    },
+  );
+  it("reports unsupported effort without retrying or changing the request", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json(
+          { error: { code: "unsupported_value", message: "private details" } },
+          { status: 400 },
+        ),
+      ),
+    );
+    const req = request();
+    req.settings.reasoningEffort = "max";
+    await expect(
+      chatGPTProvider({ accessToken: async () => "token" }).generate(
+        req,
+        () => {},
+        new AbortController().signal,
+      ),
+    ).rejects.toThrow(/Model default/);
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
   it.each([
     [{ type: "response.output_text.delta", delta: "Partial" }],

@@ -99,6 +99,7 @@ it("reopens SQLite with spatial positions, exact anchors, effective context and 
       ...defaults,
       provider: "ollama",
       model: "local-test",
+      reasoningEffort: "high",
       appearance: {
         noteStyle: "sticky",
         theme: "dark",
@@ -122,6 +123,7 @@ it("reopens SQLite with spatial positions, exact anchors, effective context and 
       readingFont: "serif",
     });
     expect(store.settings().model).toBe("local-test");
+    expect(store.settings().reasoningEffort).toBe("high");
     expect(JSON.stringify(store.list())).not.toContain("local-test");
     expect(JSON.stringify(store.list())).not.toContain("appearance");
     store.close();

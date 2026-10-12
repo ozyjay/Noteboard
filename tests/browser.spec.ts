@@ -1,6 +1,50 @@
 import { test, expect } from "@playwright/test";
 import { chatGPTExportFixture as importFixture } from "./fixtures/chatgpt-export";
 
+test("Note prompts send on Enter while preserving multiline and composed input", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "New inquiry", exact: true }).click();
+  const prompt = page.getByRole("textbox", { name: "Your question" });
+  await prompt.fill("   ");
+  await prompt.press("Enter");
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.locator(".note-card")).toHaveCount(0);
+  await prompt.fill("First line");
+  await prompt.press("End");
+  await prompt.press("Shift+Enter");
+  await prompt.pressSequentially("Second line");
+  await expect(prompt).toHaveValue("First line\nSecond line");
+  await prompt.evaluate((element) => {
+    element.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Enter",
+        isComposing: true,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+    element.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Enter",
+        repeat: true,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+  });
+  await expect(page.locator(".note-card")).toHaveCount(0);
+  await prompt.press("Enter");
+  await expect(prompt).toBeDisabled();
+  await expect(page.locator(".note-card")).toHaveCount(1);
+  await expect(page.locator(".reader h2").first()).toHaveText(
+    "First line\nSecond line",
+  );
+  await page.reload();
+  await expect(page.locator(".note-card")).toHaveCount(1);
+});
+
 test("ChatGPT import previews paths, cancels and rejects unsupported input", async ({
   page,
 }) => {
@@ -656,7 +700,9 @@ test("ChatGPT account settings and effective context survive branching and reope
       chatgptUsage: async () => {
         localStorage.setItem("test.usage", "opened");
       },
-      models: async () => ["test-chatgpt-model"],
+      models: async () => [
+        { id: "test-chatgpt-model", name: "Test ChatGPT Model" },
+      ],
       generate: async (req) => {
         if (req.messages.some((message) => message.role === "system"))
           throw new Error("Unexpected system message");
@@ -669,6 +715,7 @@ test("ChatGPT account settings and effective context survive branching and reope
         return {
           text,
           model: "test-chatgpt-model",
+          reasoningEffort: req.settings.reasoningEffort,
           usage: { input: 10, output: 5 },
         };
       },
@@ -704,7 +751,12 @@ test("ChatGPT account settings and effective context survive branching and reope
   ).toBeVisible();
   await page.getByRole("button", { name: "Got it", exact: true }).click();
   await page.getByRole("button", { name: "Discover", exact: true }).click();
-  await page.getByLabel("Model", { exact: true }).fill("test-chatgpt-model");
+  await page
+    .getByLabel("Model", { exact: true })
+    .selectOption({ label: "Test ChatGPT Model" });
+  await page
+    .getByLabel("Thinking effort", { exact: true })
+    .selectOption("high");
   await page.screenshot({ path: "/tmp/noteboard-chatgpt-settings.png" });
   await page.getByRole("button", { name: "Save settings" }).click();
   await page.getByRole("button", { name: "New inquiry", exact: true }).click();
@@ -714,7 +766,7 @@ test("ChatGPT account settings and effective context survive branching and reope
   await expect(
     page.getByText("Using ChatGPT plan", { exact: false }).first(),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Ask & explore" }).click();
+  await page.getByRole("textbox", { name: "Your question" }).press("Enter");
   await expect(page.locator(".note-card")).toHaveCount(1);
   await page
     .getByRole("button", { name: "My ChatGPT inquiry", exact: true })
@@ -738,15 +790,14 @@ test("ChatGPT account settings and effective context survive branching and reope
     element.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
   });
   await page.getByRole("button", { name: "Explore this passage" }).click();
-  await page
-    .getByRole("button", { name: "Create branch", exact: true })
-    .click();
+  await page.getByRole("textbox", { name: "Your question" }).press("Enter");
   await expect(page.locator(".note-card")).toHaveCount(2);
   const saved = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("test.boards") || "[]"),
   );
   const child = saved[0].notes.at(-1);
   expect(child.versions[0].provider).toBe("chatgpt");
+  expect(child.versions[0].reasoningEffort).toBe("high");
   expect(
     child.versions[0].context.map((message: { role: string }) => message.role),
   ).toEqual(["developer", "user", "assistant", "user"]);
@@ -760,11 +811,26 @@ test("ChatGPT account settings and effective context survive branching and reope
   await page.reload();
   await expect(page.locator(".note-card")).toHaveCount(2);
   await expect(page.getByText("ChatGPT plan", { exact: true })).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        JSON.parse(localStorage.getItem("test.settings") || "{}")
+          .reasoningEffort,
+    ),
+  ).toBe("high");
   await page.getByRole("button", { name: "Consolidate", exact: true }).click();
   await page
     .getByRole("button", { name: "Create artefact", exact: true })
     .click();
   await expect(page.locator(".document-preview")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        JSON.parse(localStorage.getItem("test.boards") || "[]")[0].artefacts.at(
+          -1,
+        ).versions[0].reasoningEffort,
+    ),
+  ).toBe("high");
   await page
     .locator(".document-preview")
     .getByRole("button", { name: "Source Note", exact: true })

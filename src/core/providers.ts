@@ -1,4 +1,4 @@
-import { type Message, type Settings } from "./model";
+import { type Message, type Settings, type ReasoningEffort } from "./model";
 export interface GenerationRequest {
   id: string;
   messages: Message[];
@@ -8,8 +8,10 @@ export interface GenerationRequest {
 export interface GenerationResult {
   text: string;
   model: string;
+  reasoningEffort?: ReasoningEffort;
   usage?: { input?: number; output?: number };
 }
+export type ModelChoice = string | { id: string; name: string };
 export interface Provider {
   id: string;
   capabilities: {
@@ -17,7 +19,7 @@ export interface Provider {
     modelDiscovery: boolean;
     authentication: "none" | "oauth";
   };
-  models(settings: Settings, signal?: AbortSignal): Promise<string[]>;
+  models(settings: Settings, signal?: AbortSignal): Promise<ModelChoice[]>;
   generate(
     request: GenerationRequest,
     onDelta: (text: string) => void,

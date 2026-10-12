@@ -51,6 +51,10 @@ The desktop app implements the documented [local-app ChatGPT plan usage flow](ht
 
 Choose ChatGPT in provider settings, add an account or workspace with **Continue with ChatGPT**, then **Discover** and choose a model. Saved accounts can be selected independently; signing out retains the issued registration for later sign-in. **Manage usage** opens ChatGPT’s usage settings. The app never uses `OPENAI_API_KEY`, existing Codex credentials, or a separately billed API fallback.
 
+The model dropdown shows the account’s available model names. **Thinking effort** offers Model default and explicit levels from None to Maximum. Support varies by model; if ChatGPT rejects a level, select Model default or another supported level and retry. Higher effort can increase latency and plan usage. Changing provider, account or model resets the override. Generated Notes and synthesis preserve explicit effort metadata; historical and imported responses remain unchanged. See the [official reasoning guide](https://developers.openai.com/api/docs/guides/reasoning).
+
+In a Note prompt, press **Enter** to send or **Shift+Enter** to add a line. Empty questions and IME composition do not submit.
+
 Credentials are encrypted with Electron `safeStorage`, written atomically with owner-only permissions to `chatgpt-credentials.bin` in the app’s user-data directory, and excluded from SQLite, renderer state and Board exports. Platforms without secure credential storage are refused, including Linux’s plaintext fallback. Refreshes are serialised within the process. A single-instance lock prevents concurrent desktop processes from racing credential rotation.
 
 ChatGPT inference uses account-specific model discovery and `POST /v1/responses` with `store: false`, `stream: true` and complete effective messages. System instructions become developer messages before both transmission and provenance recording. The local context estimate includes a 1,024-token reserve; this preview does not support an output cap or exact model-budget discovery, so the service may still reject a request or generate a longer response. No context is automatically reduced.
