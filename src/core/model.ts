@@ -9,6 +9,8 @@ export const AppearanceSchema = z.object({
   accent: z.enum(["sage", "blue", "plum"]).default("sage"),
   textSize: z.enum(["standard", "large", "larger"]).default("standard"),
   showGrid: z.boolean().default(true),
+  interfaceFont: z.enum(["standard", "monospace"]).default("standard"),
+  readingFont: z.enum(["sans", "serif", "monospace"]).default("sans"),
 });
 export type Appearance = z.infer<typeof AppearanceSchema>;
 export const defaultAppearance: Appearance = AppearanceSchema.parse({});

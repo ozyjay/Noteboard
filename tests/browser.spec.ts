@@ -42,6 +42,15 @@ test("maths survives equation branching, synthesis editing and reopening", async
 }, testInfo) => {
   await page.goto("/");
   await expect(page.getByText("Saved locally", { exact: true })).toBeVisible();
+  await page
+    .getByRole("button", { name: "Appearance settings", exact: true })
+    .click();
+  await page.getByLabel("Interface font").selectOption("monospace");
+  await page.getByLabel("Reading font").selectOption("monospace");
+  await page
+    .getByRole("button", { name: "Save appearance", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   const source =
     String.raw`# Energy
 
@@ -560,10 +569,29 @@ test("appearance previews, cancels, saves and follows system changes after reope
     .click();
   await page.getByLabel("Theme", { exact: true }).selectOption("dark");
   await page.getByLabel("Accent colour").selectOption("blue");
+  await page.getByLabel("Interface font").selectOption("monospace");
+  await page.getByLabel("Reading font").selectOption("serif");
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-interface-font",
+    "monospace",
+  );
+  expect(
+    await page
+      .locator(".brand")
+      .evaluate((el) => getComputedStyle(el).fontFamily),
+  ).toContain("Consolas");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await expect(page.locator("html")).toHaveAttribute("data-accent", "sage");
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-interface-font",
+    "standard",
+  );
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-reading-font",
+    "sans",
+  );
   await page
     .getByRole("button", { name: "Appearance settings", exact: true })
     .click();
@@ -571,6 +599,8 @@ test("appearance previews, cancels, saves and follows system changes after reope
   await page.getByLabel("Accent colour").selectOption("plum");
   await page.getByLabel("Reading text size").selectOption("larger");
   await page.getByLabel("Show canvas grid").uncheck();
+  await page.getByLabel("Interface font").selectOption("monospace");
+  await page.getByLabel("Reading font").selectOption("monospace");
   await page
     .getByRole("button", { name: "Save appearance", exact: true })
     .click();
@@ -597,6 +627,11 @@ test("appearance previews, cancels, saves and follows system changes after reope
   await page.screenshot({
     path: testInfo.outputPath("dark-expanded-note.png"),
   });
+  expect(
+    await page
+      .locator(".reader-response")
+      .evaluate((el) => getComputedStyle(el).fontFamily),
+  ).toContain("Consolas");
   const stored = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("inquiry.settings")!),
   );
@@ -606,6 +641,8 @@ test("appearance previews, cancels, saves and follows system changes after reope
     accent: "plum",
     textSize: "larger",
     showGrid: false,
+    interfaceFont: "monospace",
+    readingFont: "monospace",
   });
   await page
     .getByRole("button", { name: "Appearance settings", exact: true })

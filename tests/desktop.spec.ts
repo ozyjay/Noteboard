@@ -42,6 +42,8 @@ test("production desktop bridge saves and reopens an inquiry in SQLite", async (
       .click();
     await page.getByLabel("Theme", { exact: true }).selectOption("dark");
     await page.getByLabel("Reading text size").selectOption("large");
+    await page.getByLabel("Interface font").selectOption("monospace");
+    await page.getByLabel("Reading font").selectOption("serif");
     await page
       .getByRole("button", { name: "Save appearance", exact: true })
       .click();
@@ -65,6 +67,14 @@ test("production desktop bridge saves and reopens an inquiry in SQLite", async (
     await expect(page.locator("html")).toHaveAttribute(
       "data-text-size",
       "large",
+    );
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-interface-font",
+      "monospace",
+    );
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-reading-font",
+      "serif",
     );
     expect(
       await page.evaluate(

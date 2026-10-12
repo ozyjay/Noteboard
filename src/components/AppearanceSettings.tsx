@@ -99,6 +99,41 @@ export function AppearanceSettings({
                 <option value="larger">Larger</option>
               </select>
             </label>
+            <label>
+              Interface font
+              <select
+                aria-label="Interface font"
+                value={value.interfaceFont}
+                onChange={(event) =>
+                  onChange({
+                    ...value,
+                    interfaceFont: event.target
+                      .value as Appearance["interfaceFont"],
+                  })
+                }
+              >
+                <option value="standard">Standard</option>
+                <option value="monospace">Monospace (Consolas style)</option>
+              </select>
+            </label>
+            <label>
+              Reading font
+              <select
+                aria-label="Reading font"
+                value={value.readingFont}
+                onChange={(event) =>
+                  onChange({
+                    ...value,
+                    readingFont: event.target
+                      .value as Appearance["readingFont"],
+                  })
+                }
+              >
+                <option value="sans">Sans-serif</option>
+                <option value="serif">Serif</option>
+                <option value="monospace">Monospace (Consolas style)</option>
+              </select>
+            </label>
             <label className="appearance-checkbox">
               <input
                 type="checkbox"

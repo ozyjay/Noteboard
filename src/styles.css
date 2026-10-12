@@ -1233,3 +1233,47 @@ h1 {
   margin: 0;
   accent-color: var(--accent-button);
 }
+:root {
+  --font-sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: Consolas, Menlo, Monaco, monospace;
+  --font-interface: var(--font-sans);
+  --font-interface-heading: Georgia, serif;
+  --font-reading: var(--font-sans);
+  --font-reading-heading: Georgia, serif;
+  font-family: var(--font-interface);
+}
+:root[data-interface-font="monospace"] {
+  --font-interface: var(--font-mono);
+  --font-interface-heading: var(--font-mono);
+}
+:root[data-reading-font="serif"] {
+  --font-reading: Georgia, serif;
+  --font-reading-heading: Georgia, serif;
+}
+:root[data-reading-font="monospace"] {
+  --font-reading: var(--font-mono);
+  --font-reading-heading: var(--font-mono);
+}
+.note-prompt,
+.reader h2,
+.document-toolbar h2 {
+  font-family: var(--font-reading-heading);
+}
+.note-takeaway,
+.prose,
+.takeaway-editor textarea {
+  font-family: var(--font-reading);
+}
+.empty-board h2,
+.synthesis-empty h2,
+.modal h2 {
+  font-family: var(--font-interface-heading);
+}
+.prose h2 {
+  font-family: inherit;
+}
+.prose code,
+.prose pre,
+.document-editor {
+  font-family: var(--font-mono);
+}

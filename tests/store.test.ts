@@ -49,6 +49,8 @@ it("reopens SQLite with spatial positions, exact anchors, effective context and 
         accent: "blue",
         textSize: "large",
         showGrid: false,
+        interfaceFont: "monospace",
+        readingFont: "serif",
       },
     });
     store.close();
@@ -59,6 +61,8 @@ it("reopens SQLite with spatial positions, exact anchors, effective context and 
       accent: "blue",
       textSize: "large",
       showGrid: false,
+      interfaceFont: "monospace",
+      readingFont: "serif",
     });
     expect(store.settings().model).toBe("local-test");
     expect(JSON.stringify(store.list())).not.toContain("local-test");

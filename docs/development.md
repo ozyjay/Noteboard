@@ -33,6 +33,10 @@ npm run reinstall:macos
 
 The reinstall script builds before replacing `~/Applications/Noteboard.app`, verifies the installed signature and opens the app. It also works for a first installation. Saved Boards, settings and credentials are stored separately and are retained.
 
+## Appearance
+
+Open **Appearance settings** in the sidebar to choose Light, Dark or Follow system, accent colour, reading text size and grid visibility. Interface fonts offer Standard or Monospace; reading fonts offer Sans-serif, Serif or Monospace. Monospace uses Consolas when installed, then Menlo, Monaco or the system monospace font. Changes preview immediately; Save retains them across Boards and restarts, Cancel restores saved preferences, and Reset defaults restores the original appearance.
+
 ## Local Ollama
 
 Install/start Ollama independently, and pull a model appropriate to your machine. In Noteboard provider settings, select Ollama, retain the loopback server address, choose **Discover**, and select an installed model. Set a context budget within the model's maximum. The adapter sends complete context and a 1,024-token output cap.

@@ -108,6 +108,8 @@ export default function App() {
           : appearance.theme;
       root.dataset.accent = appearance.accent;
       root.dataset.textSize = appearance.textSize;
+      root.dataset.interfaceFont = appearance.interfaceFont;
+      root.dataset.readingFont = appearance.readingFont;
     };
     apply();
     media.addEventListener("change", apply);
