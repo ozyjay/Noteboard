@@ -1,4 +1,11 @@
-import { app, BrowserWindow, ipcMain, safeStorage, shell } from "electron";
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  safeStorage,
+  shell,
+  systemPreferences,
+} from "electron";
 import path from "node:path";
 import { z } from "zod";
 import { Store } from "./store";
@@ -76,6 +83,14 @@ app.on("second-instance", () => {
 });
 if (primaryInstance)
   app.whenReady().then(() => {
+    // App-local Cocoa preference: a deep trackpad press must not invoke Look Up
+    // while interacting with the canvas. Ordinary selection remains available.
+    if (process.platform === "darwin")
+      systemPreferences.setUserDefault(
+        "com.apple.trackpad.forceClick",
+        "boolean",
+        false,
+      );
     auth = new ChatGPTAuth(
       path.join(app.getPath("userData"), "chatgpt-credentials.bin"),
       {
