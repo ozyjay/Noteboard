@@ -767,6 +767,53 @@ test("selects a repeated occurrence across rich formatting with exact offsets", 
   ).toHaveValue(`What is ${selection}?`);
 });
 
+test("clearing a text selection reverts the Highlight controls", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "How do complex systems work?", exact: true })
+    .click();
+  const explore = page.getByRole("button", { name: "Explore this passage" });
+  const footer = page.locator(".reader-footer");
+  const selectPassage = async () => {
+    await page.locator(".reader-response").evaluate((root) => {
+      const range = document.createRange();
+      range.selectNodeContents(root.querySelector("p")!);
+      const selection = window.getSelection()!;
+      selection.removeAllRanges();
+      selection.addRange(range);
+      root.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+    });
+    await expect(explore).toBeVisible();
+  };
+  await selectPassage();
+  await page.locator(".note-meta").click();
+  await expect(explore).toHaveCount(0);
+  await expect(footer).toHaveText(
+    "Select a passage in the response to begin a new branch.",
+  );
+
+  await selectPassage();
+  await page.evaluate(() => window.getSelection()?.removeAllRanges());
+  await expect(explore).toHaveCount(0);
+  await expect(footer).toHaveText(
+    "Select a passage in the response to begin a new branch.",
+  );
+
+  await selectPassage();
+  await explore.click();
+  const question = page.getByRole("textbox", { name: "Your question" });
+  const prompt = await question.inputValue();
+  await page.evaluate(() => window.getSelection()?.removeAllRanges());
+  await expect(question).toHaveValue(prompt);
+  await page
+    .getByRole("button", { name: "Create branch", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.locator(".note-card")).toHaveCount(4);
+});
+
 test("persists the second repeated passage using its rendered offsets", async ({
   page,
 }) => {

@@ -283,6 +283,33 @@ export default function App() {
     }
   }, [readerId, anchor, note, version?.id]);
   useEffect(() => {
+    if (!highlight || composer || revisionTarget) return;
+    const clearDeselectedHighlight = () => {
+      const root = readerSurface.current;
+      const selection = window.getSelection();
+      if (
+        !root ||
+        !selection ||
+        selection.rangeCount !== 1 ||
+        selection.isCollapsed ||
+        !selection.toString().trim() ||
+        !root.contains(selection.anchorNode) ||
+        !root.contains(selection.focusNode)
+      )
+        setHighlight(undefined);
+    };
+    clearDeselectedHighlight();
+    document.addEventListener("selectionchange", clearDeselectedHighlight);
+    return () =>
+      document.removeEventListener("selectionchange", clearDeselectedHighlight);
+  }, [
+    Boolean(highlight),
+    Boolean(composer),
+    Boolean(revisionTarget),
+    readerId,
+    version?.id,
+  ]);
+  useEffect(() => {
     if (
       !composer &&
       !providerOpen &&
