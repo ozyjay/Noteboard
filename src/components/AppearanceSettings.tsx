@@ -1,6 +1,35 @@
 import { Check, Palette, X } from "lucide-react";
 import { defaultAppearance, type Appearance } from "../core/model";
 
+const noteStyles: Record<
+  Appearance["noteStyle"],
+  { label: string; description: string }
+> = {
+  classic: {
+    label: "Classic",
+    description: "Clean cards, subtle colour tabs and a quiet canvas.",
+  },
+  sticky: {
+    label: "Sticky notes",
+    description:
+      "Colourful paper, taped tops and curled corners on a warm canvas.",
+  },
+  blueprint: {
+    label: "Blueprint",
+    description:
+      "Precise outlines, technical headers and a cool drafting canvas.",
+  },
+  index: {
+    label: "Index cards",
+    description: "Ruled cards, red margin lines and numbered research tabs.",
+  },
+  studio: {
+    label: "Studio",
+    description:
+      "Bold colour blocks, chunky borders and graphic offset shadows.",
+  },
+};
+
 export function AppearanceSettings({
   value,
   onChange,
@@ -61,13 +90,14 @@ export function AppearanceSettings({
                   })
                 }
               >
-                <option value="classic">Classic</option>
-                <option value="sticky">Sticky notes</option>
+                {Object.entries(noteStyles).map(([style, { label }]) => (
+                  <option key={style} value={style}>
+                    {label}
+                  </option>
+                ))}
               </select>
               <small id="note-style-description" className="muted">
-                {value.noteStyle === "classic"
-                  ? "Clean cards, subtle colour tabs and a cool, quiet canvas."
-                  : "Colourful paper, taped tops and curled corners on a warm canvas."}
+                {noteStyles[value.noteStyle].description}
               </small>
             </label>
             <label>

@@ -1537,6 +1537,83 @@ test("appearance previews, cancels, saves and follows system changes after reope
   );
 });
 
+for (const style of ["blueprint", "index", "studio"] as const) {
+  test(`${style} style previews, saves and supports light/dark reading`, async ({
+    page,
+  }, testInfo) => {
+    await page.goto("/");
+    await expect(page.locator(".note-card")).toHaveCount(3);
+    const original = await page.evaluate(() => {
+      const { notes, edges, artefacts } = JSON.parse(
+        localStorage.getItem("inquiry.boards")!,
+      )[0];
+      return { notes, edges, artefacts };
+    });
+    await page
+      .getByRole("button", { name: "Appearance settings", exact: true })
+      .click();
+    await page.getByLabel("Note style").selectOption(style);
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-note-style",
+      style,
+    );
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-note-style",
+      "classic",
+    );
+    for (const theme of ["light", "dark"]) {
+      await page
+        .getByRole("button", { name: "Appearance settings", exact: true })
+        .click();
+      await page.getByLabel("Note style").selectOption(style);
+      await page.getByLabel("Theme", { exact: true }).selectOption(theme);
+      await page.getByLabel("Show canvas grid").uncheck();
+      await page
+        .getByRole("button", { name: "Save appearance", exact: true })
+        .click();
+      await page.reload();
+      await expect(page.locator("html")).toHaveAttribute(
+        "data-note-style",
+        style,
+      );
+      await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+      await expect(page.locator(".react-flow__background")).toHaveCount(0);
+      await page
+        .getByRole("checkbox", { name: "Select Note 1 for synthesis" })
+        .check();
+      await expect(page.locator(".note-card.chosen")).toHaveCSS(
+        "outline-style",
+        "solid",
+      );
+      await page.screenshot({
+        path: testInfo.outputPath(`${style}-${theme}.png`),
+      });
+      await page
+        .getByRole("button", {
+          name: "How do complex systems work?",
+          exact: true,
+        })
+        .click();
+      await expect(page.locator(".reader-response")).toBeVisible();
+      await page.screenshot({
+        path: testInfo.outputPath(`${style}-${theme}-reader.png`),
+      });
+      await page
+        .getByRole("button", { name: "Close Note", exact: true })
+        .click();
+    }
+    expect(
+      await page.evaluate(() => {
+        const { notes, edges, artefacts } = JSON.parse(
+          localStorage.getItem("inquiry.boards")!,
+        )[0];
+        return { notes, edges, artefacts };
+      }),
+    ).toEqual(original);
+  });
+}
+
 test("Note reader resizes by dragging and keyboard and keeps its width after expanding", async ({
   page,
 }, testInfo) => {

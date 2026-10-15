@@ -39,6 +39,8 @@ Use **Hide sidebar** in the top-left of the workspace toolbar to give the canvas
 
 Open **Appearance settings** in the sidebar to choose Light, Dark or Follow system, accent colour, reading text size and grid visibility. Note style offers Classic (the default), with lightly tinted rounded cards, colour tabs and restrained shadows, or Sticky notes, with brighter paper colours, larger titles, adhesive strips, curled corners and deeper shadows on a warm textured canvas, plus a subtle matching tint in the reader. Both styles support light and dark themes. Interface fonts offer Standard or Monospace; reading fonts offer Sans-serif, Serif or Monospace. Monospace uses Consolas when installed, then Menlo, Monaco or the system monospace font. Changes preview immediately; Save retains them across Boards and restarts, Cancel restores saved preferences, and Reset defaults restores the original appearance.
 
+Three further Note styles offer different visual treatments: **Blueprint** uses cool drafting colours, square outlines and technical headers; **Index cards** uses ruled paper, red margin lines and research tabs; **Studio** uses bold colour blocks, rounded borders and offset shadows. All five styles support light/dark mode, accent and font preferences, live preview, Cancel, Reset defaults and saving across restarts. Note styles change presentation only; Board data and response text are retained.
+
 Drag the left edge of the detailed Note reader to resize it. With the divider focused, Left/Right arrows adjust the width, Shift makes larger adjustments, and Home/End select the narrowest/widest size. Expanding and collapsing a Note retains its side-panel width while it is open. Resizing leaves space for the canvas and adapts to the window size.
 
 ## Local Ollama
