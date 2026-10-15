@@ -80,6 +80,10 @@ import { captureHighlight, findHighlightRange } from "./core/selection";
 import { exampleBoard } from "./core/example";
 import { NoteCard, type CardNode } from "./components/NoteCard";
 import { NoteReader } from "./components/NoteReader";
+import { NoteRevision, type RevisionMode } from "./components/NoteRevision";
+import { appendRevision } from "./core/revisions";
+import { pathVersions, versionPath } from "./core/context";
+import { versionPrompt, noteAtVersion } from "./core/model";
 import { NoteTitle } from "./components/NoteTitle";
 import {
   defaultCustomInstructions,
@@ -109,6 +113,12 @@ export default function App() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [sourcePreview, setSourcePreview] = useState<Note>();
+  const [readerVersionId, setReaderVersionId] = useState<string>();
+  const [revisionTarget, setRevisionTarget] = useState<{
+    noteId: string;
+    versionId: string;
+    mode: RevisionMode;
+  }>();
   const deletedBoards = useRef(new Set<string>());
   const [importSaving, setImportSaving] = useState(false);
   const [continuationTarget, setContinuationTarget] = useState("");
@@ -189,7 +199,15 @@ export default function App() {
   }, [readerId]);
   const board = boards.find((b) => b.id === boardId);
   const note = board?.notes.find((n) => n.id === readerId);
-  const version = note ? response(note) : undefined;
+  const version = note
+    ? (note.versions.find(
+        (v) =>
+          v.id ===
+          (anchor?.sourceId === note.id ? anchor.versionId : readerVersionId),
+      ) ?? response(note))
+    : undefined;
+  const readingNote =
+    note && version ? noteAtVersion(note, version.id) : undefined;
   const artefact = board?.artefacts.find((a) => a.id === activeArtefact);
   useEffect(() => {
     if (loadStarted.current) return;
@@ -263,7 +281,7 @@ export default function App() {
         behavior: "smooth",
       });
     }
-  }, [readerId, anchor, note]);
+  }, [readerId, anchor, note, version?.id]);
   useEffect(() => {
     if (
       !composer &&
@@ -272,7 +290,8 @@ export default function App() {
       !appearanceOpen &&
       !importOpen &&
       !deleteTarget &&
-      !sourcePreview
+      !sourcePreview &&
+      !revisionTarget
     )
       return;
     const previous = document.activeElement as HTMLElement | null;
@@ -285,8 +304,8 @@ export default function App() {
         ),
       );
     (
-      dialog.querySelector<HTMLElement>("[autofocus]") ||
-      dialog.querySelector<HTMLElement>("textarea") ||
+      dialog.querySelector<HTMLElement>("[autofocus]:not(:disabled)") ||
+      dialog.querySelector<HTMLElement>("textarea:not(:disabled)") ||
       focusable()[0]
     )?.focus();
     const key = (event: KeyboardEvent) => {
@@ -305,6 +324,7 @@ export default function App() {
         setImportOpen(false);
         setDeleteTarget(undefined);
         setSourcePreview(undefined);
+        setRevisionTarget(undefined);
       }
       if (event.key === "Tab") {
         const elements = focusable(),
@@ -337,6 +357,7 @@ export default function App() {
     Boolean(deleteTarget),
     Boolean(sourcePreview),
     deleting,
+    Boolean(revisionTarget),
   ]);
   function changeBoard(fn: (b: Board) => Board) {
     setBoards((current) =>
@@ -345,13 +366,16 @@ export default function App() {
       ),
     );
   }
-  const read = useCallback((id: string) => {
+  const read = useCallback((id: string, versionId?: string) => {
     setMode("explore");
     setReaderId(id);
+    setReaderVersionId(versionId);
     setAnchor(undefined);
     setHighlight(undefined);
   }, []);
   function goSource(id: string) {
+    const sourceVersionId =
+      mode === "synthesis" ? artefact?.sourceVersions[id] : undefined;
     if (!board?.notes.some((n) => n.id === id)) {
       const sourceArtefact =
         board?.artefacts.find(
@@ -366,19 +390,16 @@ export default function App() {
         (n) => n.id === id,
       );
       if (archived && sourceArtefact) {
-        setSourcePreview({
-          ...archived,
-          versions: archived.versions.filter(
-            (v) => v.id === sourceArtefact.sourceVersions[id],
-          ),
-        });
+        setSourcePreview(
+          noteAtVersion(archived, sourceArtefact.sourceVersions[id]),
+        );
         return;
       }
       setError("The source Note is not in this Board");
       return;
     }
     setSourcePreview(undefined);
-    read(id);
+    read(id, sourceVersionId);
     const n = board.notes.find((n) => n.id === id)!;
     void setCenter(n.position.x + 150, n.position.y + 100, {
       zoom: 1,
@@ -392,6 +413,8 @@ export default function App() {
   }
   function resetPanels() {
     setReaderId(undefined);
+    setReaderVersionId(undefined);
+    setRevisionTarget(undefined);
     setHighlight(undefined);
     setAnchor(undefined);
     setSelected([]);
@@ -460,15 +483,21 @@ export default function App() {
   async function generate(
     messages: ReturnType<typeof buildContext>,
     purpose: "explore" | "synthesis",
+    requestSettings = settings,
   ) {
-    assertBudget(messages, settings.contextLimit);
+    assertBudget(messages, requestSettings.contextLimit);
     const id = uid();
     generation.current = id;
     cancelled.current = false;
     setBusy(true);
     setError("");
     try {
-      const result = await bridge.generate({ id, messages, settings, purpose });
+      const result = await bridge.generate({
+        id,
+        messages,
+        settings: requestSettings,
+        purpose,
+      });
       if (cancelled.current)
         throw new Error(
           "Generation cancelled. No Note or document was created.",
@@ -512,6 +541,9 @@ export default function App() {
             origin: "generated",
             estimatedTokens: estimateTokens(context),
             usage: result.usage,
+            ancestryVersions: h
+              ? pathVersions(snapshot, h.sourceId, h.versionId)
+              : {},
           },
         ],
       };
@@ -535,6 +567,7 @@ export default function App() {
       setComposer(null);
       setPrompt("");
       setReaderId(n.id);
+      setReaderVersionId(undefined);
       setAnchor(undefined);
       setHighlight(undefined);
       void setCenter(n.position.x + 150, n.position.y + 100, {
@@ -781,6 +814,13 @@ export default function App() {
       labelBgBorderRadius: 5,
     })) || [];
   const incoming = board?.edges.find((e) => e.target === readerId);
+  function readParent() {
+    if (!board || !note || !version || !incoming) return;
+    const parent = versionPath(board, note.id, version.id).at(-2)!;
+    read(parent.note.id, parent.version.id);
+    if (incoming.highlight?.versionId === parent.version.id)
+      setAnchor(incoming.highlight);
+  }
   if (!ready)
     return (
       <main className="loading">
@@ -1074,7 +1114,12 @@ export default function App() {
                 }
                 onEdgeClick={(_, edge) => {
                   const e = board!.edges.find((e) => e.id === edge.id)!;
-                  setReaderId(e.source);
+                  read(
+                    e.source,
+                    e.highlight?.versionId ??
+                      board!.notes.find((n) => n.id === e.source)!.versions[0]
+                        .id,
+                  );
                   setAnchor(e.highlight);
                   setHighlight(undefined);
                 }}
@@ -1178,20 +1223,14 @@ export default function App() {
                 </div>
                 <div className="reader-scroll">
                   {incoming && (
-                    <button
-                      className="parent-link"
-                      onClick={() => {
-                        setReaderId(incoming.source);
-                        setAnchor(incoming.highlight);
-                      }}
-                    >
+                    <button className="parent-link" onClick={readParent}>
                       <ArrowLeft size={13} /> From “
                       {edgeLabel(incoming).slice(0, 60)}”
                     </button>
                   )}
                   <NoteTitle
-                    key={`title-${note.id}`}
-                    note={note}
+                    key={`title-${note.id}-${version!.id}`}
+                    note={readingNote!}
                     onSave={(title) =>
                       changeBoard((b) => ({
                         ...b,
@@ -1201,15 +1240,70 @@ export default function App() {
                       }))
                     }
                   />
+                  <div className="note-revisions">
+                    <label>
+                      Version
+                      <select
+                        aria-label="Note version"
+                        value={version!.id}
+                        disabled={busy}
+                        onChange={(e) => {
+                          setReaderVersionId(e.target.value);
+                          setAnchor(undefined);
+                          setHighlight(undefined);
+                          window.getSelection()?.removeAllRanges();
+                        }}
+                      >
+                        {note.versions.map((v, i) => (
+                          <option key={v.id} value={v.id}>
+                            v{i + 1} ·{" "}
+                            {v.origin === "edited"
+                              ? "Human-edited"
+                              : v.origin === "imported"
+                                ? "Imported"
+                                : v.provider === "demo"
+                                  ? "Synthetic demo"
+                                  : v.model}
+                            {i === note.versions.length - 1 ? " · Latest" : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <div className="revision-actions">
+                      {(
+                        [
+                          ["prompt", "Edit prompt and regenerate"],
+                          ["regenerate", "Regenerate response"],
+                          ["edit", "Edit response"],
+                        ] as const
+                      ).map(([mode, label]) => (
+                        <button
+                          key={mode}
+                          disabled={busy}
+                          onClick={() =>
+                            setRevisionTarget({
+                              noteId: note.id,
+                              versionId: version!.id,
+                              mode,
+                            })
+                          }
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    {version!.id !== response(note).id && (
+                      <p className="muted small">
+                        Viewing an earlier version. New branches use this
+                        version; the canvas and new synthesis use the latest
+                        version.
+                      </p>
+                    )}
+                  </div>
                   <nav className="note-navigation" aria-label="Connected notes">
                     <strong>Previous note</strong>
                     {incoming ? (
-                      <button
-                        onClick={() => {
-                          read(incoming.source);
-                          setAnchor(incoming.highlight);
-                        }}
-                      >
+                      <button onClick={readParent}>
                         <ArrowLeft size={14} />
                         {board!.notes.find((n) => n.id === incoming.source)!
                           .title ??
@@ -1238,25 +1332,29 @@ export default function App() {
                       <p className="muted">No subsequent notes yet.</p>
                     )}
                   </nav>
-                  {response(note).origin === "imported" && (
+                  {response(readingNote!).origin === "imported" && (
                     <p className="muted">
                       Imported from ChatGPT · Model:{" "}
-                      {response(note).model ?? "Unknown"}. Original generation
-                      context, token estimates and usage are unknown.
+                      {response(readingNote!).model ?? "Unknown"}. Original
+                      generation context, token estimates and usage are unknown.
                     </p>
                   )}
                   <div className="note-meta">
                     <span>
-                      {response(note).provider === "demo"
-                        ? "SYNTHETIC DEMO"
-                        : (response(note).model ?? "Unknown")}
+                      {version?.origin === "edited"
+                        ? "HUMAN-EDITED"
+                        : response(readingNote!).provider === "demo"
+                          ? "SYNTHETIC DEMO"
+                          : (response(readingNote!).model ?? "Unknown")}
                       {version?.origin === "generated" &&
                       version.reasoningEffort
                         ? ` · ${version.reasoningEffort} thinking`
                         : ""}
                     </span>
                     <span>
-                      v{note.versions.length} ·{" "}
+                      v
+                      {note.versions.findIndex((v) => v.id === version!.id) + 1}{" "}
+                      of {note.versions.length} ·{" "}
                       {ancestry(board!, note.id).length - 1} steps from root
                     </span>
                   </div>
@@ -1269,7 +1367,7 @@ export default function App() {
                     onMouseUp={() => {
                       const h = captureHighlight(
                         readerSurface.current!,
-                        note,
+                        readingNote!,
                         window.getSelection(),
                       );
                       setHighlight(h);
@@ -1278,14 +1376,14 @@ export default function App() {
                       setHighlight(
                         captureHighlight(
                           readerSurface.current!,
-                          note,
+                          readingNote!,
                           window.getSelection(),
                         ),
                       )
                     }
                   >
                     <Markdown
-                      text={response(note).text}
+                      text={response(readingNote!).text}
                       onSource={goSource}
                       maths={
                         !(
@@ -1357,17 +1455,20 @@ export default function App() {
                   )}
                   <details className="context-details">
                     <summary>
-                      {version?.origin === "imported"
-                        ? "Import record · "
-                        : "Generation record · ~"}
-                      {response(note).estimatedTokens?.toLocaleString() ??
-                        "Unknown"}{" "}
+                      {version?.origin === "edited"
+                        ? "Human-edited revision · "
+                        : version?.origin === "imported"
+                          ? "Import record · "
+                          : "Generation record · ~"}
+                      {response(
+                        readingNote!,
+                      ).estimatedTokens?.toLocaleString() ?? "Unknown"}{" "}
                       context tokens
                     </summary>
                     <p>
-                      {new Date(response(note).createdAt).toLocaleString(
-                        "en-AU",
-                      )}
+                      {new Date(
+                        response(readingNote!).createdAt,
+                      ).toLocaleString("en-AU")}
                       {version?.origin === "generated" &&
                         version.usage &&
                         ` · ${version.usage.input || 0} input / ${version.usage.output || 0} output tokens`}
@@ -1387,8 +1488,22 @@ export default function App() {
                           {version.provenance.responseCreatedAt || "Unknown"}
                         </span>
                       )}
+                      {version &&
+                        "basedOnVersionId" in version &&
+                        version.basedOnVersionId && (
+                          <span>
+                            {" "}
+                            · Based on v
+                            {note.versions.findIndex(
+                              (v) => v.id === version.basedOnVersionId,
+                            ) + 1}
+                            {version.origin === "edited"
+                              ? " · Human edit; no inference request"
+                              : ""}
+                          </span>
+                        )}
                     </p>
-                    {(response(note).context ?? []).map((m, i) => (
+                    {(response(readingNote!).context ?? []).map((m, i) => (
                       <div key={i}>
                         <strong>{m.role}</strong>
                         <pre>{m.content}</pre>
@@ -1406,77 +1521,82 @@ export default function App() {
                           : highlightLabel(highlight)}
                         ”
                       </p>
-                      {board!.edges.some(
-                        (e) =>
-                          e.kind === "continuation" && e.source === note.id,
-                      ) && (
-                        <>
-                          <label>
-                            Imported follow-up
-                            <select
-                              aria-label="Imported follow-up"
-                              value={continuationTarget}
-                              onChange={(e) =>
-                                setContinuationTarget(e.target.value)
-                              }
-                            >
-                              <option value="">Choose follow-up</option>
-                              {board!.edges
-                                .filter(
+                      {version?.origin === "imported" &&
+                        board!.edges.some(
+                          (e) =>
+                            e.kind === "continuation" && e.source === note.id,
+                        ) && (
+                          <>
+                            <label>
+                              Imported follow-up
+                              <select
+                                aria-label="Imported follow-up"
+                                value={continuationTarget}
+                                onChange={(e) =>
+                                  setContinuationTarget(e.target.value)
+                                }
+                              >
+                                <option value="">Choose follow-up</option>
+                                {board!.edges
+                                  .filter(
+                                    (e) =>
+                                      e.kind === "continuation" &&
+                                      e.source === note.id,
+                                  )
+                                  .map((e) => (
+                                    <option key={e.id} value={e.id}>
+                                      {
+                                        board!.notes.find(
+                                          (n) => n.id === e.target,
+                                        )!.prompt
+                                      }
+                                    </option>
+                                  ))}
+                              </select>
+                            </label>
+                            <button
+                              disabled={
+                                busy ||
+                                (board!.edges.filter(
                                   (e) =>
                                     e.kind === "continuation" &&
                                     e.source === note.id,
-                                )
-                                .map((e) => (
-                                  <option key={e.id} value={e.id}>
-                                    {
-                                      board!.notes.find(
-                                        (n) => n.id === e.target,
-                                      )!.prompt
-                                    }
-                                  </option>
-                                ))}
-                            </select>
-                          </label>
-                          <button
-                            disabled={
-                              busy ||
-                              (board!.edges.filter(
-                                (e) =>
-                                  e.kind === "continuation" &&
-                                  e.source === note.id,
-                              ).length > 1 &&
-                                !board!.edges.some(
-                                  (e) =>
-                                    e.id === continuationTarget &&
-                                    e.source === note.id,
-                                ))
-                            }
-                            onClick={() => {
-                              const candidates = board!.edges.filter(
-                                (e) =>
-                                  e.kind === "continuation" &&
-                                  e.source === note.id,
-                              );
-                              const target =
-                                candidates.length === 1
-                                  ? candidates[0]
-                                  : candidates.find(
-                                      (e) => e.id === continuationTarget,
-                                    );
-                              if (target) {
-                                changeBoard((b) =>
-                                  annotateContinuation(b, target.id, highlight),
-                                );
-                                setAnchor(highlight);
-                                setHighlight(undefined);
+                                ).length > 1 &&
+                                  !board!.edges.some(
+                                    (e) =>
+                                      e.id === continuationTarget &&
+                                      e.source === note.id,
+                                  ))
                               }
-                            }}
-                          >
-                            Attach Highlight to imported follow-up
-                          </button>
-                        </>
-                      )}
+                              onClick={() => {
+                                const candidates = board!.edges.filter(
+                                  (e) =>
+                                    e.kind === "continuation" &&
+                                    e.source === note.id,
+                                );
+                                const target =
+                                  candidates.length === 1
+                                    ? candidates[0]
+                                    : candidates.find(
+                                        (e) => e.id === continuationTarget,
+                                      );
+                                if (target) {
+                                  changeBoard((b) =>
+                                    annotateContinuation(
+                                      b,
+                                      target.id,
+                                      highlight,
+                                    ),
+                                  );
+                                  setAnchor(highlight);
+                                  setHighlight(undefined);
+                                }
+                              }}
+                            >
+                              Attach Highlight to imported follow-up
+                            </button>
+                          </>
+                        )}
                       <button
                         className="primary"
                         disabled={busy}
@@ -1586,7 +1706,19 @@ export default function App() {
                         goSource(id);
                       }}
                     >
-                      {board!.notes.find((n) => n.id === id)?.prompt}
+                      {(() => {
+                        const source =
+                          board!.notes.find((n) => n.id === id) ??
+                          artefact.archivedSources?.find((n) => n.id === id);
+                        return source
+                          ? versionPrompt(
+                              source,
+                              source.versions.find(
+                                (v) => v.id === artefact.sourceVersions[id],
+                              )!,
+                            )
+                          : "Source Note";
+                      })()}
                       <ArrowUpRight size={12} />
                     </button>
                   ))}
@@ -1654,6 +1786,37 @@ export default function App() {
             setBoardId(imported.id);
             resetPanels();
             setImportOpen(false);
+          }}
+        />
+      )}
+      {revisionTarget && board && (
+        <NoteRevision
+          key={`${revisionTarget.noteId}:${revisionTarget.versionId}:${revisionTarget.mode}`}
+          board={board}
+          note={board.notes.find((n) => n.id === revisionTarget.noteId)!}
+          versionId={revisionTarget.versionId}
+          mode={revisionTarget.mode}
+          settings={settings}
+          busy={busy}
+          onGenerate={(messages, requestSettings) =>
+            generate(messages, "explore", requestSettings)
+          }
+          onSave={(newVersion) => {
+            // Validate before closing the draft; errors leave it available for retry.
+            appendRevision(board, revisionTarget.noteId, newVersion);
+            changeBoard((b) =>
+              appendRevision(b, revisionTarget.noteId, newVersion),
+            );
+            setReaderVersionId(newVersion.id);
+            setAnchor(undefined);
+            setHighlight(undefined);
+            setError("");
+            setRevisionTarget(undefined);
+          }}
+          onClose={() => setRevisionTarget(undefined)}
+          onCancel={() => {
+            cancelled.current = true;
+            if (generation.current) void bridge.cancel(generation.current);
           }}
         />
       )}
@@ -2216,11 +2379,13 @@ export default function App() {
             <h2>{sourcePreview.title ?? sourcePreview.prompt}</h2>
             {sourcePreview.title && <p>{sourcePreview.prompt}</p>}
             <p className="muted small">
-              {response(sourcePreview).provider === "demo"
-                ? "SYNTHETIC DEMO"
-                : response(sourcePreview).origin === "imported"
-                  ? "Imported from ChatGPT"
-                  : response(sourcePreview).provider}
+              {response(sourcePreview).origin === "edited"
+                ? "HUMAN-EDITED"
+                : response(sourcePreview).provider === "demo"
+                  ? "SYNTHETIC DEMO"
+                  : response(sourcePreview).origin === "imported"
+                    ? "Imported from ChatGPT"
+                    : response(sourcePreview).provider}
               {" · Model: "}
               {response(sourcePreview).model ?? "Unknown"}
               {" · Source version: "}
@@ -2315,7 +2480,8 @@ export default function App() {
                   : settings.provider === "demo"
                     ? "Demo synthesis groups takeaways. Choose ChatGPT or Ollama for a model-generated explanation."
                     : "Your model will organise the sources and retain links to each Note."}{" "}
-                Earlier artefacts are kept when you consolidate again.
+                Earlier artefacts are kept when you consolidate again. New
+                synthesis uses the latest version of each selected Note.
               </p>
               {error && <p className="form-error">{error}</p>}
               {busy && (

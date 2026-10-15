@@ -145,6 +145,35 @@ test("production desktop bridge saves and reopens an inquiry in SQLite", async (
       .getByRole("button", { name: "Save appearance", exact: true })
       .click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
+    await page
+      .getByRole("button", { name: "Edit prompt and regenerate", exact: true })
+      .click();
+    await page
+      .getByLabel("Revised prompt")
+      .fill("Revised persisted desktop question");
+    await page
+      .getByRole("button", { name: "Generate new version", exact: true })
+      .click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await page
+      .getByRole("button", { name: "Edit response", exact: true })
+      .click();
+    await page
+      .getByLabel("Revised response")
+      .fill("My reviewed desktop answer with $x^2$.");
+    await page
+      .getByRole("button", { name: "Save edited version", exact: true })
+      .click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          async () =>
+            (await window.inquiry!.listBoards()).find(
+              (b) => b.title === "My persisted desktop question",
+            )!.notes[0].versions.length,
+        ),
+      )
+      .toBe(3);
     await app.close();
     app = await electron.launch({
       args: [".", `--user-data-dir=${dir}`],
@@ -178,6 +207,30 @@ test("production desktop bridge saves and reopens an inquiry in SQLite", async (
         () => typeof (window as unknown as { require?: unknown }).require,
       ),
     ).toBe("undefined");
+    await page.locator(".note-card .note-prompt").click();
+    await expect(
+      page.getByLabel("Note version", { exact: true }).locator("option"),
+    ).toHaveCount(3);
+    await expect(page.locator(".reader h2").first()).toHaveText(
+      "Revised persisted desktop question",
+    );
+    await expect(page.locator(".note-meta")).toContainText("HUMAN-EDITED");
+    await expect(page.locator(".reader-response .katex")).toHaveCount(1);
+    const versions = await page
+      .getByLabel("Note version", { exact: true })
+      .locator("option")
+      .evaluateAll((options) =>
+        options.map((o) => (o as HTMLOptionElement).value),
+      );
+    await page
+      .getByLabel("Note version", { exact: true })
+      .selectOption(versions[0]);
+    await expect(page.locator(".reader h2").first()).toHaveText(
+      "My persisted desktop question",
+    );
+    await page
+      .getByLabel("Note version", { exact: true })
+      .selectOption(versions[2]);
     await page.locator(".note-card .note-prompt").click();
     await page
       .getByRole("button", { name: "Delete Note", exact: true })

@@ -6,7 +6,7 @@ import {
   type Node,
 } from "@xyflow/react";
 import { ArrowUpRight, GitBranch } from "lucide-react";
-import { type Note } from "../core/model";
+import { type Note, versionPrompt } from "../core/model";
 export type CardNode = Node<
   {
     note: Note;
@@ -42,7 +42,7 @@ export function NoteCard({ data, selected }: NodeProps<CardNode>) {
         className="note-prompt nodrag"
         onClick={() => data.onRead(data.note.id)}
       >
-        {data.note.title ?? data.note.prompt}
+        {data.note.title ?? versionPrompt(data.note)}
       </button>
       {zoom > 0.55 && (
         <>

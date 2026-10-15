@@ -12,6 +12,8 @@ Custom-instruction checks cover older settings defaults, explicitly blank values
 
 Playwright starts the browser preview and exercises selection, branching, persistence, source navigation and synthesis editing. Desktop smoke tests use Playwright's Electron launcher against a production build to check the isolated preload and SQLite-backed data. Browser binaries are development tooling, not runtime app dependencies.
 
+Revision checks cover revised prompt/response history, immutable originals, exact ancestry across parent revisions, imported chronological sources, human-edit labelling, validation of revision bases/ancestor versions, version 2 migration, SQLite reopening and unchanged synthesis references. Browser checks exercise prompt regeneration, same-prompt regeneration, model overrides, failure/cancellation with retained drafts, manual Markdown/maths edits, branching from the viewed revision and navigation to older Highlight/synthesis sources after reopening. Demo and mocked provider results establish request/provenance behaviour, not live inference quality.
+
 For a manual desktop check, run `npm run dev`: create a Board, ask a question, highlight formatted response text, create two branches, click an Edge label, drag a Note, close/reopen the app, then consolidate selected Notes and follow a source link. Use a locally installed Ollama model to verify real inference and cancellation separately from demo/mocked tests.
 
 Changes to response rendering must retain the exact rendered text snapshot or introduce explicit anchor migration; test repeated passage selection and selection across inline formatting. Changes to providers must not use tests that silently incur paid inference.

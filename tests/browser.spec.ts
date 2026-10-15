@@ -1376,3 +1376,287 @@ test("Board deletion failures retain the Board for retry", async ({ page }) => {
     "Untitled inquiry",
   );
 });
+
+test("Note revisions preserve old Highlights, synthesis sources and prompts after reopening", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/");
+  await expect(page.locator(".note-card")).toHaveCount(3);
+  const stored = () =>
+    page.evaluate(() => JSON.parse(localStorage.getItem("inquiry.boards")!)[0]);
+  const before = await stored();
+  await page.getByRole("button", { name: "Consolidate", exact: true }).click();
+  await page.getByLabel("Output", { exact: true }).selectOption("journey");
+  await page
+    .getByRole("button", { name: "Create artefact", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Explore", exact: true }).click();
+  await page.locator(".note-card .note-prompt").first().click();
+  await page
+    .getByRole("button", { name: "Edit prompt and regenerate", exact: true })
+    .click();
+  let dialog = page.getByRole("dialog", {
+    name: "Edit prompt and regenerate",
+    exact: true,
+  });
+  await dialog.getByLabel("Revised prompt").fill("Discard this draft");
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(page.locator(".reader h2").first()).toHaveText(
+    before.notes[0].prompt,
+  );
+  await page
+    .getByRole("button", { name: "Edit prompt and regenerate", exact: true })
+    .click();
+  dialog = page.getByRole("dialog", {
+    name: "Edit prompt and regenerate",
+    exact: true,
+  });
+  await dialog
+    .getByLabel("Revised prompt")
+    .fill("Explain the revised question clearly");
+  await page.screenshot({ path: testInfo.outputPath("edit-prompt.png") });
+  await dialog
+    .getByRole("button", { name: "Generate new version", exact: true })
+    .click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.locator(".reader h2").first()).toHaveText(
+    "Explain the revised question clearly",
+  );
+  await expect(
+    page.getByLabel("Note version", { exact: true }).locator("option"),
+  ).toHaveCount(2);
+  await page
+    .getByRole("button", { name: "Regenerate response", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Generate new version", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(
+    page.getByLabel("Note version", { exact: true }).locator("option"),
+  ).toHaveCount(3);
+  await page
+    .getByRole("button", { name: "Edit response", exact: true })
+    .click();
+  dialog = page.getByRole("dialog", { name: "Edit response", exact: true });
+  await expect(dialog).toContainText("No model request is made");
+  await dialog
+    .getByLabel("Revised response")
+    .fill(
+      "## Reviewed answer\n\nMy corrected explanation includes **revised passage** and $x^2$.",
+    );
+  await dialog
+    .getByRole("button", { name: "Save edited version", exact: true })
+    .click();
+  await expect(page.getByLabel("Note version", { exact: true })).toContainText(
+    "Human-edited",
+  );
+  await expect(page.locator(".note-meta")).toContainText("HUMAN-EDITED");
+  await expect(page.locator(".reader-response .katex")).toHaveCount(1);
+  await page.screenshot({ path: testInfo.outputPath("revision-history.png") });
+  await expect
+    .poll(async () => (await stored()).notes[0].versions.length)
+    .toBe(4);
+  const revised = await stored();
+  expect(revised.notes[0].prompt).toBe(before.notes[0].prompt);
+  expect(revised.notes[0].versions[0]).toEqual(before.notes[0].versions[0]);
+  expect(revised.edges).toEqual(before.edges);
+  await page.getByRole("button", { name: "Close Note", exact: true }).click();
+  await page.getByRole("button", { name: "Fit View", exact: true }).click();
+  await page.locator(".react-flow__edge").first().click();
+  await expect(page.getByLabel("Note version", { exact: true })).toHaveValue(
+    before.notes[0].versions[0].id,
+  );
+  await expect(page.locator(".reader-response")).not.toContainText(
+    "My corrected explanation",
+  );
+  expect(await page.evaluate(() => getSelection()?.toString())).toBe(
+    before.edges[0].highlight.text,
+  );
+  await page
+    .getByLabel("Note version", { exact: true })
+    .selectOption(revised.notes[0].versions[3].id);
+  await page.locator(".reader-response strong").evaluate((element) => {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    getSelection()!.removeAllRanges();
+    getSelection()!.addRange(range);
+    element
+      .closest(".reader-response")!
+      .dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+  });
+  await page
+    .getByRole("button", { name: "Explore this passage", exact: true })
+    .click();
+  await page
+    .getByRole("textbox", { name: "Your question" })
+    .fill("Follow the corrected passage");
+  await page
+    .getByRole("button", { name: "Create branch", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.locator(".note-card")).toHaveCount(4);
+  await expect.poll(async () => (await stored()).notes.length).toBe(4);
+  const branched = await stored();
+  expect(branched.edges[2].highlight.versionId).toBe(
+    revised.notes[0].versions[3].id,
+  );
+  expect(branched.notes[3].versions[0].context[1].content).toBe(
+    "Explain the revised question clearly",
+  );
+  expect(branched.notes[3].versions[0].context[2].content).toContain(
+    "My corrected explanation",
+  );
+  await page.reload();
+  await expect(page.locator(".note-card")).toHaveCount(4);
+  await page.locator(".artefact-list button").first().click();
+  await page
+    .locator(".document-preview")
+    .getByRole("button", { name: "Open source Note", exact: true })
+    .first()
+    .click();
+  await expect(page.getByLabel("Note version", { exact: true })).toHaveValue(
+    before.notes[0].versions[0].id,
+  );
+  await expect(page.locator(".reader h2").first()).toHaveText(
+    before.notes[0].prompt,
+  );
+  await page
+    .getByLabel("Note version", { exact: true })
+    .selectOption(revised.notes[0].versions[3].id);
+  await expect(page.locator(".reader-response")).toContainText(
+    "My corrected explanation",
+  );
+});
+
+test("revision model choices, failed requests and cancellation preserve the original", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const cancelled = new Set<string>();
+    window.inquiry = {
+      chatgptAccounts: async () => [],
+      chatgptSignIn: async () => [],
+      chatgptCancelSignIn: async () => {},
+      chatgptSignOut: async () => ({ revoked: true }),
+      chatgptUsage: async () => {},
+      deleteBoard: async () => {},
+      saveSettings: async () => {},
+      onDelta: () => () => {},
+      listBoards: async () =>
+        JSON.parse(localStorage.getItem("mock.boards") || "[]"),
+      saveBoard: async (board) => {
+        localStorage.setItem("mock.boards", JSON.stringify([board]));
+      },
+      getSettings: async () => ({
+        provider: "ollama",
+        endpoint: "http://127.0.0.1:11434",
+        model: "local-a",
+        reasoningEffort: "high",
+        customInstructions: "",
+        appearance: {
+          noteStyle: "classic",
+          theme: "light",
+          accent: "sage",
+          textSize: "standard",
+          showGrid: true,
+          interfaceFont: "standard",
+          readingFont: "sans",
+        },
+        contextLimit: 8192,
+        depthReminder: 8,
+      }),
+      models: async () => [
+        { id: "local-a", name: "Model A" },
+        { id: "local-b", name: "Model B" },
+      ],
+      generate: async (req) => {
+        localStorage.setItem("mock.request", JSON.stringify(req));
+        if (localStorage.getItem("mock.fail"))
+          throw new Error("Simulated model failure");
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        if (cancelled.has(req.id)) throw new Error("Generation cancelled");
+        return { text: "A completed replacement.", model: req.settings.model };
+      },
+      cancel: async (id) => {
+        cancelled.add(id);
+      },
+    };
+  });
+  await page.goto("/");
+  await page.locator(".note-card .note-prompt").first().click();
+  await page
+    .getByRole("button", { name: "Regenerate response", exact: true })
+    .click();
+  let dialog = page.getByRole("dialog", {
+    name: "Regenerate response",
+    exact: true,
+  });
+  await dialog
+    .getByRole("button", { name: "Discover models", exact: true })
+    .click();
+  await dialog.getByLabel("Revision model").selectOption({ label: "Model B" });
+  await dialog
+    .getByRole("button", { name: "Generate new version", exact: true })
+    .click();
+  await expect(dialog).toHaveCount(0);
+  await expect(
+    page.getByLabel("Note version", { exact: true }).locator("option"),
+  ).toHaveCount(2);
+  const request = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("mock.request")!),
+  );
+  expect(request.settings.model).toBe("local-b");
+  expect(request.settings.reasoningEffort).toBeUndefined();
+  expect(request.messages).toHaveLength(2);
+  await page.evaluate(() => localStorage.setItem("mock.fail", "true"));
+  await page
+    .getByRole("button", { name: "Edit prompt and regenerate", exact: true })
+    .click();
+  dialog = page.getByRole("dialog", {
+    name: "Edit prompt and regenerate",
+    exact: true,
+  });
+  await dialog.getByLabel("Revised prompt").fill("x".repeat(29000));
+  await dialog
+    .getByRole("button", { name: "Generate new version", exact: true })
+    .click();
+  await expect(dialog.getByRole("alert")).toContainText(
+    "No history has been removed",
+  );
+  expect(
+    await page.evaluate(
+      () => JSON.parse(localStorage.getItem("mock.request")!).id,
+    ),
+  ).toBe(request.id);
+  await dialog
+    .getByLabel("Revised prompt")
+    .fill("Keep this draft after failure");
+  await dialog
+    .getByRole("button", { name: "Generate new version", exact: true })
+    .click();
+  await expect(dialog.getByRole("alert")).toContainText(
+    "Simulated model failure",
+  );
+  await expect(dialog.getByLabel("Revised prompt")).toHaveValue(
+    "Keep this draft after failure",
+  );
+  await expect(
+    page.getByLabel("Note version", { exact: true }).locator("option"),
+  ).toHaveCount(2);
+  await page.evaluate(() => localStorage.removeItem("mock.fail"));
+  await dialog
+    .getByRole("button", { name: "Generate new version", exact: true })
+    .click();
+  await dialog
+    .getByRole("button", { name: "Cancel generation", exact: true })
+    .click();
+  await expect(dialog.getByRole("alert")).toContainText("cancelled");
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(
+    page.getByLabel("Note version", { exact: true }).locator("option"),
+  ).toHaveCount(2);
+  await expect(page.locator(".reader-response")).toHaveText(
+    "A completed replacement.",
+  );
+});

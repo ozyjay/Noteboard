@@ -32,7 +32,7 @@ describe("ChatGPT text import", () => {
     const p = previewChatGPTPath(c, "a2");
     expect(p.excludedInstructions).toBe(1);
     const board = imported();
-    expect(board.schemaVersion).toBe(2);
+    expect(board.schemaVersion).toBe(3);
     expect(board.notes.map((n) => [n.prompt, response(n).text])).toEqual(
       p.turns.map((t) => [t.prompt, t.response]),
     );

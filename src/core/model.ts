@@ -67,9 +67,25 @@ const GeneratedVersionSchema = z.object({
   reasoningEffort: ReasoningEffortSchema.optional(),
   context: z.array(MessageSchema),
   estimatedTokens: z.number(),
+  prompt: z.string().min(1).max(30000).optional(),
+  ancestryVersions: z.record(z.string(), z.string()).optional(),
+  basedOnVersionId: z.string().optional(),
   usage: z
     .object({ input: z.number().optional(), output: z.number().optional() })
     .optional(),
+});
+const EditedVersionSchema = z.object({
+  origin: z.literal("edited"),
+  id: z.string(),
+  text: z.string().min(1),
+  createdAt: z.string(),
+  provider: z.literal("human"),
+  model: z.literal("editor"),
+  context: z.null(),
+  estimatedTokens: z.null(),
+  prompt: z.string().min(1).max(30000),
+  ancestryVersions: z.record(z.string(), z.string()),
+  basedOnVersionId: z.string(),
 });
 export const ImportedVersionSchema = z.object({
   origin: z.literal("imported"),
@@ -93,6 +109,7 @@ export const ImportedVersionSchema = z.object({
 export const VersionSchema = z.discriminatedUnion("origin", [
   GeneratedVersionSchema,
   ImportedVersionSchema,
+  EditedVersionSchema,
 ]);
 export type ResponseVersion = z.infer<typeof VersionSchema>;
 export const NoteSchema = z.object({
@@ -168,7 +185,7 @@ export const ArtefactSchema = z.object({
 });
 export type Artefact = z.infer<typeof ArtefactSchema>;
 export const BoardSchema = z.object({
-  schemaVersion: z.literal(2),
+  schemaVersion: z.literal(3),
   id: z.string(),
   title: z.string().min(1).max(200),
   createdAt: z.string(),
@@ -184,9 +201,16 @@ export type Board = z.infer<typeof BoardSchema>;
 export const uid = () => crypto.randomUUID();
 export const now = () => new Date().toISOString();
 export const response = (note: Note) => note.versions[note.versions.length - 1];
+export const versionPrompt = (note: Note, version = response(note)) =>
+  ("prompt" in version ? version.prompt : undefined) ?? note.prompt;
+export function noteAtVersion(note: Note, versionId: string): Note {
+  const version = note.versions.find((v) => v.id === versionId);
+  if (!version) throw new Error("Source response version is unavailable");
+  return { ...note, prompt: versionPrompt(note, version), versions: [version] };
+}
 export function newBoard(title = "Untitled inquiry"): Board {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     id: uid(),
     title,
     createdAt: now(),
@@ -209,18 +233,24 @@ export function validateBoard(value: unknown): Board {
   });
   const header = z.object({ schemaVersion: z.number() }).parse(value);
   const migrated = header.schemaVersion === 1 ? legacy.parse(value) : undefined;
+  const previous =
+    header.schemaVersion === 2
+      ? BoardSchema.extend({ schemaVersion: z.literal(2) }).parse(value)
+      : undefined;
   const b = BoardSchema.parse(
     migrated
       ? {
           ...migrated,
-          schemaVersion: 2,
+          schemaVersion: 3,
           notes: migrated.notes.map((n) => ({
             ...n,
             versions: n.versions.map((v) => ({ ...v, origin: "generated" })),
           })),
           edges: migrated.edges.map((e) => ({ ...e, kind: "highlight" })),
         }
-      : value,
+      : previous
+        ? { ...previous, schemaVersion: 3 }
+        : value,
   );
   const noteById = new Map(b.notes.map((n) => [n.id, n]));
   const ids = new Set(noteById.keys());
@@ -257,6 +287,10 @@ export function validateBoard(value: unknown): Board {
     }
     const h = e.highlight;
     if (!h) continue;
+    if (e.kind === "continuation" && h.versionId !== n.versions[0].id)
+      throw new Error(
+        "Retrospective Highlights must reference the original imported response",
+      );
     const v = n.versions.find((v) => v.id === h.versionId);
     const surface = h.surface === "rendered" ? h.renderedText : v?.text;
     if (
@@ -280,6 +314,38 @@ export function validateBoard(value: unknown): Board {
   }
   if (b.notes.length && b.notes.length - b.edges.length !== 1)
     throw new Error("A Board must contain one rooted tree");
+  function validateVersions(note: Note, checkAncestry: boolean) {
+    const seen = new Set<string>();
+    const ancestors = new Set<string>();
+    let parent = parents.get(note.id);
+    while (parent) {
+      ancestors.add(parent);
+      parent = parents.get(parent);
+    }
+    for (const v of note.versions) {
+      if (seen.has(v.id))
+        throw new Error("Duplicate response version identifiers");
+      if (
+        "basedOnVersionId" in v &&
+        v.basedOnVersionId &&
+        !seen.has(v.basedOnVersionId)
+      )
+        throw new Error("Invalid revision source");
+      if (checkAncestry && "ancestryVersions" in v && v.ancestryVersions) {
+        if (
+          Object.keys(v.ancestryVersions).length !== ancestors.size ||
+          Object.entries(v.ancestryVersions).some(
+            ([id, version]) =>
+              !ancestors.has(id) ||
+              !noteById.get(id)?.versions.some((v) => v.id === version),
+          )
+        )
+          throw new Error("Invalid ancestral response version");
+      }
+      seen.add(v.id);
+    }
+  }
+  for (const note of b.notes) validateVersions(note, true);
   for (const a of b.artefacts) {
     const archived = a.archivedSources ?? [];
     if (
@@ -287,6 +353,7 @@ export function validateBoard(value: unknown): Board {
       archived.some((n) => ids.has(n.id) || !a.noteIds.includes(n.id))
     )
       throw new Error("Invalid archived synthesis source");
+    for (const note of archived) validateVersions(note, false);
     for (const id of a.noteIds) {
       const source = noteById.get(id) ?? archived.find((n) => n.id === id);
       if (

@@ -3,7 +3,8 @@ import {
   type Highlight,
   type Message,
   type Note,
-  response,
+  versionPrompt,
+  type ResponseVersion,
 } from "./model";
 import {
   defaultCustomInstructions,
@@ -44,14 +45,13 @@ export function buildContext(
     },
   ];
   if (highlight)
-    for (const n of ancestry(board, highlight.sourceId)) {
-      const v =
-        n.id === highlight.sourceId
-          ? n.versions.find((v) => v.id === highlight.versionId)
-          : response(n);
-      if (!v) throw new Error("Source response version is unavailable");
+    for (const { note: n, version: v } of versionPath(
+      board,
+      highlight.sourceId,
+      highlight.versionId,
+    )) {
       messages.push(
-        { role: "user", content: n.prompt },
+        { role: "user", content: versionPrompt(n, v) },
         { role: "assistant", content: v.text },
       );
     }
@@ -62,6 +62,95 @@ export function buildContext(
       : prompt,
   });
   return messages;
+}
+// Resolve backwards from the selected revision. Legacy Highlight branches pin
+// their parent; imported continuations always retain their original source turn.
+export function versionPath(
+  board: Board,
+  noteId: string,
+  versionId: string,
+): { note: Note; version: ResponseVersion }[] {
+  const path = ancestry(board, noteId);
+  const hints = new Map([[noteId, versionId]]);
+  const result: { note: Note; version: ResponseVersion }[] = [];
+  for (let i = path.length - 1; i >= 0; i--) {
+    const note = path[i];
+    const version = note.versions.find((v) => v.id === hints.get(note.id));
+    if (!version) throw new Error("Source response version is unavailable");
+    result.unshift({ note, version });
+    if ("ancestryVersions" in version && version.ancestryVersions)
+      for (const [id, versionId] of Object.entries(version.ancestryVersions))
+        if (!hints.has(id)) hints.set(id, versionId);
+    if (i) {
+      const parent = path[i - 1];
+      const edge = board.edges.find((e) => e.target === note.id)!;
+      if (!hints.has(parent.id))
+        hints.set(
+          parent.id,
+          edge.kind === "highlight"
+            ? edge.highlight.versionId
+            : parent.versions[0].id,
+        );
+    }
+  }
+  return result;
+}
+export const pathVersions = (board: Board, noteId: string, versionId: string) =>
+  Object.fromEntries(
+    versionPath(board, noteId, versionId).map(({ note, version }) => [
+      note.id,
+      version.id,
+    ]),
+  );
+
+export function revisionContext(
+  board: Board,
+  noteId: string,
+  versionId: string,
+  prompt: string,
+  instructions: string,
+) {
+  const path = versionPath(board, noteId, versionId).slice(0, -1);
+  const incoming = board.edges.find((e) => e.target === noteId);
+  const highlight = incoming?.highlight;
+  const applicableHighlight =
+    highlight && path.at(-1)?.version.id === highlight.versionId
+      ? highlight
+      : undefined;
+  const base = buildContext(board, prompt, undefined, instructions);
+  let last = applicableHighlight
+    ? buildContext(board, prompt, applicableHighlight, instructions).at(-1)!
+    : base.at(-1)!;
+  // Preserve the exact recorded Highlight framing when regenerating. A later
+  // retrospective annotation must not replace the passage used by this version.
+  const note = board.notes.find((n) => n.id === noteId)!;
+  let source = note.versions.find((v) => v.id === versionId)!;
+  while (source.origin === "edited") {
+    const baseId = source.basedOnVersionId;
+    source = note.versions.find((v) => v.id === baseId)!;
+  }
+  if (source.origin === "generated") {
+    const recorded = source.context.at(-1);
+    const oldPrompt = versionPrompt(note, source);
+    if (recorded?.role === "user" && recorded.content.endsWith(oldPrompt))
+      last = {
+        role: "user",
+        content: recorded.content.slice(0, -oldPrompt.length) + prompt,
+      };
+  }
+  return {
+    messages: [
+      base[0],
+      ...path.flatMap(({ note, version }) => [
+        { role: "user" as const, content: versionPrompt(note, version) },
+        { role: "assistant" as const, content: version.text },
+      ]),
+      last,
+    ],
+    ancestryVersions: Object.fromEntries(
+      path.map(({ note, version }) => [note.id, version.id]),
+    ),
+  };
 }
 // Conservative estimate, not a tokenizer. Allow framing and reserve output separately.
 export function estimateTokens(messages: Message[]): number {

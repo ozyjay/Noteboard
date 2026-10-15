@@ -50,7 +50,7 @@ export function NoteTitle({
       )}
       {note.title && (
         <div className="original-prompt">
-          <strong>Original prompt</strong>
+          <strong>Prompt</strong>
           <p>{note.prompt}</p>
         </div>
       )}

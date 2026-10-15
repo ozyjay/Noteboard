@@ -69,6 +69,10 @@ Automated tests mock authentication and inference and do not establish live acco
 
 ## Data and failures
 
+Open a Note to use **Edit prompt and regenerate**, **Regenerate response**, or **Edit response**. Each adds a version; the **Version** dropdown reopens earlier prompts and responses. Regeneration uses the viewed version's ancestral path with your currently configured provider and response preferences. **Discover models** offers a model override for that request without changing saved provider settings. Imported originals retain unknown historical context; regeneration creates a new request from their preserved visible conversation. Generation failures and cancellation leave the draft available for retry.
+
+**Edit response** accepts Markdown/LaTeX and saves a **Human-edited** version without inference. The original prompt and responses remain available. Existing branches and synthesis links retain their exact source versions; a new branch uses the version you are viewing. The canvas and newly created synthesis use latest versions, and human edits are identified in synthesis sources. Revising a parent never automatically regenerates its descendants. Board exports now use schema version 3; existing versions 1 and 2 migrate when opened, while older app builds cannot open new exports.
+
 On macOS, Noteboard disables Force Click lookup through an app-local preference so pressing firmly on the canvas does not invoke Dictionary. Ordinary clicking, dragging and Highlight selection remain available. Physical trackpad behaviour needs a manual check after installing and restarting the desktop app.
 
 Production builds use [Rolldown chunk groups](https://rolldown.rs/reference/OutputOptions.codeSplitting) in `vite.config.ts` to separate React, canvas, KaTeX maths and remaining vendor code from the app. The standard 500 kB warning limit remains enabled. These are static chunks loaded together, improving cache separation without deferring the reader or changing Highlight timing; total startup code is broadly unchanged. All scripts, styles and maths fonts remain bundled for offline desktop use.
