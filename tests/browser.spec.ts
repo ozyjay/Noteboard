@@ -1377,6 +1377,50 @@ test("Board deletion failures retain the Board for retry", async ({ page }) => {
   );
 });
 
+test("clicking Note text opens editors while selecting text still offers branching", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.locator(".note-card .note-prompt").first().click();
+  await page
+    .getByRole("button", { name: "Edit displayed prompt and regenerate" })
+    .click();
+  await expect(page.getByLabel("Revised prompt")).toBeFocused();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+
+  await page.getByRole("button", { name: "Edit title", exact: true }).click();
+  await page.getByLabel("Note title", { exact: true }).fill("My own title");
+  await page.getByRole("button", { name: "Save title", exact: true }).click();
+  await expect(page.locator(".reader h2").first()).toHaveText("My own title");
+  const prompt = page.getByRole("button", {
+    name: "Edit displayed prompt and regenerate",
+  });
+  await prompt.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByLabel("Revised prompt")).toBeFocused();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+
+  const response = page.locator(".reader-response");
+  await response.locator("p").first().click();
+  await expect(page.getByLabel("Revised response")).toBeFocused();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await response.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByLabel("Revised response")).toBeFocused();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+
+  await response.locator("p").first().scrollIntoViewIfNeeded();
+  const bounds = await response.locator("p").first().boundingBox();
+  await page.mouse.move(bounds!.x + 2, bounds!.y + 8);
+  await page.mouse.down();
+  await page.mouse.move(bounds!.x + 160, bounds!.y + 8, { steps: 12 });
+  await page.mouse.up();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Explore this passage", exact: true }),
+  ).toBeVisible();
+});
+
 test("Note revisions preserve old Highlights, synthesis sources and prompts after reopening", async ({
   page,
 }, testInfo) => {

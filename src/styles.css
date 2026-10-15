@@ -940,6 +940,14 @@ h1 {
   background: var(--selection);
   color: var(--text);
 }
+.editable-note-text {
+  cursor: text;
+}
+.editable-note-text:focus-visible {
+  outline: 2px solid var(--text-secondary);
+  outline-offset: 4px;
+  border-radius: 3px;
+}
 .reader-footer {
   padding: 16px 24px;
   border-top: 1px solid var(--border);

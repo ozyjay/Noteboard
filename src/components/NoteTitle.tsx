@@ -4,15 +4,41 @@ import type { Note } from "../core/model";
 export function NoteTitle({
   note,
   onSave,
+  onEditPrompt,
+  busy,
 }: {
   note: Note;
   onSave: (title: string | undefined) => void;
+  onEditPrompt: () => void;
+  busy: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(note.title ?? "");
+  const prompt = (
+    <span
+      className="editable-note-text"
+      role="button"
+      tabIndex={busy ? -1 : 0}
+      aria-label="Edit displayed prompt and regenerate"
+      aria-disabled={busy}
+      title="Click to edit prompt and regenerate"
+      onClick={() => {
+        if (!busy && window.getSelection()?.isCollapsed !== false)
+          onEditPrompt();
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          if (!busy) onEditPrompt();
+        }
+      }}
+    >
+      {note.prompt}
+    </span>
+  );
   return (
     <div className="note-title">
-      <h2>{note.title ?? note.prompt}</h2>
+      <h2 aria-label={note.title ?? note.prompt}>{note.title ?? prompt}</h2>
       {editing ? (
         <form
           onSubmit={(event) => {
@@ -51,7 +77,7 @@ export function NoteTitle({
       {note.title && (
         <div className="original-prompt">
           <strong>Prompt</strong>
-          <p>{note.prompt}</p>
+          <p>{prompt}</p>
         </div>
       )}
     </div>

@@ -166,7 +166,7 @@ export function NoteRevision({
             Prompt
             <textarea
               aria-label="Revised prompt"
-              autoFocus
+              autoFocus={mode === "prompt"}
               required
               maxLength={30000}
               value={prompt}
@@ -185,6 +185,7 @@ export function NoteRevision({
                 <textarea
                   className="response-editor"
                   aria-label="Revised response"
+                  autoFocus
                   required
                   value={text}
                   disabled={busy}

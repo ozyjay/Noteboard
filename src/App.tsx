@@ -1231,6 +1231,14 @@ export default function App() {
                   <NoteTitle
                     key={`title-${note.id}-${version!.id}`}
                     note={readingNote!}
+                    busy={busy}
+                    onEditPrompt={() =>
+                      setRevisionTarget({
+                        noteId: note.id,
+                        versionId: version!.id,
+                        mode: "prompt",
+                      })
+                    }
                     onSave={(title) =>
                       changeBoard((b) => ({
                         ...b,
@@ -1359,7 +1367,41 @@ export default function App() {
                     </span>
                   </div>
                   <div
-                    className="reader-response prose"
+                    className="reader-response prose editable-note-text"
+                    role="region"
+                    aria-label="Response — click or press Enter to edit"
+                    aria-keyshortcuts="Enter"
+                    tabIndex={busy ? -1 : 0}
+                    title="Click to edit response. Select text to explore a passage."
+                    onClick={(event) => {
+                      if (
+                        busy ||
+                        window.getSelection()?.isCollapsed === false ||
+                        (event.target as HTMLElement).closest(
+                          "button, a, input, textarea, select",
+                        )
+                      )
+                        return;
+                      setRevisionTarget({
+                        noteId: note.id,
+                        versionId: version!.id,
+                        mode: "edit",
+                      });
+                    }}
+                    onKeyDown={(event) => {
+                      if (
+                        event.key === "Enter" &&
+                        event.target === event.currentTarget &&
+                        !busy
+                      ) {
+                        event.preventDefault();
+                        setRevisionTarget({
+                          noteId: note.id,
+                          versionId: version!.id,
+                          mode: "edit",
+                        });
+                      }
+                    }}
                     data-maths={
                       !(anchor?.surface === "rendered" && !anchor.renderedMath)
                     }
