@@ -35,6 +35,8 @@ The reinstall script builds before replacing `~/Applications/Noteboard.app`, ver
 
 ## Appearance
 
+Use **Hide sidebar** in the top-left of the workspace toolbar to give the canvas or synthesis document more room. The same button becomes **Show sidebar** so you can restore Boards, artefacts and provider controls. The sidebar starts visible when the app opens; toggling it retains the current Board, reader and canvas zoom.
+
 Open **Appearance settings** in the sidebar to choose Light, Dark or Follow system, accent colour, reading text size and grid visibility. Note style offers Classic (the default) or Sticky notes, with paper colours, adhesive strips, folded corners and deeper shadows on the canvas, plus a subtle matching tint in the reader. Both styles support light and dark themes. Interface fonts offer Standard or Monospace; reading fonts offer Sans-serif, Serif or Monospace. Monospace uses Consolas when installed, then Menlo, Monaco or the system monospace font. Changes preview immediately; Save retains them across Boards and restarts, Cancel restores saved preferences, and Reset defaults restores the original appearance.
 
 Drag the left edge of the detailed Note reader to resize it. With the divider focused, Left/Right arrows adjust the width, Shift makes larger adjustments, and Home/End select the narrowest/widest size. Expanding and collapsing a Note retains its side-panel width while it is open. Resizing leaves space for the canvas and adapts to the window size.

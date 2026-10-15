@@ -39,6 +39,8 @@ import {
   Maximize2,
   Minimize2,
   Trash2,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { ChatGPTImport } from "./components/ChatGPTImport";
 import { annotateContinuation, MAX_EXPORT_BYTES } from "./core/chatgpt-import";
@@ -131,6 +133,7 @@ export default function App() {
   );
   const [appearanceSaving, setAppearanceSaving] = useState(false);
   const [readerExpanded, setReaderExpanded] = useState(false);
+  const [sidebarVisible, setSidebarVisible] = useState(true);
   const appearance = appearanceOpen ? appearanceDraft : settings.appearance;
   useEffect(() => {
     const root = document.documentElement;
@@ -862,7 +865,12 @@ export default function App() {
     );
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <aside
+        id="workspace-sidebar"
+        className="sidebar"
+        aria-label="Workspace sidebar"
+        hidden={!sidebarVisible}
+      >
         <div className="brand">
           <span className="brand-icon">
             <Compass size={24} />
@@ -973,9 +981,25 @@ export default function App() {
       </aside>
       <main className="workspace">
         <header className="topbar">
-          <div className="breadcrumb">
-            Workspace <span>/</span>
-            <strong>{board?.title}</strong>
+          <div className="topbar-start">
+            <button
+              className="sidebar-toggle"
+              aria-label={sidebarVisible ? "Hide sidebar" : "Show sidebar"}
+              title={sidebarVisible ? "Hide sidebar" : "Show sidebar"}
+              aria-expanded={sidebarVisible}
+              aria-controls="workspace-sidebar"
+              onClick={() => setSidebarVisible((visible) => !visible)}
+            >
+              {sidebarVisible ? (
+                <PanelLeftClose size={18} />
+              ) : (
+                <PanelLeftOpen size={18} />
+              )}
+            </button>
+            <div className="breadcrumb">
+              Workspace <span>/</span>
+              <strong>{board?.title}</strong>
+            </div>
           </div>
           <div className="topbar-actions">
             <button
