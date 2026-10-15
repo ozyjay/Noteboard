@@ -451,6 +451,24 @@ h1 {
   color: var(--text-secondary);
   margin: 0;
 }
+.board-heading > div {
+  min-width: 0;
+}
+.board-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.board-title-row h1 {
+  overflow-wrap: anywhere;
+}
+.rename-board {
+  flex-shrink: 0;
+  padding: 8px;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
 .primary {
   background: var(--accent);
   color: #fff;

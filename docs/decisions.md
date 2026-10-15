@@ -1,5 +1,7 @@
 # Initial decisions
 
+- **Board names:** Rename Board beside the heading opens a name editor with Save, Cancel and Escape. Names must contain non-whitespace text and are limited to 200 characters. Renaming updates Board metadata through normal local persistence, leaving Notes, prompts, responses and provenance intact. An empty Board with a custom name keeps it when its first Note is created; the default Untitled inquiry still takes its first question as its name.
+
 - **Edge labels:** show exact connection text in a two-line, width-bounded label, with visual ellipsis for overflow. Hovering the Edge or focusing its label reveals a viewport-bounded, scrollable full-text preview at screen text size. Down arrow moves focus into the preview; Escape dismisses it. Labels remain hidden at distant zoom until hovered or focused. Clicking a label or Edge, pressing Enter on the label, or choosing Open source Note retains the source-version and Highlight navigation. This is presentation only; stored Highlights are unchanged.
 
 - **Detailed Notes:** a side reading panel preserves the Board arrangement and offers a comfortable selectable reading surface. A human-controlled expand/collapse action fills the workspace body for focused reading without moving Notes.

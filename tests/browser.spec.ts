@@ -1,6 +1,86 @@
 import { test, expect } from "@playwright/test";
 import { chatGPTExportFixture as importFixture } from "./fixtures/chatgpt-export";
 
+test("Board names can be saved, cancelled and reopened without changing Notes", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/");
+  await expect(page.locator(".note-card")).toHaveCount(3);
+  const original = await page.evaluate(
+    () => JSON.parse(localStorage.getItem("inquiry.boards")!)[0],
+  );
+  const rename = page.getByRole("button", {
+    name: "Rename Board",
+    exact: true,
+  });
+  await rename.click();
+  const dialog = page.getByRole("dialog", { name: "Rename Board" });
+  const input = dialog.getByRole("textbox", { name: "Board name" });
+  await expect(input).toBeFocused();
+  await input.fill("   ");
+  await expect(
+    dialog.getByRole("button", { name: "Save name" }),
+  ).toBeDisabled();
+  await input.fill("Discard this name");
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(page.locator("h1")).toHaveText(original.title);
+  await expect(rename).toBeFocused();
+  await rename.click();
+  await expect(input).toHaveValue(original.title);
+  await input.fill("Escape this name");
+  await input.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await rename.click();
+  await input.fill("  Language and machine intelligence  ");
+  await input.press("Enter");
+  await expect(page.locator("h1")).toHaveText(
+    "Language and machine intelligence",
+  );
+  await expect(page.locator(".breadcrumb strong")).toHaveText(
+    "Language and machine intelligence",
+  );
+  await expect(page.locator(".boards button.active")).toContainText(
+    "Language and machine intelligence",
+  );
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => JSON.parse(localStorage.getItem("inquiry.boards")!)[0].title,
+      ),
+    )
+    .toBe("Language and machine intelligence");
+  await page.reload();
+  await expect(page.locator("h1")).toHaveText(
+    "Language and machine intelligence",
+  );
+  const saved = await page.evaluate(
+    () => JSON.parse(localStorage.getItem("inquiry.boards")!)[0],
+  );
+  expect(saved.id).toBe(original.id);
+  expect(saved.notes).toEqual(original.notes);
+  expect(saved.edges).toEqual(original.edges);
+  expect(saved.artefacts).toEqual(original.artefacts);
+  await page.screenshot({ path: testInfo.outputPath("renamed-board.png") });
+});
+
+test("an empty Board keeps its chosen name after its first question", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "New inquiry", exact: true }).click();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await page.getByRole("button", { name: "Rename Board", exact: true }).click();
+  await page.getByRole("textbox", { name: "Board name" }).fill("My research");
+  await page.getByRole("button", { name: "Save name" }).click();
+  await page.getByRole("button", { name: "Ask your first question" }).click();
+  await page
+    .getByRole("textbox", { name: "Your question" })
+    .fill("What is machine intelligence?");
+  await page.getByRole("textbox", { name: "Your question" }).press("Enter");
+  await expect(page.locator(".note-card")).toHaveCount(1);
+  await expect(page.locator("h1")).toHaveText("My research");
+});
+
 test("edge labels wrap and reveal complete text with pointer and keyboard access", async ({
   page,
 }, testInfo) => {

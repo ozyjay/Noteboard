@@ -41,6 +41,7 @@ import {
   Trash2,
   PanelLeftClose,
   PanelLeftOpen,
+  Pencil,
 } from "lucide-react";
 import { ChatGPTImport } from "./components/ChatGPTImport";
 import { annotateContinuation, MAX_EXPORT_BYTES } from "./core/chatgpt-import";
@@ -111,6 +112,7 @@ export default function App() {
     [settings, setSettings] = useState<Settings>(defaults),
     [ready, setReady] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [renameDraft, setRenameDraft] = useState<string>();
   const [deleteTarget, setDeleteTarget] = useState<{
     boardId: string;
     noteId?: string;
@@ -323,7 +325,8 @@ export default function App() {
       !importOpen &&
       !deleteTarget &&
       !sourcePreview &&
-      !revisionTarget
+      !revisionTarget &&
+      renameDraft === undefined
     )
       return;
     const previous = document.activeElement as HTMLElement | null;
@@ -358,6 +361,7 @@ export default function App() {
         setDeleteTarget(undefined);
         setSourcePreview(undefined);
         setRevisionTarget(undefined);
+        setRenameDraft(undefined);
       }
       if (event.key === "Tab") {
         const elements = focusable(),
@@ -391,6 +395,7 @@ export default function App() {
     Boolean(sourcePreview),
     deleting,
     Boolean(revisionTarget),
+    renameDraft !== undefined,
   ]);
   function changeBoard(fn: (b: Board) => Board) {
     setBoards((current) =>
@@ -582,7 +587,10 @@ export default function App() {
       };
       changeBoard((b) => ({
         ...b,
-        title: b.notes.length ? b.title : question.slice(0, 200),
+        title:
+          !b.notes.length && b.title === "Untitled inquiry"
+            ? question.slice(0, 200)
+            : b.title,
         notes: [...b.notes, n],
         edges: h
           ? [
@@ -1090,7 +1098,18 @@ export default function App() {
         <div className="board-heading">
           <div>
             <div className="eyebrow">FOLLOW YOUR CURIOSITY</div>
-            <h1>{board?.title}</h1>
+            <div className="board-title-row">
+              <h1>{board?.title}</h1>
+              <button
+                className="rename-board"
+                aria-label="Rename Board"
+                title="Rename Board"
+                disabled={busy || !board}
+                onClick={() => setRenameDraft(board?.title)}
+              >
+                <Pencil size={16} />
+              </button>
+            </div>
             <p>Every good question opens another door.</p>
           </div>
           <button
@@ -2375,6 +2394,52 @@ export default function App() {
                   className="secondary"
                   disabled={accountBusy}
                   onClick={() => setProviderOpen(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+      {renameDraft !== undefined && board && (
+        <div className="modal-backdrop">
+          <section
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Rename Board"
+          >
+            <h2>Rename Board</h2>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                const title = renameDraft.trim();
+                if (!title || title.length > 200) return;
+                if (title !== board.title)
+                  changeBoard((b) => ({ ...b, title }));
+                setRenameDraft(undefined);
+              }}
+            >
+              <label>
+                Board name
+                <input
+                  data-modal-focus
+                  required
+                  maxLength={200}
+                  value={renameDraft}
+                  onChange={(event) => setRenameDraft(event.target.value)}
+                  onFocus={(event) => event.target.select()}
+                />
+              </label>
+              <div className="modal-actions">
+                <button className="primary" disabled={!renameDraft.trim()}>
+                  Save name
+                </button>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => setRenameDraft(undefined)}
                 >
                   Cancel
                 </button>

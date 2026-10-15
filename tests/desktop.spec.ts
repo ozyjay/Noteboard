@@ -4,6 +4,54 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { chatGPTExportFixture } from "./fixtures/chatgpt-export";
 
+test("desktop reopens a renamed Board from SQLite", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "inquiry-desktop-rename-"));
+  const env: Record<string, string> = Object.fromEntries(
+    Object.entries(process.env).filter(
+      (entry): entry is [string, string] => entry[1] !== undefined,
+    ),
+  );
+  env.INQUIRY_DEV = "0";
+  env.INQUIRY_DATA_DIR = dir;
+  delete env.ELECTRON_RUN_AS_NODE;
+  let app;
+  try {
+    app = await electron.launch({ args: [".", `--user-data-dir=${dir}`], env });
+    let page = await app.firstWindow();
+    await expect(page.locator(".note-card")).toHaveCount(3);
+    const original = await page.evaluate(
+      async () => (await window.inquiry!.listBoards())[0],
+    );
+    await page
+      .getByRole("button", { name: "Rename Board", exact: true })
+      .click();
+    await page
+      .getByRole("textbox", { name: "Board name" })
+      .fill("My renamed exploration");
+    await page.getByRole("button", { name: "Save name" }).click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          async () => (await window.inquiry!.listBoards())[0].title,
+        ),
+      )
+      .toBe("My renamed exploration");
+    await app.close();
+    app = await electron.launch({ args: [".", `--user-data-dir=${dir}`], env });
+    page = await app.firstWindow();
+    await expect(page.locator("h1")).toHaveText("My renamed exploration");
+    const saved = await page.evaluate(
+      async () => (await window.inquiry!.listBoards())[0],
+    );
+    expect(saved.id).toBe(original.id);
+    expect(saved.notes).toEqual(original.notes);
+    expect(saved.edges).toEqual(original.edges);
+  } finally {
+    await app?.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("desktop imports a chain, keeps retrospective anchors and reopens spatial Notes", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "inquiry-desktop-import-"));
   const env: Record<string, string> = Object.fromEntries(
