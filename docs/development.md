@@ -69,6 +69,8 @@ Automated tests mock authentication and inference and do not establish live acco
 
 ## Data and failures
 
+Use the bin icon in the Board toolbar to **Delete Board**, or open a Note and use its bin icon to **Delete Note**. Both actions require confirmation and cannot be undone. Note deletion includes every descendant; the confirmation shows the total count. Existing synthesis keeps read-only copies of deleted source Notes, available through source links. Board deletion removes its Notes and synthesis documents. Deleting the last Board opens a fresh empty Board.
+
 Desktop Boards and settings live in `inquiry.sqlite` under the existing Electron user-data directory. Noteboard retains the original Inquiry storage location so renaming the app keeps saved Boards and provider settings available. Export a JSON Board for a portable copy. Import gives it a new Board identity and preserves internal provenance. Browser preview data is isolated in localStorage and is not automatically transferred to desktop; use export/import.
 
 Generation errors retain the entered question for retry. Cancellation creates no partial Note or artefact. Persistence errors appear in the workspace; export the Board if saving fails. Only one generation runs at a time; changing Boards/provider settings is disabled during inference.

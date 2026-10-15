@@ -163,6 +163,7 @@ export const ArtefactSchema = z.object({
   format: z.enum(["journey", "explanation", "structured"]),
   noteIds: z.array(z.string()),
   sourceVersions: z.record(z.string(), z.string()),
+  archivedSources: z.array(NoteSchema).optional(),
   versions: z.array(DocumentVersionSchema).min(1),
 });
 export type Artefact = z.infer<typeof ArtefactSchema>;
@@ -279,15 +280,21 @@ export function validateBoard(value: unknown): Board {
   }
   if (b.notes.length && b.notes.length - b.edges.length !== 1)
     throw new Error("A Board must contain one rooted tree");
-  for (const a of b.artefacts)
+  for (const a of b.artefacts) {
+    const archived = a.archivedSources ?? [];
+    if (
+      new Set(archived.map((n) => n.id)).size !== archived.length ||
+      archived.some((n) => ids.has(n.id) || !a.noteIds.includes(n.id))
+    )
+      throw new Error("Invalid archived synthesis source");
     for (const id of a.noteIds) {
+      const source = noteById.get(id) ?? archived.find((n) => n.id === id);
       if (
-        !ids.has(id) ||
-        !b.notes
-          .find((n) => n.id === id)!
-          .versions.some((v) => v.id === a.sourceVersions[id])
+        !source ||
+        !source.versions.some((v) => v.id === a.sourceVersions[id])
       )
         throw new Error("Invalid synthesis source");
     }
+  }
   return b;
 }

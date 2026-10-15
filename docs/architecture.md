@@ -40,6 +40,10 @@ Appearance preferences (Note style, theme, accent colour, reading text size, ind
 
 JSON export includes exploration and artefacts, not provider or appearance settings. Import validates the tree and anchors and gives the imported Board a new ID. Browser preview uses localStorage and demo inference only, explicitly identified in the interface.
 
+Human-confirmed Note deletion removes the selected subtree and its incident Edges without reparenting surviving Notes. Artefacts retain deleted source Notes in optional `archivedSources` snapshots, including original response versions; validation resolves each source against active Notes or its artefact's archived sources. Source links to deleted Notes open a read-only source view at the recorded response version. Archived Notes cannot create branches or enter new synthesis/context. This additive version 2 field requires this app version when opening exports containing deleted synthesis sources. Deleting a root leaves an empty Board with its existing artefacts.
+
+Human-confirmed Board deletion removes its SQLite row through a validated narrow IPC action (or its localStorage snapshot in preview). Deletion is serialised with pending saves; queued snapshots skip deleted Board IDs to prevent resurrection. The renderer changes Boards only after deletion succeeds and retains the Board for retry on failure. Deleting the last Board opens a fresh empty Board, preventing the synthetic example from reappearing on restart. Provider settings and credentials remain independent.
+
 ## Synthesis
 
 A learning journey is deterministic and preserves original prompts/responses. Integrated explanations and structured artefacts use the configured provider with user-selected source Notes. Artefacts store source IDs and response version IDs, generated context and a history of generated/edited Markdown document versions. Source links use `inquiry://note/ID` and reopen the Note. The editor supports Markdown plus formatted preview. Returning to Explore or another artefact saves a changed revision in memory and queues local persistence.

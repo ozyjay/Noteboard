@@ -1,4 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
+import { z } from "zod";
 import {
   validateBoard,
   SettingsSchema,
@@ -33,6 +34,10 @@ export class Store {
     return row
       ? SettingsSchema.parse(JSON.parse(row.data as string))
       : defaults;
+  }
+  delete(value: unknown) {
+    const id = z.string().min(1).max(200).parse(value);
+    this.db.prepare("DELETE FROM boards WHERE id=?").run(id);
   }
   saveSettings(value: unknown) {
     const s = SettingsSchema.parse(value);

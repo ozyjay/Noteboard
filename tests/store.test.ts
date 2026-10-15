@@ -12,6 +12,32 @@ import {
   parseChatGPTExport,
 } from "../src/core/chatgpt-import";
 import { DatabaseSync } from "node:sqlite";
+import { deleteNote } from "../src/core/deletion";
+
+it("reopens deleted Boards and Notes without losing other Boards or settings", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "inquiry-delete-"));
+  const db = path.join(dir, "test.sqlite");
+  try {
+    let store = new Store(db);
+    const removed = exampleBoard();
+    const retained = exampleBoard();
+    store.save(removed);
+    store.save(retained);
+    store.saveSettings(defaults);
+    expect(() => store.delete({ id: removed.id })).toThrow();
+    expect(store.list()).toHaveLength(2);
+    store.delete(removed.id);
+    const updated = deleteNote(retained, retained.notes[1].id);
+    store.save(updated);
+    store.close();
+    store = new Store(db);
+    expect(store.list()).toEqual([updated]);
+    expect(store.settings()).toEqual(defaults);
+    store.close();
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 it("reopens imported chains and migrates existing v1 JSON without replacing identities", () => {
   const dir = mkdtempSync(path.join(tmpdir(), "inquiry-import-"));

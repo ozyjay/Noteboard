@@ -40,10 +40,12 @@ import {
   Palette,
   Maximize2,
   Minimize2,
+  Trash2,
 } from "lucide-react";
 import { ChatGPTImport } from "./components/ChatGPTImport";
 import { annotateContinuation, MAX_EXPORT_BYTES } from "./core/chatgpt-import";
 import { edgeLabel } from "./core/model";
+import { deleteNote, subtreeIds } from "./core/deletion";
 import { AppearanceSettings } from "./components/AppearanceSettings";
 import { ChatGPTSettings } from "./components/ChatGPTSettings";
 import { providerMessages, type ModelChoice } from "./core/providers";
@@ -100,6 +102,14 @@ export default function App() {
     [settings, setSettings] = useState<Settings>(defaults),
     [ready, setReady] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    boardId: string;
+    noteId?: string;
+  }>();
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [sourcePreview, setSourcePreview] = useState<Note>();
+  const deletedBoards = useRef(new Set<string>());
   const [importSaving, setImportSaving] = useState(false);
   const [continuationTarget, setContinuationTarget] = useState("");
   const [appearanceOpen, setAppearanceOpen] = useState(false);
@@ -207,7 +217,8 @@ export default function App() {
     saveQueue.current = saveQueue.current
       .catch(() => {})
       .then(async () => {
-        for (const b of snapshot) await bridge.saveBoard(b);
+        for (const b of snapshot)
+          if (!deletedBoards.current.has(b.id)) await bridge.saveBoard(b);
         setSaveStatus("Saved locally");
       })
       .catch((e) => {
@@ -259,7 +270,9 @@ export default function App() {
       !providerOpen &&
       !synthOpen &&
       !appearanceOpen &&
-      !importOpen
+      !importOpen &&
+      !deleteTarget &&
+      !sourcePreview
     )
       return;
     const previous = document.activeElement as HTMLElement | null;
@@ -282,13 +295,16 @@ export default function App() {
         !busy &&
         !accountBusy &&
         !appearanceSaving &&
-        !importSaving
+        !importSaving &&
+        !deleting
       ) {
         setComposer(null);
         setProviderOpen(false);
         setSynthOpen(false);
         setAppearanceOpen(false);
         setImportOpen(false);
+        setDeleteTarget(undefined);
+        setSourcePreview(undefined);
       }
       if (event.key === "Tab") {
         const elements = focusable(),
@@ -318,6 +334,9 @@ export default function App() {
     appearanceSaving,
     importOpen,
     importSaving,
+    Boolean(deleteTarget),
+    Boolean(sourcePreview),
+    deleting,
   ]);
   function changeBoard(fn: (b: Board) => Board) {
     setBoards((current) =>
@@ -334,9 +353,31 @@ export default function App() {
   }, []);
   function goSource(id: string) {
     if (!board?.notes.some((n) => n.id === id)) {
+      const sourceArtefact =
+        board?.artefacts.find(
+          (a) =>
+            a.id === activeArtefact &&
+            a.archivedSources?.some((n) => n.id === id),
+        ) ??
+        board?.artefacts.find((a) =>
+          a.archivedSources?.some((n) => n.id === id),
+        );
+      const archived = sourceArtefact?.archivedSources?.find(
+        (n) => n.id === id,
+      );
+      if (archived && sourceArtefact) {
+        setSourcePreview({
+          ...archived,
+          versions: archived.versions.filter(
+            (v) => v.id === sourceArtefact.sourceVersions[id],
+          ),
+        });
+        return;
+      }
       setError("The source Note is not in this Board");
       return;
     }
+    setSourcePreview(undefined);
     read(id);
     const n = board.notes.find((n) => n.id === id)!;
     void setCenter(n.position.x + 150, n.position.y + 100, {
@@ -371,6 +412,50 @@ export default function App() {
     resetPanels();
     setPrompt("");
     setComposer({});
+  }
+  async function confirmDeletion() {
+    if (
+      !board ||
+      !deleteTarget ||
+      busy ||
+      deleting ||
+      deleteTarget.boardId !== board.id
+    )
+      return;
+    setDeleteError("");
+    if (deleteTarget.noteId) {
+      const ids = subtreeIds(board, deleteTarget.noteId);
+      preserveDraft();
+      changeBoard((b) => deleteNote(b, deleteTarget.noteId!));
+      setSelected((current) => current.filter((id) => !ids.has(id)));
+      if (readerId && ids.has(readerId)) setReaderId(undefined);
+      setAnchor(undefined);
+      setHighlight(undefined);
+      setContinuationTarget("");
+      setDeleteTarget(undefined);
+      return;
+    }
+    setDeleting(true);
+    deletedBoards.current.add(board.id);
+    try {
+      const deletion = saveQueue.current
+        .catch(() => {})
+        .then(() => bridge.deleteBoard(board.id));
+      saveQueue.current = deletion;
+      await deletion;
+      const remaining = boards.filter((b) => b.id !== board.id);
+      if (!remaining.length) remaining.push(newBoard());
+      setBoards(remaining);
+      setBoardId(remaining[0].id);
+      resetPanels();
+      setDeleteTarget(undefined);
+    } catch (e) {
+      deletedBoards.current.delete(board.id);
+      setBoards((current) => [...current]);
+      setDeleteError(`Could not delete the Board: ${errorText(e)}`);
+    } finally {
+      setDeleting(false);
+    }
   }
   async function generate(
     messages: ReturnType<typeof buildContext>,
@@ -822,6 +907,17 @@ export default function App() {
           </div>
           <div className="topbar-actions">
             <button
+              aria-label="Delete Board"
+              title="Delete Board"
+              disabled={busy || !board}
+              onClick={() => {
+                setDeleteError("");
+                setDeleteTarget({ boardId });
+              }}
+            >
+              <Trash2 size={16} />
+            </button>
+            <button
               aria-label="Appearance settings"
               title="Appearance settings"
               onClick={() => {
@@ -1042,6 +1138,17 @@ export default function App() {
                     <BookOpen size={15} /> NOTE{" "}
                     {String(board!.notes.indexOf(note) + 1).padStart(2, "0")}
                   </span>
+                  <button
+                    aria-label="Delete Note"
+                    title="Delete Note"
+                    disabled={busy}
+                    onClick={() => {
+                      setDeleteError("");
+                      setDeleteTarget({ boardId, noteId: note.id });
+                    }}
+                  >
+                    <Trash2 size={17} />
+                  </button>
                   <button
                     aria-label={
                       readerExpanded ? "Collapse Note" : "Expand Note"
@@ -2020,6 +2127,111 @@ export default function App() {
                 </button>
               </div>
             </form>
+          </section>
+        </div>
+      )}
+      {deleteTarget && board && (
+        <div className="modal-backdrop">
+          <section
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label={deleteTarget.noteId ? "Delete Note" : "Delete Board"}
+          >
+            <h2>
+              {deleteTarget.noteId ? "Delete this Note?" : "Delete this Board?"}
+            </h2>
+            {deleteTarget.noteId ? (
+              <>
+                <p>
+                  “
+                  {board.notes.find((n) => n.id === deleteTarget.noteId)
+                    ?.title ??
+                    board.notes.find((n) => n.id === deleteTarget.noteId)
+                      ?.prompt}
+                  ” and its descendants will be removed:{" "}
+                  {subtreeIds(board, deleteTarget.noteId).size} Notes in total.
+                </p>
+                <p>
+                  Existing synthesis documents keep read-only copies of their
+                  deleted source Notes.
+                </p>
+              </>
+            ) : (
+              <p>
+                “{board.title}” and all its {board.notes.length} Notes and{" "}
+                {board.artefacts.length} synthesis documents will be deleted.
+              </p>
+            )}
+            <p>This cannot be undone.</p>
+            {deleteError && (
+              <p className="form-error" role="alert">
+                {deleteError}
+              </p>
+            )}
+            <div className="modal-actions">
+              <button
+                className="secondary"
+                disabled={deleting}
+                onClick={() => setDeleteTarget(undefined)}
+              >
+                Cancel
+              </button>
+              <button
+                className="danger"
+                disabled={deleting}
+                onClick={() => void confirmDeletion()}
+              >
+                {deleting
+                  ? "Deleting…"
+                  : deleteTarget.noteId
+                    ? "Delete Note and descendants"
+                    : "Delete Board permanently"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+      {sourcePreview && (
+        <div className="modal-backdrop">
+          <section
+            className="modal archived-source"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Archived source Note"
+          >
+            <div className="panel-head">
+              <span>ARCHIVED SOURCE NOTE</span>
+              <button
+                aria-label="Close source Note"
+                onClick={() => setSourcePreview(undefined)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <p className="muted">
+              Deleted from the Board. This read-only source is preserved for
+              synthesis provenance.
+            </p>
+            <h2>{sourcePreview.title ?? sourcePreview.prompt}</h2>
+            {sourcePreview.title && <p>{sourcePreview.prompt}</p>}
+            <p className="muted small">
+              {response(sourcePreview).provider === "demo"
+                ? "SYNTHETIC DEMO"
+                : response(sourcePreview).origin === "imported"
+                  ? "Imported from ChatGPT"
+                  : response(sourcePreview).provider}
+              {" · Model: "}
+              {response(sourcePreview).model ?? "Unknown"}
+              {" · Source version: "}
+              {response(sourcePreview).id}
+            </p>
+            <div className="prose">
+              <Markdown
+                text={response(sourcePreview).text}
+                onSource={goSource}
+              />
+            </div>
           </section>
         </div>
       )}

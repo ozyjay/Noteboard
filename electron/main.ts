@@ -113,6 +113,7 @@ if (primaryInstance)
     store = new Store(path.join(app.getPath("userData"), "inquiry.sqlite"));
     handle("boards:list", () => store.list());
     handle("boards:save", (b) => store.save(b));
+    handle("boards:delete", (id) => store.delete(id));
     handle("settings:get", () => store.settings());
     handle("settings:save", (s) => {
       const parsed = SettingsSchema.parse(s);

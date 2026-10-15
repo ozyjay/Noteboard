@@ -178,6 +178,42 @@ test("production desktop bridge saves and reopens an inquiry in SQLite", async (
         () => typeof (window as unknown as { require?: unknown }).require,
       ),
     ).toBe("undefined");
+    await page.locator(".note-card .note-prompt").click();
+    await page
+      .getByRole("button", { name: "Delete Note", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Delete Note and descendants", exact: true })
+      .click();
+    await expect(page.locator(".note-card")).toHaveCount(0);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          async () =>
+            (await window.inquiry!.listBoards()).find(
+              (b) => b.title === "My persisted desktop question",
+            )!.notes.length,
+        ),
+      )
+      .toBe(0);
+    await page
+      .getByRole("button", { name: "Delete Board", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Delete Board permanently", exact: true })
+      .click();
+    await expect(page.locator(".note-card")).toHaveCount(3);
+    await app.close();
+    app = await electron.launch({ args: [".", `--user-data-dir=${dir}`], env });
+    page = await app.firstWindow();
+    await expect(page.locator(".note-card")).toHaveCount(3);
+    expect(
+      await page.evaluate(async () =>
+        (await window.inquiry!.listBoards()).some(
+          (b) => b.title === "My persisted desktop question",
+        ),
+      ),
+    ).toBe(false);
   } finally {
     await app?.close();
     rmSync(dir, { recursive: true, force: true });

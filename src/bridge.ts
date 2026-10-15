@@ -25,6 +25,7 @@ export interface InquiryBridge {
   chatgptUsage(): Promise<void>;
   listBoards(): Promise<Board[]>;
   saveBoard(board: Board): Promise<void>;
+  deleteBoard(id: string): Promise<void>;
   getSettings(): Promise<Settings>;
   saveSettings(settings: Settings): Promise<void>;
   models(settings: Settings): Promise<ModelChoice[]>;
@@ -66,6 +67,15 @@ const preview: InquiryBridge = {
   async getSettings() {
     const stored = localStorage.getItem("inquiry.settings");
     return stored ? SettingsSchema.parse(JSON.parse(stored)) : defaults;
+  },
+  async deleteBoard(id) {
+    if (typeof id !== "string" || !id.length || id.length > 200)
+      throw new Error("Invalid Board identifier");
+    const boards = await this.listBoards();
+    localStorage.setItem(
+      "inquiry.boards",
+      JSON.stringify(boards.filter((b) => b.id !== id)),
+    );
   },
   async saveSettings(settings) {
     localStorage.setItem(

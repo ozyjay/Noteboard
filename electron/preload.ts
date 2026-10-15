@@ -8,6 +8,7 @@ const bridge: InquiryBridge = {
   chatgptUsage: () => ipcRenderer.invoke("chatgpt:usage"),
   listBoards: () => ipcRenderer.invoke("boards:list"),
   saveBoard: (b) => ipcRenderer.invoke("boards:save", b),
+  deleteBoard: (id) => ipcRenderer.invoke("boards:delete", id),
   getSettings: () => ipcRenderer.invoke("settings:get"),
   saveSettings: (s) => ipcRenderer.invoke("settings:save", s),
   models: (s) => ipcRenderer.invoke("provider:models", s),
