@@ -660,25 +660,13 @@ h1 {
 .note-card {
   width: 300px;
   min-height: 220px;
-  border-radius: 3px;
+  border-radius: 8px;
   padding: 20px 20px 14px;
-  border: 1px solid rgba(105, 105, 70, 0.12);
-  box-shadow:
-    1px 3px 5px #4b542510,
-    0 10px 22px #4b542508;
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--note-paper);
+  background: color-mix(in srgb, var(--surface), var(--note-paper) 12%);
+  box-shadow: 0 2px 5px #00000008;
   transition: box-shadow 0.2s;
-}
-.note-card.colour-0 {
-  background: var(--note-0);
-}
-.note-card.colour-1 {
-  background: var(--note-1);
-}
-.note-card.colour-2 {
-  background: var(--note-2);
-}
-.note-card.colour-3 {
-  background: var(--note-3);
 }
 .colour-0 {
   --note-paper: var(--note-0);
@@ -693,43 +681,57 @@ h1 {
   --note-paper: var(--note-3);
 }
 :root[data-note-style="sticky"] {
-  --note-0: #fff0a6;
-  --note-1: #e2efbb;
-  --note-2: #f3d9e4;
-  --note-3: #d7edf2;
+  --canvas: #e9e0ce;
+  --grid: #bcad95;
+  --minimap-mask: #e9e0cea6;
+  --note-0: #ffe681;
+  --note-1: #d5e99a;
+  --note-2: #f6bfd4;
+  --note-3: #b9e3ef;
+  --paper-ink: #343126;
+  --paper-ink-secondary: #595344;
+  --paper-tape: #fff9dcad;
 }
 :root[data-note-style="sticky"][data-theme="dark"] {
-  --note-0: #51492e;
-  --note-1: #3d4b32;
-  --note-2: #513b47;
-  --note-3: #334c54;
+  --canvas: #29261f;
+  --grid: #5c5241;
+  --minimap-mask: #29261fb3;
+  --note-0: #75602f;
+  --note-1: #4c6335;
+  --note-2: #774456;
+  --note-3: #345f6d;
+  --paper-ink: #fff4de;
+  --paper-ink-secondary: #f0e0c9;
+  --paper-tape: #c3ae7866;
 }
 :root[data-note-style="sticky"] .note-card {
+  --text: var(--paper-ink);
+  --text-secondary: var(--paper-ink-secondary);
   position: relative;
   min-height: 270px;
   padding: 34px 22px 30px;
-  border-radius: 1px 2px 18px 2px;
-  border-color: color-mix(in srgb, var(--note-paper), var(--text) 12%);
+  border-radius: 1px 2px 28px 2px;
+  border: 1px solid color-mix(in srgb, var(--note-paper), var(--text) 16%);
   background:
     repeating-linear-gradient(0deg, transparent 0 3px, #00000002 3px 4px),
     linear-gradient(
       to bottom,
-      color-mix(in srgb, var(--note-paper), var(--text) 9%) 0,
-      var(--note-paper) 52px,
+      color-mix(in srgb, var(--note-paper), var(--text) 16%) 0,
+      var(--note-paper) 46px,
       color-mix(in srgb, var(--note-paper), var(--surface) 12%) 100%
     );
   box-shadow:
-    0 1px 2px #00000018,
-    2px 16px 15px -9px #00000045;
+    0 2px 3px #00000020,
+    4px 18px 18px -8px #00000050;
 }
 :root[data-note-style="sticky"] .note-card::before {
   content: "";
   position: absolute;
-  top: -10px;
-  left: calc(50% - 39px);
-  width: 78px;
-  height: 25px;
-  background: color-mix(in srgb, var(--surface), transparent 38%);
+  top: -13px;
+  left: calc(50% - 48px);
+  width: 96px;
+  height: 30px;
+  background: var(--paper-tape);
   border: 1px solid color-mix(in srgb, var(--text), transparent 90%);
   box-shadow: 0 1px 2px #00000008;
   transform: rotate(-3deg);
@@ -740,9 +742,9 @@ h1 {
   position: absolute;
   right: -1px;
   bottom: -1px;
-  width: 30px;
-  height: 30px;
-  border-radius: 2px 0 16px 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 2px 0 26px 0;
   background: linear-gradient(
     135deg,
     color-mix(in srgb, var(--note-paper), var(--text) 16%) 48%,
@@ -765,7 +767,15 @@ h1 {
   margin-bottom: 20px;
 }
 :root[data-note-style="sticky"] .note-bottom {
+  border-top-color: color-mix(in srgb, var(--note-paper), var(--text) 28%);
   border-top-style: dashed;
+}
+:root[data-note-style="sticky"] .note-prompt {
+  font-size: 22px;
+  line-height: 1.35;
+}
+:root[data-note-style="sticky"] .note-takeaway {
+  font-size: 12px;
 }
 :root[data-note-style="sticky"] .canvas {
   background-image: radial-gradient(

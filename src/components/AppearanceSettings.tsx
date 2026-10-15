@@ -52,6 +52,7 @@ export function AppearanceSettings({
               Note style
               <select
                 aria-label="Note style"
+                aria-describedby="note-style-description"
                 value={value.noteStyle}
                 onChange={(event) =>
                   onChange({
@@ -63,6 +64,11 @@ export function AppearanceSettings({
                 <option value="classic">Classic</option>
                 <option value="sticky">Sticky notes</option>
               </select>
+              <small id="note-style-description" className="muted">
+                {value.noteStyle === "classic"
+                  ? "Clean cards, subtle colour tabs and a cool, quiet canvas."
+                  : "Colourful paper, taped tops and curled corners on a warm canvas."}
+              </small>
             </label>
             <label>
               Theme
