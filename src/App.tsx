@@ -90,6 +90,7 @@ import { appendRevision } from "./core/revisions";
 import { pathVersions, versionPath } from "./core/context";
 import { versionPrompt, noteAtVersion } from "./core/model";
 import { NoteTitle } from "./components/NoteTitle";
+import { BoardMenu, type BoardMenuTarget } from "./components/BoardMenu";
 import {
   defaultCustomInstructions,
   MAX_CUSTOM_INSTRUCTIONS,
@@ -113,6 +114,9 @@ export default function App() {
     [ready, setReady] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [renameDraft, setRenameDraft] = useState<string>();
+  const [renameBoardId, setRenameBoardId] = useState("");
+  const [boardMenu, setBoardMenu] = useState<BoardMenuTarget>();
+  const closeBoardMenu = useCallback(() => setBoardMenu(undefined), []);
   const [deleteTarget, setDeleteTarget] = useState<{
     boardId: string;
     noteId?: string;
@@ -205,6 +209,8 @@ export default function App() {
     if (!readerId) setReaderExpanded(false);
   }, [readerId]);
   const board = boards.find((b) => b.id === boardId);
+  const renameBoard = boards.find((b) => b.id === renameBoardId);
+  const deletionBoard = boards.find((b) => b.id === deleteTarget?.boardId);
   const note = board?.notes.find((n) => n.id === readerId);
   const version = note
     ? (note.versions.find(
@@ -475,17 +481,18 @@ export default function App() {
     setComposer({});
   }
   async function confirmDeletion() {
+    const targetBoard = deletionBoard;
     if (
-      !board ||
+      !targetBoard ||
       !deleteTarget ||
       busy ||
       deleting ||
-      deleteTarget.boardId !== board.id
+      (deleteTarget.noteId && targetBoard.id !== boardId)
     )
       return;
     setDeleteError("");
     if (deleteTarget.noteId) {
-      const ids = subtreeIds(board, deleteTarget.noteId);
+      const ids = subtreeIds(targetBoard, deleteTarget.noteId);
       preserveDraft();
       changeBoard((b) => deleteNote(b, deleteTarget.noteId!));
       setSelected((current) => current.filter((id) => !ids.has(id)));
@@ -497,21 +504,23 @@ export default function App() {
       return;
     }
     setDeleting(true);
-    deletedBoards.current.add(board.id);
+    deletedBoards.current.add(targetBoard.id);
     try {
       const deletion = saveQueue.current
         .catch(() => {})
-        .then(() => bridge.deleteBoard(board.id));
+        .then(() => bridge.deleteBoard(targetBoard.id));
       saveQueue.current = deletion;
       await deletion;
-      const remaining = boards.filter((b) => b.id !== board.id);
+      const remaining = boards.filter((b) => b.id !== targetBoard.id);
       if (!remaining.length) remaining.push(newBoard());
       setBoards(remaining);
-      setBoardId(remaining[0].id);
-      resetPanels();
+      if (targetBoard.id === boardId) {
+        setBoardId(remaining[0].id);
+        resetPanels();
+      }
       setDeleteTarget(undefined);
     } catch (e) {
-      deletedBoards.current.delete(board.id);
+      deletedBoards.current.delete(targetBoard.id);
       setBoards((current) => [...current]);
       setDeleteError(`Could not delete the Board: ${errorText(e)}`);
     } finally {
@@ -905,6 +914,35 @@ export default function App() {
                 key={b.id}
                 disabled={busy}
                 className={b.id === boardId ? "active" : ""}
+                aria-haspopup="menu"
+                aria-expanded={boardMenu?.boardId === b.id}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  if (busy || deleting) return;
+                  event.currentTarget.focus();
+                  setBoardMenu({
+                    boardId: b.id,
+                    x: event.clientX,
+                    y: event.clientY,
+                    trigger: event.currentTarget,
+                  });
+                }}
+                onKeyDown={(event) => {
+                  if (
+                    event.key !== "ContextMenu" &&
+                    !(event.shiftKey && event.key === "F10")
+                  )
+                    return;
+                  event.preventDefault();
+                  if (busy || deleting) return;
+                  const bounds = event.currentTarget.getBoundingClientRect();
+                  setBoardMenu({
+                    boardId: b.id,
+                    x: bounds.left,
+                    y: bounds.bottom,
+                    trigger: event.currentTarget,
+                  });
+                }}
                 onClick={() => {
                   preserveDraft();
                   setBoardId(b.id);
@@ -1105,7 +1143,11 @@ export default function App() {
                 aria-label="Rename Board"
                 title="Rename Board"
                 disabled={busy || !board}
-                onClick={() => setRenameDraft(board?.title)}
+                onClick={() => {
+                  if (!board) return;
+                  setRenameBoardId(board.id);
+                  setRenameDraft(board.title);
+                }}
               >
                 <Pencil size={16} />
               </button>
@@ -2402,7 +2444,23 @@ export default function App() {
           </section>
         </div>
       )}
-      {renameDraft !== undefined && board && (
+      {boardMenu && (
+        <BoardMenu
+          target={boardMenu}
+          onClose={closeBoardMenu}
+          onRename={() => {
+            const target = boards.find((b) => b.id === boardMenu.boardId);
+            if (!target) return;
+            setRenameBoardId(target.id);
+            setRenameDraft(target.title);
+          }}
+          onDelete={() => {
+            setDeleteError("");
+            setDeleteTarget({ boardId: boardMenu.boardId });
+          }}
+        />
+      )}
+      {renameDraft !== undefined && renameBoard && (
         <div className="modal-backdrop">
           <section
             className="modal"
@@ -2416,8 +2474,14 @@ export default function App() {
                 event.preventDefault();
                 const title = renameDraft.trim();
                 if (!title || title.length > 200) return;
-                if (title !== board.title)
-                  changeBoard((b) => ({ ...b, title }));
+                if (title !== renameBoard.title)
+                  setBoards((current) =>
+                    current.map((b) =>
+                      b.id === renameBoard.id
+                        ? { ...b, title, updatedAt: now() }
+                        : b,
+                    ),
+                  );
                 setRenameDraft(undefined);
               }}
             >
@@ -2448,7 +2512,7 @@ export default function App() {
           </section>
         </div>
       )}
-      {deleteTarget && board && (
+      {deleteTarget && deletionBoard && (
         <div className="modal-backdrop">
           <section
             className="modal"
@@ -2463,12 +2527,14 @@ export default function App() {
               <>
                 <p>
                   “
-                  {board.notes.find((n) => n.id === deleteTarget.noteId)
+                  {deletionBoard.notes.find((n) => n.id === deleteTarget.noteId)
                     ?.title ??
-                    board.notes.find((n) => n.id === deleteTarget.noteId)
-                      ?.prompt}
+                    deletionBoard.notes.find(
+                      (n) => n.id === deleteTarget.noteId,
+                    )?.prompt}
                   ” and its descendants will be removed:{" "}
-                  {subtreeIds(board, deleteTarget.noteId).size} Notes in total.
+                  {subtreeIds(deletionBoard, deleteTarget.noteId).size} Notes in
+                  total.
                 </p>
                 <p>
                   Existing synthesis documents keep read-only copies of their
@@ -2477,8 +2543,9 @@ export default function App() {
               </>
             ) : (
               <p>
-                “{board.title}” and all its {board.notes.length} Notes and{" "}
-                {board.artefacts.length} synthesis documents will be deleted.
+                “{deletionBoard.title}” and all its {deletionBoard.notes.length}{" "}
+                Notes and {deletionBoard.artefacts.length} synthesis documents
+                will be deleted.
               </p>
             )}
             <p>This cannot be undone.</p>

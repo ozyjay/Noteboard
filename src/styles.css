@@ -249,6 +249,27 @@ button:hover:not(:disabled) {
   overflow: auto;
   max-height: 35vh;
 }
+.board-context-menu {
+  position: fixed;
+  z-index: 100;
+  width: 180px;
+  padding: 5px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 24px #0003;
+}
+.board-context-menu button {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 9px;
+  padding: 10px;
+  border-radius: 4px;
+}
+.board-context-menu button:hover,
+.board-context-menu button:focus-visible {
+  background: var(--surface-muted);
+}
 .boards button {
   width: 100%;
   text-align: left;

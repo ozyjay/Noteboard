@@ -22,9 +22,8 @@ test("desktop reopens a renamed Board from SQLite", async () => {
     const original = await page.evaluate(
       async () => (await window.inquiry!.listBoards())[0],
     );
-    await page
-      .getByRole("button", { name: "Rename Board", exact: true })
-      .click();
+    await page.locator(".boards button").first().click({ button: "right" });
+    await page.getByRole("menuitem", { name: "Rename", exact: true }).click();
     await page
       .getByRole("textbox", { name: "Board name" })
       .fill("My renamed exploration");
