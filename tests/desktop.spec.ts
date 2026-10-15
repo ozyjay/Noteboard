@@ -89,7 +89,7 @@ test("desktop imports a chain, keeps retrospective anchors and reopens spatial N
     );
     expect({ ...reopened, updatedAt: saved!.updatedAt }).toEqual(saved);
     await page.getByRole("button", { name: "Fit View", exact: true }).click();
-    await page.locator(".react-flow__edge").click();
+    await page.locator(".edge-label").click();
     expect(await page.evaluate(() => getSelection()?.toString())).toBe("term");
     await expect(page.locator(".reader-scroll")).toContainText(
       "Imported from ChatGPT",

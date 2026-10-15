@@ -11,10 +11,8 @@ import {
   Controls,
   MiniMap,
   useReactFlow,
-  useViewport,
   useNodesInitialized,
   MarkerType,
-  type Edge as FlowEdge,
   type NodeChange,
 } from "@xyflow/react";
 import {
@@ -79,6 +77,10 @@ import { selectMaterial, journey, synthesisContext } from "./core/synthesis";
 import { captureHighlight, findHighlightRange } from "./core/selection";
 import { exampleBoard } from "./core/example";
 import { NoteCard, type CardNode } from "./components/NoteCard";
+import {
+  HighlightEdge,
+  type HighlightFlowEdge,
+} from "./components/HighlightEdge";
 import { NoteReader } from "./components/NoteReader";
 import { NoteRevision, type RevisionMode } from "./components/NoteRevision";
 import { appendRevision } from "./core/revisions";
@@ -91,6 +93,7 @@ import {
 } from "./core/instructions";
 import { Markdown } from "./components/Markdown";
 const nodeTypes = { note: NoteCard };
+const edgeTypes = { highlight: HighlightEdge };
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 function download(name: string, text: string, type: string) {
   const url = URL.createObjectURL(new Blob([text], { type }));
@@ -190,7 +193,6 @@ export default function App() {
   const currentSettingsDraft = useRef(settingsDraft);
   currentSettingsDraft.current = settingsDraft;
   const { fitView, setCenter, setViewport } = useReactFlow();
-  const { zoom } = useViewport();
   const nodesInitialised = useNodesInitialized();
   const layoutBoard = useRef<string | undefined>(undefined);
   useEffect(() => {
@@ -818,28 +820,30 @@ export default function App() {
     },
     [boardId],
   );
-  const edges: FlowEdge[] =
+  function openEdgeSource(id: string) {
+    const e = board!.edges.find((edge) => edge.id === id)!;
+    read(
+      e.source,
+      e.highlight?.versionId ??
+        board!.notes.find((n) => n.id === e.source)!.versions[0].id,
+    );
+    setAnchor(e.highlight);
+    setHighlight(undefined);
+  }
+  const edges: HighlightFlowEdge[] =
     board?.edges.map((e) => ({
       id: e.id,
       source: e.source,
       target: e.target,
-      label:
-        zoom > 0.55
-          ? edgeLabel(e).length > 42
-            ? edgeLabel(e).slice(0, 39) + "…"
-            : edgeLabel(e)
-          : undefined,
-      type: "smoothstep",
+      data: { text: edgeLabel(e), onOpenSource: () => openEdgeSource(e.id) },
+      type: "highlight",
+      focusable: false,
       markerEnd: { type: MarkerType.ArrowClosed, color: "var(--edge)" },
       style: {
         stroke: "var(--edge)",
         strokeWidth: 1.5,
         ...(e.kind === "continuation" ? { strokeDasharray: "6 4" } : {}),
       },
-      labelStyle: { fontSize: 11, fill: "var(--text-secondary)" },
-      labelBgStyle: { fill: "var(--canvas)", fillOpacity: 0.95 },
-      labelBgPadding: [8, 5],
-      labelBgBorderRadius: 5,
     })) || [];
   const incoming = board?.edges.find((e) => e.target === readerId);
   function readParent() {
@@ -1140,17 +1144,8 @@ export default function App() {
                     ),
                   }))
                 }
-                onEdgeClick={(_, edge) => {
-                  const e = board!.edges.find((e) => e.id === edge.id)!;
-                  read(
-                    e.source,
-                    e.highlight?.versionId ??
-                      board!.notes.find((n) => n.id === e.source)!.versions[0]
-                        .id,
-                  );
-                  setAnchor(e.highlight);
-                  setHighlight(undefined);
-                }}
+                edgeTypes={edgeTypes}
+                onEdgeClick={(_, edge) => openEdgeSource(edge.id)}
                 onMoveEnd={(_, viewport) =>
                   changeBoard((b) => ({ ...b, viewport }))
                 }
