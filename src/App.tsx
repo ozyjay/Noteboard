@@ -304,6 +304,7 @@ export default function App() {
         ),
       );
     (
+      dialog.querySelector<HTMLElement>("[data-modal-focus]:not(:disabled)") ||
       dialog.querySelector<HTMLElement>("[autofocus]:not(:disabled)") ||
       dialog.querySelector<HTMLElement>("textarea:not(:disabled)") ||
       focusable()[0]
@@ -1993,6 +1994,7 @@ export default function App() {
                   <button
                     type="button"
                     className="secondary"
+                    data-modal-focus
                     onClick={() => {
                       cancelled.current = true;
                       if (generation.current)

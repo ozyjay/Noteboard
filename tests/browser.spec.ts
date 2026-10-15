@@ -923,6 +923,13 @@ test("ChatGPT account settings and effective context survive branching and reope
         if (req.messages.some((message) => message.role === "system"))
           throw new Error("Unexpected system message");
         localStorage.setItem("test.request", JSON.stringify(req));
+        if (req.purpose === "explore" && req.messages.length > 2) {
+          await new Promise<void>((resolve) => {
+            window.addEventListener("test:finish-generation", () => resolve(), {
+              once: true,
+            });
+          });
+        }
         const text =
           req.purpose === "explore"
             ? "## Example\n\nConnected ideas can support an inquiry.\n\nTakeaway: Follow connected ideas."
@@ -1006,7 +1013,24 @@ test("ChatGPT account settings and effective context survive branching and reope
     element.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
   });
   await page.getByRole("button", { name: "Explore this passage" }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Your question" }),
+  ).toBeFocused();
   await page.getByRole("textbox", { name: "Your question" }).press("Enter");
+  const cancelGeneration = page.getByRole("button", {
+    name: "Cancel generation",
+    exact: true,
+  });
+  await expect(cancelGeneration).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(
+    page.getByRole("button", { name: "Manage usage", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(cancelGeneration).toBeFocused();
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("test:finish-generation"));
+  });
   await expect(page.locator(".note-card")).toHaveCount(2);
   const saved = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("test.boards") || "[]"),
