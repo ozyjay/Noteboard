@@ -2,6 +2,7 @@ import {
   app,
   BrowserWindow,
   ipcMain,
+  Menu,
   safeStorage,
   shell,
   systemPreferences,
@@ -60,6 +61,24 @@ function createWindow() {
   });
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   window.webContents.on("will-navigate", (event) => event.preventDefault());
+  if (process.platform === "darwin") {
+    const editMenu = Menu.buildFromTemplate([
+      { role: "undo" },
+      { role: "redo" },
+      { type: "separator" },
+      { role: "cut" },
+      { role: "copy" },
+      { role: "paste" },
+      { role: "pasteAndMatchStyle" },
+      { type: "separator" },
+      { role: "selectAll" },
+    ]);
+    window.webContents.on("context-menu", (_event, params) => {
+      if (!params.isEditable || !params.frame || !window) return;
+      // macOS adds Writing Tools only when the native menu has a target frame.
+      editMenu.popup({ window, frame: params.frame });
+    });
+  }
   window.on("closed", () => {
     for (const c of pending.values()) c.abort();
     pending.clear();

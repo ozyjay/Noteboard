@@ -16,6 +16,8 @@ Revision checks cover revised prompt/response history, immutable originals, exac
 
 For a manual desktop check, run `npm run dev`: create a Board, ask a question, highlight formatted response text, create two branches, click an Edge label, drag a Note, close/reopen the app, then consolidate selected Notes and follow a source link. Use a locally installed Ollama model to verify real inference and cancellation separately from demo/mocked tests.
 
+On a Mac with Apple Intelligence enabled, select text in a prompt composer, **Revised prompt**, **Revised response** and synthesis editor, then right-click and use **Writing Tools**. Confirm the replacement remains in the draft, Cancel discards it, and saving a revised response retains its original version and existing Highlight links. Check native Undo/Redo and Cut/Copy/Paste as well. Automated desktop checks do not establish availability or rewrite quality of the macOS service.
+
 Changes to response rendering must retain the exact rendered text snapshot or introduce explicit anchor migration; test repeated passage selection and selection across inline formatting. Changes to providers must not use tests that silently incur paid inference.
 
 ## Initial validation — 10 October 2026
