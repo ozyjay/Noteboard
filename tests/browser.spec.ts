@@ -666,7 +666,7 @@ test("custom instructions save, cancel and persist in future generation records"
 
 test("editable titles preserve prompts and connected notes navigate both ways after reopening", async ({
   page,
-}) => {
+}, testInfo) => {
   await page.goto("/");
   await expect(page.getByText("Saved locally", { exact: true })).toBeVisible();
   const readBoard = () =>
@@ -681,22 +681,28 @@ test("editable titles preserve prompts and connected notes navigate both ways af
   });
   await expect(navigation).toContainText("This is the starting note.");
   await expect(navigation.getByRole("button")).toHaveCount(2);
-  await reader.getByRole("button", { name: "Edit title", exact: true }).click();
+  await reader
+    .getByRole("button", { name: "Edit Note title", exact: true })
+    .dblclick();
   const editor = reader.getByRole("textbox", {
     name: "Note title",
     exact: true,
   });
   await editor.fill("Systems overview");
-  await reader.getByRole("button", { name: "Cancel", exact: true }).click();
+  await editor.press("Escape");
+  expect((await readBoard()).notes[0].title).toBeUndefined();
   await expect(
     reader.getByRole("heading", {
       name: original.notes[0].prompt,
       exact: true,
     }),
   ).toBeVisible();
-  await reader.getByRole("button", { name: "Edit title", exact: true }).click();
+  await reader
+    .getByRole("button", { name: "Edit Note title", exact: true })
+    .dblclick();
   await editor.fill("  Systems overview  ");
-  await reader.getByRole("button", { name: "Save title", exact: true }).click();
+  await page.screenshot({ path: testInfo.outputPath("inline-note-title.png") });
+  await editor.press("Enter");
   await expect(
     reader.getByRole("heading", { name: "Systems overview", exact: true }),
   ).toBeVisible();
@@ -712,6 +718,27 @@ test("editable titles preserve prompts and connected notes navigate both ways af
     title: "Systems overview",
   });
   expect(edited.edges).toEqual(original.edges);
+  const title = reader.getByRole("button", {
+    name: "Edit Note title",
+    exact: true,
+  });
+  await title.click();
+  await expect(editor).toHaveCount(0);
+  await title.focus();
+  await title.press("Enter");
+  await expect(editor).toBeFocused();
+  await expect(editor).toHaveValue("Systems overview");
+  await editor.fill("Systems overview draft");
+  await reader.locator(".original-prompt strong").click();
+  await expect(
+    reader.getByRole("heading", {
+      name: "Systems overview draft",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await title.dblclick();
+  await editor.fill("Systems overview");
+  await editor.press("Enter");
   await navigation
     .getByRole("button", { name: original.notes[1].prompt, exact: true })
     .click();
@@ -738,9 +765,11 @@ test("editable titles preserve prompts and connected notes navigate both ways af
   await expect(
     reader.getByRole("heading", { name: "Systems overview", exact: true }),
   ).toBeVisible();
-  await reader.getByRole("button", { name: "Edit title", exact: true }).click();
+  await reader
+    .getByRole("button", { name: "Edit Note title", exact: true })
+    .dblclick();
   await editor.fill(" ");
-  await reader.getByRole("button", { name: "Save title", exact: true }).click();
+  await editor.press("Enter");
   await expect(
     reader.getByRole("heading", {
       name: original.notes[0].prompt,
@@ -2017,9 +2046,11 @@ test("double-clicking Note text opens editors while single clicks and selection 
   await expect(page.getByLabel("Revised prompt")).toBeFocused();
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
 
-  await page.getByRole("button", { name: "Edit title", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Edit Note title", exact: true })
+    .dblclick();
   await page.getByLabel("Note title", { exact: true }).fill("My own title");
-  await page.getByRole("button", { name: "Save title", exact: true }).click();
+  await page.getByLabel("Note title", { exact: true }).press("Enter");
   await expect(page.locator(".reader h2").first()).toHaveText("My own title");
   const prompt = page.getByRole("button", {
     name: "Edit displayed prompt and regenerate",
@@ -2206,7 +2237,7 @@ test("Note revisions preserve old Highlights, synthesis sources and prompts afte
 
 test("revision model choices, failed requests and cancellation preserve the original", async ({
   page,
-}) => {
+}, testInfo) => {
   await page.addInitScript(() => {
     const cancelled = new Set<string>();
     window.inquiry = {
@@ -2333,5 +2364,101 @@ test("revision model choices, failed requests and cancellation preserve the orig
   ).toHaveCount(2);
   await expect(page.locator(".reader-response")).toHaveText(
     "A completed replacement.",
+  );
+  const beforeReview = await page.evaluate(
+    () => JSON.parse(localStorage.getItem("mock.boards")!)[0],
+  );
+  await page
+    .getByRole("button", { name: "Sanity check & improve", exact: true })
+    .click();
+  dialog = page.getByRole("dialog", {
+    name: "Sanity check & improve",
+    exact: true,
+  });
+  const review = dialog.getByRole("textbox", {
+    name: "Improvement prompt",
+    exact: true,
+  });
+  await expect(review).toBeFocused();
+  await expect(review).toHaveValue(/Sanity-check your preceding response/);
+  await review.fill(
+    "Check assumptions and return the complete improved answer.",
+  );
+  await page.screenshot({
+    path: testInfo.outputPath("sanity-check-and-improve.png"),
+  });
+  await page.evaluate(() => localStorage.setItem("mock.fail", "true"));
+  await dialog
+    .getByRole("button", { name: "Check & improve", exact: true })
+    .click();
+  await expect(dialog.getByRole("alert")).toContainText(
+    "Simulated model failure",
+  );
+  await expect(review).toHaveValue(
+    "Check assumptions and return the complete improved answer.",
+  );
+  expect(
+    await page.evaluate(
+      () => JSON.parse(localStorage.getItem("mock.boards")!)[0],
+    ),
+  ).toEqual(beforeReview);
+  await page.evaluate(() => localStorage.removeItem("mock.fail"));
+  await dialog
+    .getByRole("button", { name: "Check & improve", exact: true })
+    .click();
+  await dialog
+    .getByRole("button", { name: "Cancel generation", exact: true })
+    .click();
+  await expect(dialog.getByRole("alert")).toContainText("cancelled");
+  expect(
+    await page.evaluate(
+      () => JSON.parse(localStorage.getItem("mock.boards")!)[0],
+    ),
+  ).toEqual(beforeReview);
+  await dialog
+    .getByRole("button", { name: "Check & improve", exact: true })
+    .click();
+  await expect(dialog).toHaveCount(0);
+  await expect(
+    page.getByLabel("Note version", { exact: true }).locator("option"),
+  ).toHaveCount(3);
+  const afterReview = await page.evaluate(
+    () => JSON.parse(localStorage.getItem("mock.boards")!)[0],
+  );
+  const improved = afterReview.notes[0].versions[2];
+  expect(improved.basedOnVersionId).toBe(beforeReview.notes[0].versions[1].id);
+  expect(improved.prompt).toBe(beforeReview.notes[0].prompt);
+  expect(improved.context.slice(-2)).toEqual([
+    { role: "assistant", content: "A completed replacement." },
+    {
+      role: "user",
+      content: "Check assumptions and return the complete improved answer.",
+    },
+  ]);
+  expect(improved.context).toEqual(
+    (
+      await page.evaluate(() =>
+        JSON.parse(localStorage.getItem("mock.request")!),
+      )
+    ).messages,
+  );
+  expect(afterReview.notes[0].versions.slice(0, 2)).toEqual(
+    beforeReview.notes[0].versions,
+  );
+  expect(afterReview.edges).toEqual(beforeReview.edges);
+  expect(afterReview.artefacts).toEqual(beforeReview.artefacts);
+  await page.reload();
+  await page.locator(".note-card .note-prompt").first().click();
+  await expect(page.getByLabel("Note version", { exact: true })).toHaveValue(
+    improved.id,
+  );
+  await page.getByRole("button", { name: "Close Note", exact: true }).click();
+  await page.getByRole("button", { name: "Fit View", exact: true }).click();
+  await page.locator(".edge-label").first().click();
+  await expect(page.getByLabel("Note version", { exact: true })).toHaveValue(
+    beforeReview.notes[0].versions[0].id,
+  );
+  expect(await page.evaluate(() => getSelection()?.toString())).toBe(
+    beforeReview.edges[0].highlight.text,
   );
 });

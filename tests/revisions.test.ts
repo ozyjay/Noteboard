@@ -19,6 +19,8 @@ import {
   buildContext,
   pathVersions,
   revisionContext,
+  improvementContext,
+  improvementPrompt,
   versionPath,
 } from "../src/core/context";
 import { journey, synthesisContext } from "../src/core/synthesis";
@@ -206,6 +208,96 @@ it("reopens prompt revisions, human edits and synthesis references without chang
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+it("reviews the viewed answer with exact historical context, retaining repeated reviews and human edits", () => {
+  let board = exampleBoard();
+  const original = structuredClone(board);
+  const child = board.notes[1];
+  const base = response(child);
+  const request = improvementContext(
+    board,
+    child.id,
+    base.id,
+    improvementPrompt,
+    "New preferences",
+  );
+  expect(request.messages.slice(1, -2)).toEqual(base.context!.slice(1));
+  expect(request.messages.slice(-2)).toEqual([
+    { role: "assistant", content: base.text },
+    { role: "user", content: improvementPrompt },
+  ]);
+  expect(request.messages[0].content).toContain("New preferences");
+  expect(request.messages.map((m) => m.content)).not.toContain(
+    original.notes[2].prompt,
+  );
+  const improved: ResponseVersion = {
+    id: uid(),
+    origin: "generated",
+    createdAt: now(),
+    provider: "demo",
+    model: "synthetic-demo",
+    text: "A synthetic improvement",
+    prompt: child.prompt,
+    context: request.messages,
+    estimatedTokens: 200,
+    ancestryVersions: request.ancestryVersions,
+    basedOnVersionId: base.id,
+  };
+  board = appendRevision(board, child.id, improved);
+  board = appendRevision(
+    board,
+    child.id,
+    edited(board, board.notes[1], "Human-reviewed improvement"),
+  );
+  const next = improvementContext(
+    board,
+    child.id,
+    response(board.notes[1]).id,
+    "Check again",
+    "Latest preferences",
+  );
+  expect(next.messages.slice(1, -2)).toEqual(request.messages.slice(1));
+  expect(next.messages.at(-2)?.content).toBe("Human-reviewed improvement");
+  expect(next.messages.at(-1)?.content).toBe("Check again");
+  expect(next.ancestryVersions).toEqual(request.ancestryVersions);
+  expect(board.edges).toEqual(original.edges);
+  expect(board.notes[1].versions[0]).toEqual(base);
+  expect(board.notes[1].prompt).toBe(child.prompt);
+  expect(
+    improvementContext(
+      board,
+      child.id,
+      base.id,
+      "Review the original",
+      "",
+    ).messages.at(-2)?.content,
+  ).toBe(base.text);
+});
+
+it("reviews imported answers from preserved visible history without inventing historical context", () => {
+  const conversation = parseChatGPTExport(
+    JSON.stringify(chatGPTExportFixture),
+  )[0];
+  const board = importChatGPTPath(conversation, "a2", "Imported");
+  const original = structuredClone(board);
+  const child = board.notes[1];
+  const request = improvementContext(
+    board,
+    child.id,
+    response(child).id,
+    improvementPrompt,
+    "",
+  );
+  expect(request.messages.slice(1).map((m) => m.content)).toEqual([
+    board.notes[0].prompt,
+    response(board.notes[0]).text,
+    child.prompt,
+    response(child).text,
+    improvementPrompt,
+  ]);
+  expect(board).toEqual(original);
+  expect(response(child).context).toBeNull();
 });
 
 it("rejects duplicate versions, missing revision bases and invalid ancestry pins", () => {

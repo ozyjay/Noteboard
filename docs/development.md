@@ -75,7 +75,11 @@ ChatGPT inference uses account-specific model discovery and `POST /v1/responses`
 
 Automated tests mock authentication and inference and do not establish live account eligibility or model quality. To validate live support, sign in explicitly, create a Note and a Highlight branch, cancel a generation, consolidate selected Notes, and reopen the app. Review actual plan usage in ChatGPT settings.
 
+Double-click a Note's heading in the reader to rename it inline. Enter or clicking away saves; Escape cancels, and clearing the title restores the prompt as its display title. Keyboard users can focus the heading and press Enter or Space. The separately labelled **Prompt** still supports double-clicking to edit the prompt and regenerate.
+
 ## Data and failures
+
+Use **Sanity check & improve** in a Note's revision controls to review the response version you are viewing. Review or edit the follow-up prompt, optionally choose a model, then select **Check & improve**. The request includes the response and its conversation, asks the model to check its reasoning and claims, and returns a complete improved answer as a new version of the same Note. The original question, earlier responses and existing Highlight/synthesis links remain available. This is model self-review rather than external source verification; demo output remains synthetic. Failed or cancelled requests leave the review draft available for retry.
 
 Open a Note to use **Edit prompt and regenerate**, **Regenerate response**, or **Edit response**. Each adds a version; the **Version** dropdown reopens earlier prompts and responses. Regeneration uses the viewed version's ancestral path with your currently configured provider and response preferences. **Discover models** offers a model override for that request without changing saved provider settings. Imported originals retain unknown historical context; regeneration creates a new request from their preserved visible conversation. Generation failures and cancellation leave the draft available for retry.
 

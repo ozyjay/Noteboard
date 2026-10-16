@@ -152,6 +152,47 @@ export function revisionContext(
     ),
   };
 }
+export const improvementPrompt =
+  "Sanity-check your preceding response against the original question and supplied conversation. Check factual claims, reasoning, assumptions, calculations, internal consistency and missing qualifications. Correct errors, remove unsupported claims and improve clarity and usefulness. State uncertainty where needed; do not invent sources or claim external verification. Return the complete improved answer to the original question in Markdown, rather than only a critique or list of changes. Do not create new investigative branches.";
+
+export function improvementContext(
+  board: Board,
+  noteId: string,
+  versionId: string,
+  reviewPrompt: string,
+  instructions: string,
+) {
+  const note = board.notes.find((n) => n.id === noteId)!;
+  const base = note.versions.find((v) => v.id === versionId)!;
+  const request = revisionContext(
+    board,
+    noteId,
+    versionId,
+    versionPrompt(note, base),
+    instructions,
+  );
+  let source = base;
+  while (source.origin === "edited") {
+    const baseId = source.basedOnVersionId;
+    source = note.versions.find((v) => v.id === baseId)!;
+  }
+  // Keep earlier review turns and exact Highlight framing where recorded.
+  // Imported originals have no historical request to recover.
+  const conversation =
+    source.origin === "generated"
+      ? source.context.slice(1)
+      : request.messages.slice(1);
+  return {
+    ancestryVersions: request.ancestryVersions,
+    messages: [
+      request.messages[0],
+      ...conversation,
+      { role: "assistant" as const, content: base.text },
+      { role: "user" as const, content: reviewPrompt },
+    ],
+  };
+}
+
 // Conservative estimate, not a tokenizer. Allow framing and reserve output separately.
 export function estimateTokens(messages: Message[]): number {
   return messages.reduce(

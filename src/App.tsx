@@ -1452,6 +1452,7 @@ export default function App() {
                           [
                             ["prompt", "Edit prompt and regenerate"],
                             ["regenerate", "Regenerate response"],
+                            ["improve", "Sanity check & improve"],
                             ["edit", "Edit response"],
                           ] as const
                         ).map(([mode, label]) => (

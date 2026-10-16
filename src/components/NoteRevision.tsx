@@ -11,14 +11,19 @@ import {
   uid,
   now,
 } from "../core/model";
-import { revisionContext, estimateTokens } from "../core/context";
+import {
+  revisionContext,
+  improvementContext,
+  improvementPrompt,
+  estimateTokens,
+} from "../core/context";
 import {
   providerMessages,
   type GenerationResult,
   type ModelChoice,
 } from "../core/providers";
 
-export type RevisionMode = "prompt" | "regenerate" | "edit";
+export type RevisionMode = "prompt" | "regenerate" | "edit" | "improve";
 export function NoteRevision({
   board,
   note,
@@ -48,6 +53,7 @@ export function NoteRevision({
   const base = note.versions.find((v) => v.id === versionId)!;
   const [prompt, setPrompt] = useState(versionPrompt(note, base));
   const [text, setText] = useState(base.text);
+  const [reviewPrompt, setReviewPrompt] = useState(improvementPrompt);
   const [model, setModel] = useState(settings.model);
   const [reasoningEffort, setReasoningEffort] = useState(
     settings.reasoningEffort,
@@ -58,9 +64,11 @@ export function NoteRevision({
   const title =
     mode === "prompt"
       ? "Edit prompt and regenerate"
-      : mode === "edit"
-        ? "Edit response"
-        : "Regenerate response";
+      : mode === "improve"
+        ? "Sanity check & improve"
+        : mode === "edit"
+          ? "Edit response"
+          : "Regenerate response";
   const requestSettings = {
     ...settings,
     model,
@@ -79,7 +87,14 @@ export function NoteRevision({
   }
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (busy || !prompt.trim() || (mode === "edit" && !text.trim())) return;
+    if (
+      busy ||
+      discovering ||
+      !prompt.trim() ||
+      (mode === "edit" && !text.trim()) ||
+      (mode === "improve" && !reviewPrompt.trim())
+    )
+      return;
     setError("");
     try {
       const question = mode === "prompt" ? prompt.trim() : prompt;
@@ -87,13 +102,22 @@ export function NoteRevision({
         throw new Error(
           "The prompt exceeds the 30,000-character revision limit. Edit it explicitly before regenerating; nothing has been truncated.",
         );
-      const { messages, ancestryVersions } = revisionContext(
-        board,
-        note.id,
-        base.id,
-        question,
-        settings.customInstructions,
-      );
+      const { messages, ancestryVersions } =
+        mode === "improve"
+          ? improvementContext(
+              board,
+              note.id,
+              base.id,
+              reviewPrompt.trim(),
+              settings.customInstructions,
+            )
+          : revisionContext(
+              board,
+              note.id,
+              base.id,
+              question,
+              settings.customInstructions,
+            );
       const common = {
         id: uid(),
         createdAt: now(),
@@ -174,6 +198,24 @@ export function NoteRevision({
               onChange={(e) => setPrompt(e.target.value)}
             />
           </label>
+          {mode === "improve" && (
+            <label>
+              Follow-up prompt
+              <textarea
+                aria-label="Improvement prompt"
+                autoFocus
+                required
+                maxLength={30000}
+                value={reviewPrompt}
+                disabled={busy}
+                onChange={(event) => setReviewPrompt(event.target.value)}
+              />
+              <span className="muted">
+                Reviews the viewed response and returns a complete improved
+                answer as a new version.
+              </span>
+            </label>
+          )}
           {mode === "edit" ? (
             <>
               <p className="muted">
@@ -265,10 +307,15 @@ export function NoteRevision({
                 busy ||
                 discovering ||
                 !prompt.trim() ||
-                (mode === "edit" && !text.trim())
+                (mode === "edit" && !text.trim()) ||
+                (mode === "improve" && !reviewPrompt.trim())
               }
             >
-              {mode === "edit" ? "Save edited version" : "Generate new version"}
+              {mode === "edit"
+                ? "Save edited version"
+                : mode === "improve"
+                  ? "Check & improve"
+                  : "Generate new version"}
             </button>
           </div>
         </form>
