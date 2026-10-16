@@ -8,6 +8,7 @@ import {
   type Settings,
   type ResponseVersion,
   type Message,
+  type ReasoningEffort,
   versionPrompt,
   uid,
   now,
@@ -318,6 +319,35 @@ export function NoteRevision({
                         : "Discover models"}
                   </button>
                 </div>
+              )}
+              {settings.provider === "chatgpt" && (
+                <label>
+                  Thinking effort
+                  <select
+                    aria-label="Revision thinking effort"
+                    value={reasoningEffort ?? ""}
+                    disabled={busy || discovering || !model}
+                    onChange={(event) =>
+                      setReasoningEffort(
+                        (event.target.value || undefined) as
+                          ReasoningEffort | undefined,
+                      )
+                    }
+                  >
+                    <option value="">Model default</option>
+                    <option value="none">None</option>
+                    <option value="minimal">Minimal</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="xhigh">Extra high</option>
+                    <option value="max">Maximum</option>
+                  </select>
+                  <span className="muted">
+                    Applies to this revision only. Higher effort can take longer
+                    and use more of your plan. Supported levels vary by model.
+                  </span>
+                </label>
               )}
             </>
           )}

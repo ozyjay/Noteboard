@@ -1547,6 +1547,11 @@ test("ChatGPT per-Note model and effort overrides preserve defaults and context 
   await expect(page.getByLabel("Revision model").locator("option")).toHaveCount(
     2,
   );
+  await expect(page.getByLabel("Revision thinking effort")).toHaveValue("high");
+  await page.getByLabel("Revision thinking effort").selectOption("low");
+  await page.getByLabel("Revision model").selectOption("test-other-model");
+  await expect(page.getByLabel("Revision thinking effort")).toHaveValue("");
+  await page.getByLabel("Revision thinking effort").selectOption("medium");
   expect(
     await page.evaluate(() => localStorage.getItem("test.model-discoveries")),
   ).toBe("2");
