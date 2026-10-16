@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 import { type InquiryBridge } from "../src/bridge";
 const bridge: InquiryBridge = {
+  openWebLink: (url) => ipcRenderer.invoke("web:open", url),
   chatgptAccounts: () => ipcRenderer.invoke("chatgpt:accounts"),
   chatgptSignIn: (id) => ipcRenderer.invoke("chatgpt:signin", id),
   chatgptCancelSignIn: () => ipcRenderer.invoke("chatgpt:cancel"),

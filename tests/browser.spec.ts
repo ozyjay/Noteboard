@@ -1305,6 +1305,9 @@ test("ChatGPT per-Note model and effort overrides preserve defaults and context 
       },
     ];
     window.inquiry = {
+      openWebLink: async (url) => {
+        localStorage.setItem("test.opened-source", url);
+      },
       deleteBoard: async (id) => {
         const boards = JSON.parse(localStorage.getItem("test.boards") || "[]");
         localStorage.setItem(
@@ -1363,13 +1366,43 @@ test("ChatGPT per-Note model and effort overrides preserve defaults and context 
         }
         const text =
           req.purpose === "explore"
-            ? "## Example\n\nConnected ideas can support an inquiry.\n\nTakeaway: Follow connected ideas."
+            ? "## Example\n\nConnected ideas can support an inquiry. [source]\n\nTakeaway: Follow connected ideas."
             : `# Explanation\n\nSelected Notes brought together.\n\n[Source Note](inquiry://note/${req.messages[1].content.match(/<note id="([^"]+)"/)?.[1]})`;
         listeners.forEach((listener) => listener({ id: req.id, text }));
         return {
           text,
           model: req.settings.model,
           reasoningEffort: req.settings.reasoningEffort,
+          ...(req.purpose === "explore"
+            ? {
+                webResearch: {
+                  requested: Boolean(req.settings.webSearch),
+                  searched: Boolean(req.settings.webSearch),
+                  calls: req.settings.webSearch
+                    ? [
+                        {
+                          id: "search-1",
+                          status: "completed",
+                          action: {
+                            type: "search",
+                            queries: ["connected ideas"],
+                          },
+                        },
+                      ]
+                    : [],
+                  citations: req.settings.webSearch
+                    ? [
+                        {
+                          start: text.indexOf("[source]"),
+                          end: text.indexOf("[source]") + 8,
+                          url: "https://example.org/evidence",
+                          title: "Evidence source",
+                        },
+                      ]
+                    : [],
+                },
+              }
+            : {}),
           usage: { input: 10, output: 5 },
         };
       },
@@ -1436,6 +1469,25 @@ test("ChatGPT per-Note model and effort overrides preserve defaults and context 
     .getByRole("textbox", { name: "Your question" })
     .fill("My ChatGPT inquiry");
   await expect(
+    page.getByRole("checkbox", { name: "Allow web search", exact: true }),
+  ).toBeChecked();
+  await page.getByLabel("Attach files", { exact: true }).setInputFiles({
+    name: "blocked.exe",
+    mimeType: "application/octet-stream",
+    buffer: Buffer.from("unsupported"),
+  });
+  await expect(
+    page.locator(".research-inputs").getByRole("alert"),
+  ).toContainText("Unsupported file type");
+  await page.getByLabel("Attach files", { exact: true }).setInputFiles({
+    name: "reference.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from("Reference facts."),
+  });
+  await expect(
+    page.getByRole("button", { name: "Remove reference.txt", exact: true }),
+  ).toBeVisible();
+  await expect(
     page.getByText("Using ChatGPT plan", { exact: false }).first(),
   ).toBeVisible();
   await page.screenshot({
@@ -1463,6 +1515,17 @@ test("ChatGPT per-Note model and effort overrides preserve defaults and context 
     .getByRole("button", { name: "My ChatGPT inquiry", exact: true })
     .click();
   await expect(page.locator(".reader-response")).toBeVisible();
+  await expect(page.locator(".research-record")).toContainText(
+    "Web search used",
+  );
+  await expect(page.locator(".research-record")).toContainText("reference.txt");
+  await page
+    .locator(".reader-response")
+    .getByRole("button", { name: "[1]", exact: true })
+    .click();
+  expect(
+    await page.evaluate(() => localStorage.getItem("test.opened-source")),
+  ).toBe("https://example.org/evidence");
   await page.locator(".reader-response").evaluate((element) => {
     const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
     let node;
@@ -1502,6 +1565,20 @@ test("ChatGPT per-Note model and effort overrides preserve defaults and context 
   await page
     .getByLabel("Note thinking effort", { exact: true })
     .selectOption("low");
+  await expect(page.locator(".research-inputs")).toContainText(
+    "Retained files: reference.txt",
+  );
+  await page
+    .getByRole("checkbox", { name: "Allow web search", exact: true })
+    .uncheck();
+  await page.getByLabel("Attach files", { exact: true }).setInputFiles({
+    name: "data.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from("item,value\na,1"),
+  });
+  await expect(
+    page.getByRole("button", { name: "Remove data.csv", exact: true }),
+  ).toBeVisible();
   await page.getByRole("textbox", { name: "Your question" }).press("Enter");
   const cancelGeneration = page.getByRole("button", {
     name: "Cancel generation",
@@ -1529,6 +1606,11 @@ test("ChatGPT per-Note model and effort overrides preserve defaults and context 
   expect(child.versions[0].provider).toBe("chatgpt");
   expect(child.versions[0].model).toBe("test-other-model");
   expect(child.versions[0].reasoningEffort).toBe("low");
+  expect(child.versions[0].files[0].name).toBe("data.csv");
+  expect(child.versions[0].context[1].files[0].name).toBe("reference.txt");
+  expect(child.versions[0].context.at(-1).files[0].name).toBe("data.csv");
+  expect(saved[0].notes[0].versions[0].webResearch.searched).toBe(true);
+  expect(child.versions[0].webResearch.requested).toBe(false);
   expect(saved[0].notes[0].versions[0].model).toBe("test-other-model");
   expect(saved[0].notes[0].versions[0].reasoningEffort).toBe("medium");
   const request = await page.evaluate(() =>
@@ -1556,6 +1638,7 @@ test("ChatGPT per-Note model and effort overrides preserve defaults and context 
   );
   expect(reopened.notes[1].versions[0].model).toBe("test-other-model");
   expect(reopened.notes[1].versions[0].reasoningEffort).toBe("low");
+  expect(reopened.notes[1].versions[0].files).toEqual(child.versions[0].files);
   expect(
     await page.evaluate(
       () => JSON.parse(localStorage.getItem("test.settings")!).model,

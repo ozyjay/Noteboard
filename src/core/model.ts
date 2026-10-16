@@ -1,12 +1,19 @@
 import { z } from "zod";
+import { AttachmentsSchema, WebResearchSchema } from "./research";
 import {
   defaultCustomInstructions,
   MAX_CUSTOM_INSTRUCTIONS,
 } from "./instructions";
-export const MessageSchema = z.object({
-  role: z.enum(["system", "developer", "user", "assistant"]),
-  content: z.string(),
-});
+export const MessageSchema = z
+  .object({
+    role: z.enum(["system", "developer", "user", "assistant"]),
+    content: z.string(),
+    files: AttachmentsSchema.optional(),
+  })
+  .refine(
+    (message) => !message.files?.length || message.role === "user",
+    "Files must belong to a user message",
+  );
 export type Message = z.infer<typeof MessageSchema>;
 export const AppearanceSchema = z.object({
   noteStyle: z
@@ -37,6 +44,7 @@ export const SettingsSchema = z.object({
   chatgptAccountId: z.string().max(200).optional(),
   model: z.string().max(100),
   reasoningEffort: ReasoningEffortSchema.optional(),
+  webSearch: z.boolean().optional(),
   customInstructions: z
     .string()
     .max(MAX_CUSTOM_INSTRUCTIONS)
@@ -66,6 +74,8 @@ const GeneratedVersionSchema = z.object({
   createdAt: z.string(),
   provider: z.enum(["demo", "ollama", "chatgpt"]),
   model: z.string(),
+  files: AttachmentsSchema.optional(),
+  webResearch: WebResearchSchema.optional(),
   reasoningEffort: ReasoningEffortSchema.optional(),
   context: z.array(MessageSchema),
   estimatedTokens: z.number(),
@@ -83,6 +93,7 @@ const EditedVersionSchema = z.object({
   createdAt: z.string(),
   provider: z.literal("human"),
   model: z.literal("editor"),
+  files: AttachmentsSchema.optional(),
   context: z.null(),
   estimatedTokens: z.null(),
   prompt: z.string().min(1).max(30000),
@@ -187,7 +198,7 @@ export const ArtefactSchema = z.object({
 });
 export type Artefact = z.infer<typeof ArtefactSchema>;
 export const BoardSchema = z.object({
-  schemaVersion: z.literal(3),
+  schemaVersion: z.literal(4),
   id: z.string(),
   title: z.string().min(1).max(200),
   createdAt: z.string(),
@@ -212,7 +223,7 @@ export function noteAtVersion(note: Note, versionId: string): Note {
 }
 export function newBoard(title = "Untitled inquiry"): Board {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     id: uid(),
     title,
     createdAt: now(),
@@ -236,14 +247,16 @@ export function validateBoard(value: unknown): Board {
   const header = z.object({ schemaVersion: z.number() }).parse(value);
   const migrated = header.schemaVersion === 1 ? legacy.parse(value) : undefined;
   const previous =
-    header.schemaVersion === 2
-      ? BoardSchema.extend({ schemaVersion: z.literal(2) }).parse(value)
+    header.schemaVersion === 2 || header.schemaVersion === 3
+      ? BoardSchema.extend({
+          schemaVersion: z.union([z.literal(2), z.literal(3)]),
+        }).parse(value)
       : undefined;
   const b = BoardSchema.parse(
     migrated
       ? {
           ...migrated,
-          schemaVersion: 3,
+          schemaVersion: 4,
           notes: migrated.notes.map((n) => ({
             ...n,
             versions: n.versions.map((v) => ({ ...v, origin: "generated" })),
@@ -251,7 +264,7 @@ export function validateBoard(value: unknown): Board {
           edges: migrated.edges.map((e) => ({ ...e, kind: "highlight" })),
         }
       : previous
-        ? { ...previous, schemaVersion: 3 }
+        ? { ...previous, schemaVersion: 4 }
         : value,
   );
   const noteById = new Map(b.notes.map((n) => [n.id, n]));
@@ -325,6 +338,13 @@ export function validateBoard(value: unknown): Board {
       parent = parents.get(parent);
     }
     for (const v of note.versions) {
+      if (
+        v.origin === "generated" &&
+        v.webResearch?.citations.some(
+          (citation) => citation.end > v.text.length,
+        )
+      )
+        throw new Error("Invalid web citation range");
       if (seen.has(v.id))
         throw new Error("Duplicate response version identifiers");
       if (

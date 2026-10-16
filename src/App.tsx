@@ -49,7 +49,13 @@ import { edgeLabel } from "./core/model";
 import { deleteNote, subtreeIds } from "./core/deletion";
 import { AppearanceSettings } from "./components/AppearanceSettings";
 import { ChatGPTSettings } from "./components/ChatGPTSettings";
-import { providerMessages, type ModelChoice } from "./core/providers";
+import {
+  providerMessages,
+  validateRequestFeatures,
+  type ModelChoice,
+} from "./core/providers";
+import { type Attachment } from "./core/research";
+import { ResearchInputs, ResearchRecord } from "./components/ResearchInputs";
 import { bridge, desktop } from "./bridge";
 import {
   type Board,
@@ -70,6 +76,8 @@ import {
 } from "./core/model";
 import {
   ancestry,
+  versionFiles,
+  versionResearch,
   buildContext,
   assertBudget,
   estimateTokens,
@@ -172,10 +180,13 @@ export default function App() {
       highlight?: Highlight;
       model: string;
       reasoningEffort?: ReasoningEffort;
+      webSearch: boolean;
+      files: Attachment[];
     } | null>(null),
     [prompt, setPrompt] = useState("");
   const [composerModels, setComposerModels] = useState<ModelChoice[]>([]);
   const [composerDiscovering, setComposerDiscovering] = useState(false);
+  const [composerReading, setComposerReading] = useState(false);
   const composerModelOptions = new Map<string, string>([
     [settings.model, settings.model || "Provider default"],
   ]);
@@ -194,10 +205,14 @@ export default function App() {
     composerSession.current += 1;
     setComposerModels([]);
     setComposerDiscovering(false);
+    setComposerReading(false);
     setComposer({
       highlight,
       model: settings.model,
       reasoningEffort: settings.reasoningEffort,
+      webSearch:
+        settings.provider === "chatgpt" && settings.webSearch !== false,
+      files: [],
     });
   }
   async function discoverComposerModels() {
@@ -578,6 +593,18 @@ export default function App() {
     purpose: "explore" | "synthesis",
     requestSettings = settings,
   ) {
+    requestSettings = {
+      ...requestSettings,
+      webSearch:
+        requestSettings.provider === "chatgpt" &&
+        requestSettings.webSearch === true,
+    };
+    validateRequestFeatures({
+      id: "preflight",
+      messages,
+      settings: requestSettings,
+      purpose,
+    });
     assertBudget(messages, requestSettings.contextLimit);
     const id = uid();
     generation.current = id;
@@ -603,7 +630,14 @@ export default function App() {
   }
   async function submitPrompt(event: FormEvent) {
     event.preventDefault();
-    if (!board || !composer || !prompt.trim() || busy || composerDiscovering)
+    if (
+      !board ||
+      !composer ||
+      !prompt.trim() ||
+      busy ||
+      composerDiscovering ||
+      composerReading
+    )
       return;
     const snapshot = board;
     const h = composer.highlight;
@@ -612,11 +646,19 @@ export default function App() {
       ...settings,
       model: composer.model,
       reasoningEffort: composer.reasoningEffort,
+      webSearch: composer.webSearch,
     };
     try {
       const context = providerMessages(
-        buildContext(snapshot, question, h, settings.customInstructions),
+        buildContext(
+          snapshot,
+          question,
+          h,
+          settings.customInstructions,
+          composer.files,
+        ),
         settings.provider,
+        composer.webSearch,
       );
       const result = await generate(context, "explore", requestSettings);
       const parent = h
@@ -636,6 +678,8 @@ export default function App() {
             provider: settings.provider,
             model: result.model,
             reasoningEffort: result.reasoningEffort,
+            files: composer.files.length ? composer.files : undefined,
+            webResearch: result.webResearch,
             context,
             origin: "generated",
             estimatedTokens: estimateTokens(context),
@@ -714,7 +758,10 @@ export default function App() {
           ),
           settings.provider,
         );
-        const result = await generate(context, "synthesis");
+        const result = await generate(context, "synthesis", {
+          ...settings,
+          webSearch: false,
+        });
         text = result.text;
         model = result.model;
         reasoningEffort = result.reasoningEffort;
@@ -1173,9 +1220,19 @@ export default function App() {
                           ),
                         }
                       : board;
+                  const serialised = JSON.stringify(exported, null, 2);
+                  if (
+                    new TextEncoder().encode(serialised).byteLength >
+                    MAX_EXPORT_BYTES
+                  ) {
+                    setError(
+                      "This Board exceeds the 50 MB export/import limit, including attached files and recorded contexts. Nothing has been removed.",
+                    );
+                    return;
+                  }
                   download(
                     "noteboard-board.json",
-                    JSON.stringify(exported, null, 2),
+                    serialised,
                     "application/json",
                   );
                 }
@@ -1601,6 +1658,11 @@ export default function App() {
                   >
                     <Markdown
                       text={response(readingNote!).text}
+                      citations={
+                        version?.origin === "generated"
+                          ? version.webResearch?.citations
+                          : undefined
+                      }
                       onSource={goSource}
                       maths={
                         !(
@@ -1609,6 +1671,14 @@ export default function App() {
                       }
                     />
                   </div>
+                  <ResearchRecord
+                    files={version ? versionFiles(version) : []}
+                    research={
+                      version?.origin === "generated"
+                        ? version.webResearch
+                        : undefined
+                    }
+                  />
                   {anchor && (
                     <div className="anchor-info">
                       Source Highlight: “{highlightLabel(anchor)}”
@@ -1723,6 +1793,11 @@ export default function App() {
                     {(response(readingNote!).context ?? []).map((m, i) => (
                       <div key={i}>
                         <strong>{m.role}</strong>
+                        {!!m.files?.length && (
+                          <p>
+                            Files: {m.files.map((file) => file.name).join(", ")}
+                          </p>
+                        )}
                         <pre>{m.content}</pre>
                       </div>
                     ))}
@@ -2203,6 +2278,7 @@ export default function App() {
                           prompt,
                           composer.highlight,
                           settings.customInstructions,
+                          composer.files,
                         ),
                       ).toLocaleString()
                     : 0}{" "}
@@ -2227,6 +2303,31 @@ export default function App() {
                   <span>History stays complete</span>
                 )}
               </div>
+              {settings.provider === "chatgpt" && (
+                <ResearchInputs
+                  files={composer.files}
+                  existing={
+                    composer.highlight
+                      ? versionPath(
+                          board!,
+                          composer.highlight.sourceId,
+                          composer.highlight.versionId,
+                        ).flatMap(({ version }) => versionFiles(version))
+                      : []
+                  }
+                  onChange={(files) =>
+                    setComposer((current) => current && { ...current, files })
+                  }
+                  webSearch={composer.webSearch}
+                  onSearchChange={(webSearch) =>
+                    setComposer(
+                      (current) => current && { ...current, webSearch },
+                    )
+                  }
+                  disabled={busy || composerDiscovering}
+                  onLoading={setComposerReading}
+                />
+              )}
               {error && (
                 <p className="form-error" role="alert">
                   {error}
@@ -2263,7 +2364,12 @@ export default function App() {
                 )}
                 <button
                   className="primary"
-                  disabled={busy || composerDiscovering || !prompt.trim()}
+                  disabled={
+                    busy ||
+                    composerDiscovering ||
+                    composerReading ||
+                    !prompt.trim()
+                  }
                 >
                   {busy ? (
                     <LoaderCircle className="spin" size={16} />
@@ -2463,6 +2569,21 @@ export default function App() {
               )}
               {settingsDraft.provider === "chatgpt" && (
                 <>
+                  <label className="research-search">
+                    <input
+                      type="checkbox"
+                      aria-label="Enable web search by default"
+                      checked={settingsDraft.webSearch !== false}
+                      disabled={accountBusy}
+                      onChange={(event) =>
+                        setSettingsDraft((current) => ({
+                          ...current,
+                          webSearch: event.target.checked,
+                        }))
+                      }
+                    />
+                    Enable web search by default for Notes
+                  </label>
                   <label>
                     Thinking effort
                     <select
@@ -2761,7 +2882,12 @@ export default function App() {
             <div className="prose">
               <Markdown
                 text={response(sourcePreview).text}
+                citations={versionResearch(response(sourcePreview))?.citations}
                 onSource={goSource}
+              />
+              <ResearchRecord
+                files={versionFiles(response(sourcePreview))}
+                research={versionResearch(response(sourcePreview))}
               />
             </div>
           </section>

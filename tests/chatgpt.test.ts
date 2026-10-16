@@ -187,6 +187,125 @@ describe("ChatGPT plan provider", () => {
     ).rejects.toThrow(/Model default/);
     expect(fetch).toHaveBeenCalledTimes(1);
   });
+  it("sends inline files with web search and retains completed calls and citation ranges", async () => {
+    const req = request();
+    req.settings.webSearch = true;
+    const file = {
+      name: "reference.txt",
+      size: 5,
+      data: "data:text/plain;base64,SGVsbG8=",
+    };
+    req.messages.at(-1)!.files = [file];
+    const text = "Evidence [source]";
+    const output = [
+      {
+        type: "web_search_call",
+        id: "search-1",
+        status: "completed",
+        action: {
+          type: "search",
+          queries: ["reference evidence"],
+          sources: [
+            {
+              type: "url",
+              url: "https://example.org/evidence",
+              title: "Evidence",
+            },
+          ],
+        },
+      },
+      {
+        type: "message",
+        content: [
+          {
+            type: "output_text",
+            text,
+            annotations: [
+              {
+                type: "url_citation",
+                start_index: 9,
+                end_index: 17,
+                url: "https://example.org/evidence",
+                title: "Evidence",
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    const bodies: Record<string, unknown>[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url, init: RequestInit) => {
+        bodies.push(JSON.parse(init.body as string));
+        return stream([
+          { type: "response.output_text.delta", delta: text },
+          { type: "response.completed", response: { output } },
+        ]);
+      }),
+    );
+    const provider = chatGPTProvider({ accessToken: async () => "token" });
+    const result = await provider.generate(
+      req,
+      () => {},
+      new AbortController().signal,
+    );
+    expect(bodies[0].tools).toEqual([{ type: "web_search" }]);
+    expect(bodies[0].include).toEqual(["web_search_call.action.sources"]);
+    expect(bodies[0].input).toEqual([
+      ...req.messages.slice(0, -1),
+      {
+        role: "user",
+        content: [
+          { type: "input_text", text: req.messages.at(-1)!.content },
+          { type: "input_file", filename: file.name, file_data: file.data },
+        ],
+      },
+    ]);
+    expect(result.text).toBe(text);
+    expect(result.webResearch).toEqual({
+      requested: true,
+      searched: true,
+      calls: [
+        { id: "search-1", status: "completed", action: output[0].action },
+      ],
+      citations: [
+        {
+          start: 9,
+          end: 17,
+          url: "https://example.org/evidence",
+          title: "Evidence",
+        },
+      ],
+    });
+    req.settings.webSearch = false;
+    await provider.generate(req, () => {}, new AbortController().signal);
+    expect(bodies[1]).not.toHaveProperty("tools");
+    expect(bodies[1]).not.toHaveProperty("include");
+    expect(bodies[1].input).toEqual(bodies[0].input);
+  });
+  it("records search as unused when no completed search call is returned", async () => {
+    const req = request();
+    req.settings.webSearch = true;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        stream([
+          { type: "response.output_text.delta", delta: "No search needed" },
+          { type: "response.completed", response: {} },
+        ]),
+      ),
+    );
+    const result = await chatGPTProvider({
+      accessToken: async () => "token",
+    }).generate(req, () => {}, new AbortController().signal);
+    expect(result.webResearch).toEqual({
+      requested: true,
+      searched: false,
+      calls: [],
+      citations: [],
+    });
+  });
   it.each([
     [{ type: "response.output_text.delta", delta: "Partial" }],
     [{ type: "response.incomplete", response: {} }],

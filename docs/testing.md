@@ -22,6 +22,8 @@ On a Mac with Apple Intelligence enabled, select text in a prompt composer, **Re
 
 Changes to response rendering must retain the exact rendered text snapshot or introduce explicit anchor migration; test repeated passage selection and selection across inline formatting. Changes to providers must not use tests that silently incur paid inference.
 
+Web/file tests use mocked Responses streams to verify the web-search tool and explicit off switch, inline file-data wire payloads, completed call/citation records and unused-search reporting. Domain checks cover filename/base64/size and URL validation, ancestral file retention, review context, unsupported-provider rejection, schema 4 migration and SQLite reopening. Browser checks exercise attachment validation, search controls, citation clicks through the external-link bridge, file inheritance and saved provenance after reopening. Desktop checks reject unsafe link schemes at the main-process boundary. These establish implementation behaviour, not live account/model search or document-processing eligibility. For live validation, explicitly choose ChatGPT, attach a small document, ask a question requiring recent sources, inspect the actual sources, then branch and reopen the Board.
+
 ## Initial validation — 10 October 2026
 
 On macOS arm64 with Node 24, typechecking, production build and 15 domain/persistence/provider tests passed. Four browser scenarios verified the complete branching/synthesis cycle, selection across inline formatting, exact offsets for a repeated passage, and manual placement after reopening. A production Electron smoke test verified the isolated preload, SQLite saving and reopening.

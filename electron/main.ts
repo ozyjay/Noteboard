@@ -11,7 +11,8 @@ import path from "node:path";
 import { z } from "zod";
 import { Store } from "./store";
 import { MessageSchema, SettingsSchema } from "../src/core/model";
-import { demoProvider } from "../src/core/providers";
+import { demoProvider, validateRequestFeatures } from "../src/core/providers";
+import { WebUrlSchema } from "../src/core/research";
 import { ollamaProvider, localEndpoint } from "./ollama";
 import { assertBudget } from "../src/core/context";
 import { ChatGPTAuth } from "./chatgpt-auth";
@@ -144,6 +145,7 @@ if (primaryInstance)
     handle("chatgpt:usage", () =>
       shell.openExternal("https://chatgpt.com/settings/usage"),
     );
+    handle("web:open", (url) => shell.openExternal(WebUrlSchema.parse(url)));
     store = new Store(path.join(app.getPath("userData"), "inquiry.sqlite"));
     handle("boards:list", () => store.list());
     handle("boards:save", (b) => store.save(b));
@@ -160,6 +162,7 @@ if (primaryInstance)
     });
     handle("provider:generate", async (value) => {
       const req = requestSchema.parse(value);
+      validateRequestFeatures(req);
       if (pending.size) throw new Error("A generation is already in progress");
       assertBudget(req.messages, req.settings.contextLimit);
       const controller = new AbortController();

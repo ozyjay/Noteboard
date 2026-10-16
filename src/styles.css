@@ -1182,6 +1182,38 @@ h1 {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.research-inputs {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+.research-search {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+}
+.research-search input {
+  width: auto !important;
+}
+.attachment-list {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 12px;
+}
+.attachment-list li {
+  margin: 6px 0;
+  overflow-wrap: anywhere;
+}
+.attachment-list button {
+  margin-left: 8px;
+}
+.research-record {
+  font-size: 11px;
+  border-block: 1px solid var(--border);
+  padding: 8px 0;
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+}
 .note-navigation {
   margin-top: 20px;
   padding: 12px 0;

@@ -6,7 +6,8 @@ import {
   highlightLabel,
   versionPrompt,
 } from "./model";
-import { ancestry } from "./context";
+import { ancestry, responseContextText, versionResearch } from "./context";
+import { citationMarkdown } from "./research";
 import {
   defaultCustomInstructions,
   withCustomInstructions,
@@ -33,7 +34,7 @@ export function journey(board: Board, ids: string[]): string {
         const n = board.notes.find((n) => n.id === id)!;
         const edge = board.edges.find((e) => e.target === id);
         const h = edge?.highlight;
-        return `## ${i + 1}. ${versionPrompt(n)}\n\n[Open source Note](inquiry://note/${id})${edge?.kind === "continuation" ? "\n\nImported continuation." : ""}${h ? `\n\n${edge?.kind === "continuation" ? "Retrospective Highlight" : "Explored passage"}: “${highlightLabel(h)}”` : ""}\n\n${response(n).origin === "edited" ? "> Human-edited response.\n\n" : ""}${response(n).text}`;
+        return `## ${i + 1}. ${versionPrompt(n)}\n\n[Open source Note](inquiry://note/${id})${edge?.kind === "continuation" ? "\n\nImported continuation." : ""}${h ? `\n\n${edge?.kind === "continuation" ? "Retrospective Highlight" : "Explored passage"}: “${highlightLabel(h)}”` : ""}\n\n${response(n).origin === "edited" ? "> Human-edited response.\n\n" : ""}${citationMarkdown(response(n).text, versionResearch(response(n))?.citations)}`;
       })
       .join("\n\n---\n\n")
   );
@@ -58,7 +59,7 @@ export function synthesisContext(
       content: ids
         .map((id) => {
           const n = board.notes.find((n) => n.id === id)!;
-          return `<note id="${id}">\nPrompt: ${versionPrompt(n)}\nResponse:\n${response(n).origin === "edited" ? "[Human-edited response]\n" : ""}${response(n).text}\n</note>`;
+          return `<note id="${id}">\nPrompt: ${versionPrompt(n)}\nResponse:\n${response(n).origin === "edited" ? "[Human-edited response]\n" : ""}${responseContextText(response(n))}\n</note>`;
         })
         .join("\n\n"),
     },

@@ -170,6 +170,16 @@ test("production desktop bridge saves and reopens an inquiry in SQLite", async (
       "function",
     );
     await expect(page.locator(".preview-banner")).toHaveCount(0);
+    expect(
+      await page.evaluate(async () => {
+        try {
+          await window.inquiry!.openWebLink!("javascript:alert(1)");
+          return false;
+        } catch {
+          return true;
+        }
+      }),
+    ).toBe(true);
     await page
       .getByRole("button", { name: "New inquiry", exact: true })
       .click();

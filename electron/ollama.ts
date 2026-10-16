@@ -1,4 +1,8 @@
-import { type Provider, type GenerationRequest } from "../src/core/providers";
+import {
+  type Provider,
+  type GenerationRequest,
+  validateRequestFeatures,
+} from "../src/core/providers";
 import { type Settings } from "../src/core/model";
 import { assertBudget } from "../src/core/context";
 export function localEndpoint(raw: string) {
@@ -54,6 +58,7 @@ export const ollamaProvider: Provider = {
       .map((m: { name: string }) => m.name);
   },
   async generate(req: GenerationRequest, onDelta, signal) {
+    validateRequestFeatures(req);
     if (!req.settings.model.trim())
       throw new Error("Choose an installed Ollama model in provider settings");
     const base = localEndpoint(req.settings.endpoint);

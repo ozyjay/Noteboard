@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { type Provider } from "../src/core/providers";
+import { type Provider, validateRequestFeatures } from "../src/core/providers";
+import {
+  SearchCallSchema,
+  CitationSchema,
+  type WebResearch,
+} from "../src/core/research";
 import { assertBudget } from "../src/core/context";
 import { type ChatGPTAuth } from "./chatgpt-auth";
 const base = "https://api.openai.com/v1";
@@ -22,7 +27,7 @@ function failure(status: number, code?: unknown) {
     );
   if (status === 400)
     return new Error(
-      "ChatGPT rejected the request. Check the selected model and thinking effort in provider settings; try Model default if that effort is unsupported. No completed response was saved.",
+      "ChatGPT rejected the request. Check the model, thinking effort, web search availability and attached file support. Try Model default or explicitly disable search if unsupported. No completed response was saved.",
     );
   return new Error(
     `ChatGPT request failed${status ? ` (HTTP ${status})` : ""}. No completed response was saved. Try again later.`,
@@ -59,6 +64,7 @@ const Event = z.object({
   response: z
     .object({
       model: z.string().optional(),
+      output: z.array(z.unknown()).optional(),
       error: z.object({ code: z.string().optional() }).nullish(),
       usage: z
         .object({
@@ -90,6 +96,7 @@ export function chatGPTProvider(
     },
     async generate(req, onDelta, signal) {
       signal.throwIfAborted();
+      validateRequestFeatures(req);
       assertBudget(req.messages, req.settings.contextLimit);
       if (!req.settings.model.trim())
         throw new Error(
@@ -106,9 +113,29 @@ export function chatGPTProvider(
         signal: AbortSignal.any([signal, AbortSignal.timeout(600000)]),
         body: JSON.stringify({
           model: req.settings.model,
-          input: req.messages,
+          input: req.messages.map(({ role, content, files }) =>
+            files?.length
+              ? {
+                  role,
+                  content: [
+                    { type: "input_text", text: content },
+                    ...files.map((file) => ({
+                      type: "input_file",
+                      filename: file.name,
+                      file_data: file.data,
+                    })),
+                  ],
+                }
+              : { role, content },
+          ),
           store: false,
           stream: true,
+          ...(req.settings.webSearch
+            ? {
+                tools: [{ type: "web_search" }],
+                include: ["web_search_call.action.sources"],
+              }
+            : {}),
           ...(req.settings.reasoningEffort
             ? { reasoning: { effort: req.settings.reasoningEffort } }
             : {}),
@@ -123,6 +150,7 @@ export function chatGPTProvider(
         completed = false,
         model = req.settings.model;
       let usage: { input?: number; output?: number } | undefined;
+      let webResearch: WebResearch | undefined;
       function consume(block: string) {
         const data = block
           .split("\n")
@@ -148,6 +176,91 @@ export function chatGPTProvider(
             throw new Error("Invalid ChatGPT completion event");
           completed = true;
           model = event.response.model || model;
+          if (event.response.output) {
+            const research: WebResearch = {
+              requested: Boolean(req.settings.webSearch),
+              searched: false,
+              calls: [],
+              citations: [],
+            };
+            let finalText = "";
+            for (const raw of event.response.output) {
+              const item = z
+                .object({ type: z.string() })
+                .passthrough()
+                .parse(raw);
+              if (item.type === "web_search_call") {
+                const call = SearchCallSchema.parse(item);
+                research.calls.push(call);
+                if (call.status === "completed") research.searched = true;
+              }
+              if (item.type === "message") {
+                const message = z
+                  .object({
+                    content: z.array(
+                      z.object({
+                        type: z.string(),
+                        text: z.string().optional(),
+                        annotations: z.array(z.unknown()).optional(),
+                      }),
+                    ),
+                  })
+                  .parse(item);
+                for (const part of message.content) {
+                  if (part.type !== "output_text" || part.text === undefined)
+                    continue;
+                  const offset = finalText.length;
+                  finalText += part.text;
+                  for (const rawAnnotation of part.annotations ?? []) {
+                    const annotation = z
+                      .object({ type: z.string() })
+                      .passthrough()
+                      .parse(rawAnnotation);
+                    if (annotation.type !== "url_citation") continue;
+                    const data = z
+                      .object({
+                        url: z.string(),
+                        title: z.string(),
+                        start_index: z.number(),
+                        end_index: z.number(),
+                      })
+                      .parse(annotation);
+                    const citation = CitationSchema.parse({
+                      url: data.url,
+                      title: data.title,
+                      start: offset + data.start_index,
+                      end: offset + data.end_index,
+                    });
+                    if (citation.end > finalText.length)
+                      throw new Error(
+                        "ChatGPT returned an invalid citation range",
+                      );
+                    research.citations.push(citation);
+                  }
+                }
+              }
+            }
+            if (finalText) {
+              if (text && text !== finalText)
+                throw new Error(
+                  "ChatGPT response text did not match its completed record",
+                );
+              text = finalText;
+            }
+            if (
+              req.settings.webSearch ||
+              research.calls.length ||
+              research.citations.length
+            )
+              webResearch = research;
+          }
+          if (req.settings.webSearch && !webResearch)
+            webResearch = {
+              requested: true,
+              searched: false,
+              calls: [],
+              citations: [],
+            };
           if (event.response.usage)
             usage = {
               input: event.response.usage.input_tokens,
@@ -182,6 +295,7 @@ export function chatGPTProvider(
           text,
           model,
           usage,
+          ...(webResearch ? { webResearch } : {}),
           ...(req.settings.reasoningEffort
             ? { reasoningEffort: req.settings.reasoningEffort }
             : {}),

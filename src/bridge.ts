@@ -11,6 +11,7 @@ import {
   type GenerationResult,
   type ModelChoice,
 } from "./core/providers";
+import { WebUrlSchema } from "./core/research";
 export interface ChatGPTAccount {
   id: string;
   label: string;
@@ -18,6 +19,7 @@ export interface ChatGPTAccount {
   planEnabled: boolean;
 }
 export interface InquiryBridge {
+  openWebLink?(url: string): Promise<void>;
   chatgptAccounts(): Promise<ChatGPTAccount[]>;
   chatgptSignIn(accountId?: string): Promise<ChatGPTAccount[]>;
   chatgptCancelSignIn(): Promise<void>;
@@ -46,6 +48,9 @@ const desktopOnly = async (): Promise<never> => {
   );
 };
 const preview: InquiryBridge = {
+  async openWebLink(url) {
+    window.open(WebUrlSchema.parse(url), "_blank", "noopener,noreferrer");
+  },
   chatgptAccounts: async () => [],
   chatgptSignIn: desktopOnly,
   chatgptCancelSignIn: desktopOnly,
@@ -111,5 +116,6 @@ const preview: InquiryBridge = {
     return () => listeners.delete(listener);
   },
 };
-export const bridge = window.inquiry || preview;
-export const desktop = Boolean(window.inquiry);
+export const bridge =
+  (typeof window !== "undefined" && window.inquiry) || preview;
+export const desktop = typeof window !== "undefined" && Boolean(window.inquiry);

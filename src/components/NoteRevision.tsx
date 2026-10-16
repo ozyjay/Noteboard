@@ -16,12 +16,16 @@ import {
   improvementContext,
   improvementPrompt,
   estimateTokens,
+  versionFiles,
+  versionPath,
 } from "../core/context";
 import {
   providerMessages,
   type GenerationResult,
   type ModelChoice,
 } from "../core/providers";
+import { ResearchInputs } from "./ResearchInputs";
+import { type Attachment, combineFiles } from "../core/research";
 
 export type RevisionMode = "prompt" | "regenerate" | "edit" | "improve";
 export function NoteRevision({
@@ -54,6 +58,11 @@ export function NoteRevision({
   const [prompt, setPrompt] = useState(versionPrompt(note, base));
   const [text, setText] = useState(base.text);
   const [reviewPrompt, setReviewPrompt] = useState(improvementPrompt);
+  const [files, setFiles] = useState<Attachment[]>([]);
+  const [readingFiles, setReadingFiles] = useState(false);
+  const [webSearch, setWebSearch] = useState(
+    settings.provider === "chatgpt" && settings.webSearch !== false,
+  );
   const [model, setModel] = useState(settings.model);
   const [reasoningEffort, setReasoningEffort] = useState(
     settings.reasoningEffort,
@@ -73,6 +82,7 @@ export function NoteRevision({
     ...settings,
     model,
     reasoningEffort,
+    webSearch,
   };
   async function discover() {
     setDiscovering(true);
@@ -90,6 +100,7 @@ export function NoteRevision({
     if (
       busy ||
       discovering ||
+      readingFiles ||
       !prompt.trim() ||
       (mode === "edit" && !text.trim()) ||
       (mode === "improve" && !reviewPrompt.trim())
@@ -110,6 +121,7 @@ export function NoteRevision({
               base.id,
               reviewPrompt.trim(),
               settings.customInstructions,
+              files,
             )
           : revisionContext(
               board,
@@ -117,6 +129,7 @@ export function NoteRevision({
               base.id,
               question,
               settings.customInstructions,
+              files,
             );
       const common = {
         id: uid(),
@@ -124,6 +137,9 @@ export function NoteRevision({
         prompt: question,
         ancestryVersions,
         basedOnVersionId: base.id,
+        files: combineFiles(versionFiles(base), files).length
+          ? combineFiles(versionFiles(base), files)
+          : undefined,
       };
       if (mode === "edit") {
         onSave({
@@ -136,7 +152,11 @@ export function NoteRevision({
           estimatedTokens: null,
         });
       } else {
-        const context = providerMessages(messages, settings.provider);
+        const context = providerMessages(
+          messages,
+          settings.provider,
+          webSearch,
+        );
         const result = await onGenerate(context, requestSettings);
         onSave({
           ...common,
@@ -145,6 +165,7 @@ export function NoteRevision({
           provider: settings.provider,
           model: result.model,
           reasoningEffort: result.reasoningEffort,
+          webResearch: result.webResearch,
           context,
           estimatedTokens: estimateTokens(context),
           usage: result.usage,
@@ -287,6 +308,19 @@ export function NoteRevision({
               {error}
             </p>
           )}
+          {mode !== "edit" && settings.provider === "chatgpt" && (
+            <ResearchInputs
+              files={files}
+              existing={versionPath(board, note.id, base.id).flatMap(
+                ({ version }) => versionFiles(version),
+              )}
+              onChange={setFiles}
+              webSearch={webSearch}
+              onSearchChange={setWebSearch}
+              disabled={busy || discovering}
+              onLoading={setReadingFiles}
+            />
+          )}
           {busy && (
             <div className="generation-progress" role="status">
               <LoaderCircle className="spin" size={18} />
@@ -306,6 +340,7 @@ export function NoteRevision({
               disabled={
                 busy ||
                 discovering ||
+                readingFiles ||
                 !prompt.trim() ||
                 (mode === "edit" && !text.trim()) ||
                 (mode === "improve" && !reviewPrompt.trim())

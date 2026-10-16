@@ -204,7 +204,7 @@ it("reopens prompt revisions, human edits and synthesis references without chang
     );
     expect(
       validateBoard({ ...exampleBoard(), schemaVersion: 2 }).schemaVersion,
-    ).toBe(3);
+    ).toBe(4);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

@@ -10,6 +10,15 @@ import {
   defaultCustomInstructions,
   withCustomInstructions,
 } from "./instructions";
+import { type Attachment, combineFiles } from "./research";
+export const versionFiles = (version: ResponseVersion): Attachment[] =>
+  "files" in version ? (version.files ?? []) : [];
+export const versionResearch = (version: ResponseVersion) =>
+  version.origin === "generated" ? version.webResearch : undefined;
+export const responseContextText = (version: ResponseVersion) =>
+  version.origin === "generated" && version.webResearch?.citations.length
+    ? `${version.text}\n\nRecorded web sources:\n${version.webResearch.citations.map((citation, index) => `[${index + 1}] ${citation.title}: ${citation.url}`).join("\n")}`
+    : version.text;
 export const explorationInstruction: Message = {
   role: "system",
   content:
@@ -34,6 +43,7 @@ export function buildContext(
   prompt: string,
   highlight?: Highlight,
   customInstructions = defaultCustomInstructions,
+  files: Attachment[] = [],
 ): Message[] {
   const messages: Message[] = [
     {
@@ -51,12 +61,17 @@ export function buildContext(
       highlight.versionId,
     )) {
       messages.push(
-        { role: "user", content: versionPrompt(n, v) },
-        { role: "assistant", content: v.text },
+        {
+          role: "user",
+          content: versionPrompt(n, v),
+          ...(versionFiles(v).length ? { files: versionFiles(v) } : {}),
+        },
+        { role: "assistant", content: responseContextText(v) },
       );
     }
   messages.push({
     role: "user",
+    ...(files.length ? { files } : {}),
     content: highlight
       ? `Selected passage from the preceding response:\n<highlight>\n${highlight.text}\n</highlight>${highlight.latexSources?.length ? `\n\nExact LaTeX for selected equations:\n${highlight.latexSources.map((source) => `\\[${source}\\]`).join("\n")}` : ""}\n\n${prompt}`
       : prompt,
@@ -109,7 +124,8 @@ export function revisionContext(
   versionId: string,
   prompt: string,
   instructions: string,
-) {
+  files?: Attachment[],
+): { messages: Message[]; ancestryVersions: Record<string, string> } {
   const path = versionPath(board, noteId, versionId).slice(0, -1);
   const incoming = board.edges.find((e) => e.target === noteId);
   const highlight = incoming?.highlight;
@@ -125,12 +141,14 @@ export function revisionContext(
   // retrospective annotation must not replace the passage used by this version.
   const note = board.notes.find((n) => n.id === noteId)!;
   let source = note.versions.find((v) => v.id === versionId)!;
+  const inputFiles = combineFiles(versionFiles(source), files);
   while (source.origin === "edited") {
     const baseId = source.basedOnVersionId;
     source = note.versions.find((v) => v.id === baseId)!;
   }
   if (source.origin === "generated") {
-    const recorded = source.context.at(-1);
+    // The question precedes any self-review turns recorded for this Note.
+    const recorded = source.context[path.length * 2 + 1];
     const oldPrompt = versionPrompt(note, source);
     if (recorded?.role === "user" && recorded.content.endsWith(oldPrompt))
       last = {
@@ -142,10 +160,19 @@ export function revisionContext(
     messages: [
       base[0],
       ...path.flatMap(({ note, version }) => [
-        { role: "user" as const, content: versionPrompt(note, version) },
-        { role: "assistant" as const, content: version.text },
+        {
+          role: "user" as const,
+          content: versionPrompt(note, version),
+          ...(versionFiles(version).length
+            ? { files: versionFiles(version) }
+            : {}),
+        },
+        { role: "assistant" as const, content: responseContextText(version) },
       ]),
-      last,
+      {
+        ...last,
+        ...(inputFiles.length ? { files: inputFiles } : {}),
+      },
     ],
     ancestryVersions: Object.fromEntries(
       path.map(({ note, version }) => [note.id, version.id]),
@@ -161,7 +188,8 @@ export function improvementContext(
   versionId: string,
   reviewPrompt: string,
   instructions: string,
-) {
+  files: Attachment[] = [],
+): { messages: Message[]; ancestryVersions: Record<string, string> } {
   const note = board.notes.find((n) => n.id === noteId)!;
   const base = note.versions.find((v) => v.id === versionId)!;
   const request = revisionContext(
@@ -187,8 +215,12 @@ export function improvementContext(
     messages: [
       request.messages[0],
       ...conversation,
-      { role: "assistant" as const, content: base.text },
-      { role: "user" as const, content: reviewPrompt },
+      { role: "assistant" as const, content: responseContextText(base) },
+      {
+        role: "user" as const,
+        content: reviewPrompt,
+        ...(files.length ? { files } : {}),
+      },
     ],
   };
 }
@@ -197,7 +229,13 @@ export function improvementContext(
 export function estimateTokens(messages: Message[]): number {
   return messages.reduce(
     (sum, m) =>
-      sum + Math.ceil(new TextEncoder().encode(m.content).length / 3) + 12,
+      sum +
+      Math.ceil(new TextEncoder().encode(m.content).length / 3) +
+      12 +
+      (m.files ?? []).reduce(
+        (total, file) => total + Math.ceil(file.size / 3) + 2048,
+        0,
+      ),
     0,
   );
 }
