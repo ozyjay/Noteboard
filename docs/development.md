@@ -61,6 +61,8 @@ The model dropdown shows the account’s available model names. **Thinking effor
 
 In a Note prompt, press **Enter** to send or **Shift+Enter** to add a line. Empty questions and IME composition do not submit.
 
+New Note composers, including Highlight branches, start with your saved provider model and thinking effort. Choose **Discover models** to select another model for that Note. For ChatGPT, **Thinking effort** also applies to that request only; changing the model resets it to **Model default**. Saved provider settings and later composers retain your defaults. Supported effort levels depend on the model; rejected requests keep the draft available for correction and retry.
+
 While a Note or synthesis is generating, a progress indicator appears with **Cancel generation**. Partial response text is not shown; the formatted result opens after generation completes successfully.
 
 New Notes ask the selected model to answer naturally, lead with the useful conclusion and include broader context only when helpful. **Where this fits** is optional, and answers do not need a concluding **Takeaway**. The canvas uses an explicit Takeaway if present or a short extract from the first substantive paragraph; you can edit it independently. Follow-ups retain their selected passage and ancestral conversation. Existing and imported responses stay as originally recorded.

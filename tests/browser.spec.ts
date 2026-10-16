@@ -1089,6 +1089,83 @@ test("clearing a text selection reverts the Highlight controls", async ({
   await expect(page.locator(".note-card")).toHaveCount(4);
 });
 
+test("a new Studio Highlight branch displays its connection and reopens the source after reload", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/");
+  await expect(page.getByText("Saved locally", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "New inquiry", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "Your question" })
+    .fill("I want to make my own Tiny Language Model.");
+  await page
+    .getByRole("button", { name: "Ask & explore", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Close Note", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Appearance settings", exact: true })
+    .click();
+  await page.getByLabel("Note style").selectOption("studio");
+  await page.getByLabel("Theme", { exact: true }).selectOption("dark");
+  await page
+    .getByRole("button", { name: "Save appearance", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Provider settings", exact: true })
+    .click();
+  await page
+    .getByRole("textbox", { name: "Custom instructions", exact: true })
+    .fill("Use Australian English. Answer concisely.");
+  await page
+    .getByRole("button", { name: "Save settings", exact: true })
+    .click();
+  await page.locator(".note-card .note-prompt").click();
+  const passage = await page.locator(".reader-response").evaluate((root) => {
+    const range = document.createRange();
+    range.selectNodeContents(root.querySelector("p")!);
+    const selection = getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+    root.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+    return range.toString();
+  });
+  await page
+    .getByRole("button", { name: "Explore this passage", exact: true })
+    .click();
+  await page
+    .getByRole("textbox", { name: "Your question" })
+    .fill("What are some good ones to try?");
+  await page
+    .getByRole("button", { name: "Create branch", exact: true })
+    .click();
+  await expect(page.locator(".note-card")).toHaveCount(2);
+  await expect(page.locator(".edge-label")).toHaveText(passage);
+  await expect(page.locator(".react-flow__edge-path")).toHaveCount(1);
+  await page.getByRole("button", { name: "Close Note", exact: true }).click();
+  await page.getByRole("button", { name: "Fit View", exact: true }).click();
+  const label = page.locator(".edge-label");
+  await expect(label).toHaveText(passage);
+  // A horizontal SVG path has zero bounding-box height even with a visible stroke.
+  await expect(page.locator(".react-flow__edge-path")).toHaveAttribute(
+    "d",
+    /^M/,
+  );
+  expect(
+    (await page.locator(".react-flow__edge-path").boundingBox())!.width,
+  ).toBeGreaterThan(0);
+  await expect(label).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("studio-highlight-branch.png"),
+  });
+  await label.click();
+  await expect(page.locator(".anchor-info")).toContainText(passage);
+  await page.reload();
+  await expect(page.locator(".note-card")).toHaveCount(2);
+  await label.click();
+  await expect(page.locator(".anchor-info")).toContainText(passage);
+  expect(await page.evaluate(() => getSelection()?.toString())).toBe(passage);
+});
+
 test("persists the second repeated passage using its rendered offsets", async ({
   page,
 }) => {
@@ -1184,9 +1261,9 @@ test("manual placement survives reopening the Board", async ({ page }) => {
   ).toEqual(placed);
 });
 
-test("ChatGPT account settings and effective context survive branching and reopening", async ({
+test("ChatGPT per-Note model and effort overrides preserve defaults and context after reopening", async ({
   page,
-}) => {
+}, testInfo) => {
   await page.addInitScript(() => {
     const listeners = new Set<(event: { id: string; text: string }) => void>();
     let connected = true;
@@ -1240,11 +1317,14 @@ test("ChatGPT account settings and effective context survive branching and reope
       },
       models: async () => [
         { id: "test-chatgpt-model", name: "Test ChatGPT Model" },
+        { id: "test-other-model", name: "Another ChatGPT Model" },
       ],
       generate: async (req) => {
         if (req.messages.some((message) => message.role === "system"))
           throw new Error("Unexpected system message");
         localStorage.setItem("test.request", JSON.stringify(req));
+        if (localStorage.getItem("test.fail"))
+          throw new Error("The selected thinking effort is unavailable");
         if (req.purpose === "explore" && req.messages.length > 2) {
           await new Promise<void>((resolve) => {
             window.addEventListener("test:finish-generation", () => resolve(), {
@@ -1259,7 +1339,7 @@ test("ChatGPT account settings and effective context survive branching and reope
         listeners.forEach((listener) => listener({ id: req.id, text }));
         return {
           text,
-          model: "test-chatgpt-model",
+          model: req.settings.model,
           reasoningEffort: req.settings.reasoningEffort,
           usage: { input: 10, output: 5 },
         };
@@ -1305,12 +1385,49 @@ test("ChatGPT account settings and effective context survive branching and reope
   await page.screenshot({ path: "/tmp/noteboard-chatgpt-settings.png" });
   await page.getByRole("button", { name: "Save settings" }).click();
   await page.getByRole("button", { name: "New inquiry", exact: true }).click();
+  await expect(page.getByLabel("Note model", { exact: true })).toHaveValue(
+    "test-chatgpt-model",
+  );
+  await expect(
+    page.getByLabel("Note thinking effort", { exact: true }),
+  ).toHaveValue("high");
+  await page
+    .getByRole("button", { name: "Discover models", exact: true })
+    .click();
+  await page
+    .getByLabel("Note model", { exact: true })
+    .selectOption({ label: "Another ChatGPT Model" });
+  await expect(
+    page.getByLabel("Note thinking effort", { exact: true }),
+  ).toHaveValue("");
+  await page
+    .getByLabel("Note thinking effort", { exact: true })
+    .selectOption("medium");
   await page
     .getByRole("textbox", { name: "Your question" })
     .fill("My ChatGPT inquiry");
   await expect(
     page.getByText("Using ChatGPT plan", { exact: false }).first(),
   ).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("note-model-and-effort.png"),
+  });
+  await page.evaluate(() => localStorage.setItem("test.fail", "true"));
+  await page.getByRole("textbox", { name: "Your question" }).press("Enter");
+  await expect(page.locator(".composer").getByRole("alert")).toContainText(
+    "The selected thinking effort is unavailable",
+  );
+  await expect(page.getByLabel("Note model", { exact: true })).toHaveValue(
+    "test-other-model",
+  );
+  await expect(
+    page.getByLabel("Note thinking effort", { exact: true }),
+  ).toHaveValue("medium");
+  await expect(
+    page.getByRole("textbox", { name: "Your question" }),
+  ).toHaveValue("My ChatGPT inquiry");
+  await expect(page.locator(".note-card")).toHaveCount(0);
+  await page.evaluate(() => localStorage.removeItem("test.fail"));
   await page.getByRole("textbox", { name: "Your question" }).press("Enter");
   await expect(page.locator(".note-card")).toHaveCount(1);
   await page
@@ -1338,12 +1455,34 @@ test("ChatGPT account settings and effective context survive branching and reope
   await expect(
     page.getByRole("textbox", { name: "Your question" }),
   ).toBeFocused();
+  await expect(page.getByLabel("Note model", { exact: true })).toHaveValue(
+    "test-chatgpt-model",
+  );
+  await expect(
+    page.getByLabel("Note thinking effort", { exact: true }),
+  ).toHaveValue("high");
+  await page
+    .getByRole("button", { name: "Discover models", exact: true })
+    .click();
+  await page
+    .getByLabel("Note model", { exact: true })
+    .selectOption("test-other-model");
+  await expect(
+    page.getByLabel("Note thinking effort", { exact: true }),
+  ).toHaveValue("");
+  await page
+    .getByLabel("Note thinking effort", { exact: true })
+    .selectOption("low");
   await page.getByRole("textbox", { name: "Your question" }).press("Enter");
   const cancelGeneration = page.getByRole("button", {
     name: "Cancel generation",
     exact: true,
   });
   await expect(cancelGeneration).toBeFocused();
+  await expect(page.getByLabel("Note model", { exact: true })).toBeDisabled();
+  await expect(
+    page.getByLabel("Note thinking effort", { exact: true }),
+  ).toBeDisabled();
   await page.keyboard.press("Tab");
   await expect(
     page.getByRole("button", { name: "Manage usage", exact: true }),
@@ -1359,7 +1498,15 @@ test("ChatGPT account settings and effective context survive branching and reope
   );
   const child = saved[0].notes.at(-1);
   expect(child.versions[0].provider).toBe("chatgpt");
-  expect(child.versions[0].reasoningEffort).toBe("high");
+  expect(child.versions[0].model).toBe("test-other-model");
+  expect(child.versions[0].reasoningEffort).toBe("low");
+  expect(saved[0].notes[0].versions[0].model).toBe("test-other-model");
+  expect(saved[0].notes[0].versions[0].reasoningEffort).toBe("medium");
+  const request = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("test.request")!),
+  );
+  expect(request.settings.model).toBe("test-other-model");
+  expect(request.settings.reasoningEffort).toBe("low");
   expect(child.versions[0].context[0].content).toContain(
     'a "Where this fits" section is optional',
   );
@@ -1375,6 +1522,16 @@ test("ChatGPT account settings and effective context survive branching and reope
   );
   await page.reload();
   await expect(page.locator(".note-card")).toHaveCount(2);
+  const reopened = await page.evaluate(
+    () => JSON.parse(localStorage.getItem("test.boards")!)[0],
+  );
+  expect(reopened.notes[1].versions[0].model).toBe("test-other-model");
+  expect(reopened.notes[1].versions[0].reasoningEffort).toBe("low");
+  expect(
+    await page.evaluate(
+      () => JSON.parse(localStorage.getItem("test.settings")!).model,
+    ),
+  ).toBe("test-chatgpt-model");
   await expect(page.getByText("ChatGPT plan", { exact: true })).toBeVisible();
   expect(
     await page.evaluate(

@@ -168,10 +168,56 @@ export default function App() {
     [highlight, setHighlight] = useState<Highlight>(),
     [anchor, setAnchor] = useState<Highlight>(),
     [selected, setSelected] = useState<string[]>([]);
-  const [composer, setComposer] = useState<{ highlight?: Highlight } | null>(
-      null,
-    ),
+  const [composer, setComposer] = useState<{
+      highlight?: Highlight;
+      model: string;
+      reasoningEffort?: ReasoningEffort;
+    } | null>(null),
     [prompt, setPrompt] = useState("");
+  const [composerModels, setComposerModels] = useState<ModelChoice[]>([]);
+  const [composerDiscovering, setComposerDiscovering] = useState(false);
+  const composerModelOptions = new Map<string, string>([
+    [settings.model, settings.model || "Provider default"],
+  ]);
+  if (composer)
+    composerModelOptions.set(
+      composer.model,
+      composer.model || "Provider default",
+    );
+  for (const choice of composerModels)
+    composerModelOptions.set(
+      typeof choice === "string" ? choice : choice.id,
+      typeof choice === "string" ? choice : choice.name,
+    );
+  const composerSession = useRef(0);
+  function openComposer(highlight?: Highlight) {
+    composerSession.current += 1;
+    setComposerModels([]);
+    setComposerDiscovering(false);
+    setComposer({
+      highlight,
+      model: settings.model,
+      reasoningEffort: settings.reasoningEffort,
+    });
+  }
+  async function discoverComposerModels() {
+    if (!composer) return;
+    const session = composerSession.current;
+    setComposerDiscovering(true);
+    setError("");
+    try {
+      const choices = await bridge.models({
+        ...settings,
+        model: composer.model,
+        reasoningEffort: composer.reasoningEffort,
+      });
+      if (session === composerSession.current) setComposerModels(choices);
+    } catch (e) {
+      if (session === composerSession.current) setError(errorText(e));
+    } finally {
+      if (session === composerSession.current) setComposerDiscovering(false);
+    }
+  }
   const [busy, setBusy] = useState(false),
     [providerOpen, setProviderOpen] = useState(false),
     [synthOpen, setSynthOpen] = useState(false);
@@ -478,7 +524,7 @@ export default function App() {
     setBoardId(b.id);
     resetPanels();
     setPrompt("");
-    setComposer({});
+    openComposer();
   }
   async function confirmDeletion() {
     const targetBoard = deletionBoard;
@@ -557,16 +603,22 @@ export default function App() {
   }
   async function submitPrompt(event: FormEvent) {
     event.preventDefault();
-    if (!board || !composer || !prompt.trim() || busy) return;
+    if (!board || !composer || !prompt.trim() || busy || composerDiscovering)
+      return;
     const snapshot = board;
     const h = composer.highlight;
     const question = prompt.trim();
+    const requestSettings = {
+      ...settings,
+      model: composer.model,
+      reasoningEffort: composer.reasoningEffort,
+    };
     try {
       const context = providerMessages(
         buildContext(snapshot, question, h, settings.customInstructions),
         settings.provider,
       );
-      const result = await generate(context, "explore");
+      const result = await generate(context, "explore", requestSettings);
       const parent = h
         ? snapshot.notes.find((n) => n.id === h.sourceId)
         : undefined;
@@ -630,7 +682,7 @@ export default function App() {
   }
   function branch(h: Highlight) {
     setPrompt(`What is ${highlightLabel(h)}?`);
-    setComposer({ highlight: h });
+    openComposer(h);
     setError("");
   }
   async function consolidate(event: FormEvent) {
@@ -1268,7 +1320,7 @@ export default function App() {
                     className="primary"
                     onClick={() => {
                       setPrompt("");
-                      setComposer({});
+                      openComposer();
                     }}
                   >
                     <Plus size={16} /> Ask your first question
@@ -2048,6 +2100,81 @@ export default function App() {
               <p id="prompt-keyboard-hint" className="muted keyboard-hint">
                 Enter to send · Shift+Enter for a new line
               </p>
+              {settings.provider !== "demo" && (
+                <>
+                  <div className="revision-model">
+                    <label>
+                      Model
+                      <select
+                        aria-label="Note model"
+                        value={composer.model}
+                        disabled={busy || composerDiscovering}
+                        onChange={(event) =>
+                          setComposer(
+                            (current) =>
+                              current && {
+                                ...current,
+                                model: event.target.value,
+                                reasoningEffort: undefined,
+                              },
+                          )
+                        }
+                      >
+                        {[...composerModelOptions].map(([id, name]) => (
+                          <option key={id} value={id}>
+                            {name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="secondary"
+                      disabled={busy || composerDiscovering}
+                      onClick={() => void discoverComposerModels()}
+                    >
+                      {composerDiscovering ? "Discovering…" : "Discover models"}
+                    </button>
+                  </div>
+                  {settings.provider === "chatgpt" && (
+                    <label>
+                      Thinking effort
+                      <select
+                        aria-label="Note thinking effort"
+                        value={composer.reasoningEffort ?? ""}
+                        disabled={
+                          busy || composerDiscovering || !composer.model
+                        }
+                        onChange={(event) =>
+                          setComposer(
+                            (current) =>
+                              current && {
+                                ...current,
+                                reasoningEffort: (event.target.value ||
+                                  undefined) as ReasoningEffort | undefined,
+                              },
+                          )
+                        }
+                      >
+                        <option value="">Model default</option>
+                        <option value="none">None</option>
+                        <option value="minimal">Minimal</option>
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="xhigh">Extra high</option>
+                        <option value="max">Maximum</option>
+                      </select>
+                    </label>
+                  )}
+                  <p className="muted">
+                    Applies to this Note only. Saved provider settings stay the
+                    same.
+                    {settings.provider === "chatgpt" &&
+                      " Higher thinking effort can take longer and use more of your plan. Supported levels vary by model."}
+                  </p>
+                </>
+              )}
               {composer.highlight &&
                 board &&
                 ancestry(board, composer.highlight.sourceId).length >=
@@ -2063,9 +2190,9 @@ export default function App() {
                 <span>
                   {settings.provider === "demo"
                     ? "Synthetic demo"
-                    : settings.model}{" "}
-                  {settings.provider === "chatgpt" && settings.reasoningEffort
-                    ? `· ${settings.reasoningEffort} thinking `
+                    : composer.model}{" "}
+                  {settings.provider === "chatgpt" && composer.reasoningEffort
+                    ? `· ${composer.reasoningEffort} thinking `
                     : ""}
                   · ~
                   {board
@@ -2133,7 +2260,10 @@ export default function App() {
                     Cancel
                   </button>
                 )}
-                <button className="primary" disabled={busy || !prompt.trim()}>
+                <button
+                  className="primary"
+                  disabled={busy || composerDiscovering || !prompt.trim()}
+                >
                   {busy ? (
                     <LoaderCircle className="spin" size={16} />
                   ) : (

@@ -2,9 +2,11 @@ import {
   Handle,
   Position,
   useStore,
+  useUpdateNodeInternals,
   type NodeProps,
   type Node,
 } from "@xyflow/react";
+import { useEffect } from "react";
 import { ArrowUpRight, GitBranch } from "lucide-react";
 import {
   type Appearance,
@@ -29,6 +31,12 @@ export function NoteCard({ data, selected }: NodeProps<CardNode>) {
   const style = data.noteStyle;
   const takeawayFirst = style === "sticky" || style === "studio";
   const detailed = zoom > 0.55;
+  const updateNodeInternals = useUpdateNodeInternals();
+  useEffect(() => {
+    // Refresh connector bounds after mounting or changing the card layout.
+    // Edges must not depend solely on a ResizeObserver notification.
+    updateNodeInternals(data.note.id);
+  }, [data.note.id, data.children, style, detailed, updateNodeInternals]);
   const version = response(data.note);
   const origin =
     version.origin === "imported"
