@@ -1,5 +1,7 @@
 # Verification
 
+Touch ID storage tests use synthetic keys and credentials to cover authenticated encryption, tamper rejection, vault isolation, session-key disposal, missing keys, legacy migration, cancellation/retry and reopening. They do not establish a successful biometric unlock. On macOS, build the native module, sign/package the app with a matching profile, then manually verify migration (which may require the old Keychain password once), Touch ID success, cancellation and retry, another Board without another unlock, token refresh, sign-out and reopening. Test password fallback according to macOS policy. Do not run these manual checks on a copied real credential file in a different data directory; use a test account and retain the real credential path.
+
 ```powershell
 npm run check
 npx playwright install chromium

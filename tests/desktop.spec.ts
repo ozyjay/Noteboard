@@ -1,10 +1,44 @@
 import { test, expect, _electron as electron } from "@playwright/test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { chatGPTExportFixture } from "./fixtures/chatgpt-export";
 import { Store } from "../electron/store";
 import { defaults } from "../src/core/model";
+
+test("macOS unprovisioned desktop reports the signing requirement without changing credentials", async () => {
+  test.skip(process.platform !== "darwin", "macOS Keychain integration");
+  const dir = mkdtempSync(path.join(tmpdir(), "noteboard-touchid-desktop-"));
+  const filename = path.join(dir, "chatgpt-credentials.bin");
+  const synthetic = Buffer.concat([Buffer.from("NBKC\x01"), Buffer.alloc(48)]);
+  writeFileSync(filename, synthetic, { mode: 0o600 });
+  const env: Record<string, string> = Object.fromEntries(
+    Object.entries(process.env).filter(
+      (entry): entry is [string, string] => entry[1] !== undefined,
+    ),
+  );
+  env.INQUIRY_DEV = "0";
+  env.INQUIRY_DATA_DIR = dir;
+  delete env.ELECTRON_RUN_AS_NODE;
+  let app;
+  try {
+    app = await electron.launch({ args: [".", `--user-data-dir=${dir}`], env });
+    const page = await app.firstWindow();
+    const message = await page.evaluate(async () => {
+      try {
+        await window.inquiry!.chatgptAccounts();
+        return "unexpected success";
+      } catch (error) {
+        return String(error);
+      }
+    });
+    expect(message).toContain("matching provisioning profile");
+    expect(readFileSync(filename)).toEqual(synthetic);
+  } finally {
+    await app?.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 test("desktop model catalogue and thinking metadata reopen through the isolated bridge without discovery", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "inquiry-desktop-catalogue-"));

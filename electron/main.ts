@@ -8,6 +8,7 @@ import {
   systemPreferences,
 } from "electron";
 import path from "node:path";
+import { createRequire } from "node:module";
 import { z } from "zod";
 import { Store } from "./store";
 import { MessageSchema, SettingsSchema } from "../src/core/model";
@@ -15,7 +16,8 @@ import { demoProvider, validateRequestFeatures } from "../src/core/providers";
 import { WebUrlSchema } from "../src/core/research";
 import { ollamaProvider, localEndpoint } from "./ollama";
 import { assertBudget } from "../src/core/context";
-import { ChatGPTAuth } from "./chatgpt-auth";
+import { ChatGPTAuth, type CredentialCipher } from "./chatgpt-auth";
+import { macCredentialCipher } from "./macos-credentials";
 import { chatGPTProvider } from "./chatgpt";
 import { ChatGPTModelCatalogues } from "./model-catalogues";
 let auth: ChatGPTAuth;
@@ -112,17 +114,30 @@ if (primaryInstance)
         "boolean",
         false,
       );
-    auth = new ChatGPTAuth(
-      path.join(app.getPath("userData"), "chatgpt-credentials.bin"),
-      {
-        available: () =>
-          safeStorage.isEncryptionAvailable() &&
-          (process.platform !== "linux" ||
-            safeStorage.getSelectedStorageBackend() !== "basic_text"),
-        encrypt: (value) => safeStorage.encryptString(value),
-        decrypt: (value) => safeStorage.decryptString(value),
-      },
-      (url) => shell.openExternal(url),
+    const credentialFile = path.join(
+      app.getPath("userData"),
+      "chatgpt-credentials.bin",
+    );
+    const credentialCipher: CredentialCipher =
+      process.platform === "darwin"
+        ? macCredentialCipher(
+            credentialFile,
+            () =>
+              createRequire(__filename)(
+                path.join(__dirname, "noteboard-keychain.node"),
+              ),
+            (value) => safeStorage.decryptString(value),
+          )
+        : {
+            available: () =>
+              safeStorage.isEncryptionAvailable() &&
+              (process.platform !== "linux" ||
+                safeStorage.getSelectedStorageBackend() !== "basic_text"),
+            encrypt: (value) => safeStorage.encryptString(value),
+            decrypt: (value) => safeStorage.decryptString(value),
+          };
+    auth = new ChatGPTAuth(credentialFile, credentialCipher, (url) =>
+      shell.openExternal(url),
     );
     const chatgpt = chatGPTProvider(auth);
     store = new Store(path.join(app.getPath("userData"), "inquiry.sqlite"));
@@ -205,6 +220,6 @@ app.on("window-all-closed", () => {
 });
 app.on("before-quit", () => {
   for (const c of pending.values()) c.abort();
-  auth?.cancel();
+  auth?.dispose();
   store?.close();
 });

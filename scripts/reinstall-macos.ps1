@@ -3,6 +3,7 @@ if (-not $IsMacOS) { throw 'This command requires macOS.' }
 
 # Quit Noteboard before running. Build successfully before replacing the app.
 & (Join-Path $PSScriptRoot 'package-macos.ps1')
+if (-not $?) { throw 'Packaging failed; the installed app has not been changed.' }
 $projectRoot = Split-Path $PSScriptRoot -Parent
 $appPath = Join-Path $HOME 'Applications/Noteboard.app'
 if (Test-Path $appPath) {

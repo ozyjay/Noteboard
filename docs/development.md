@@ -14,14 +14,24 @@ Development bundles Electron main/preload with esbuild, starts Vite on loopback 
 
 ## Local macOS installation
 
-Run these commands in PowerShell from the repository root:
+The macOS app uses Touch ID protected Keychain storage and requires an Apple signing identity and a matching macOS provisioning profile. In Xcode Settings → Accounts, sign in with the Apple developer account for your signing team. To let Xcode register/provision `app.noteboard.desktop` with Keychain Sharing, run this once from PowerShell using your ten-character team ID:
 
 ```powershell
+pwsh -NoProfile -File scripts/prepare-macos-signing.ps1 -TeamId 'YOURTEAMID'
+```
+
+This builds a disposable signing target under `release/signing-setup`; it is never installed or run. Xcode may need account sign-in or device registration before it can issue a development profile. The team ID is the certificate's organisational unit (`OU`), which can differ from the identifier in its display name. If Xcode reports that this Mac is unregistered, adding `-RegisterDevice` explicitly authorises Xcode to add its identifier to the team's Apple Developer device list. Alternatively, supply an existing macOS profile for this app identifier with its Keychain access group. Keep the same app identifier and signing team for subsequent builds.
+
+Set the signing identity (as listed by `security find-identity -v -p codesigning`) and profile path, then install:
+
+```powershell
+$env:NOTEBOARD_SIGNING_IDENTITY = 'Apple Development: your signing identity'
+$env:NOTEBOARD_PROVISIONING_PROFILE = Join-Path $PWD 'release/signing-setup/DerivedData/Build/Products/Debug/NoteboardSigning.app/Contents/embedded.provisionprofile'
 npm run install:macos
 open (Join-Path $HOME 'Applications/Noteboard.app')
 ```
 
-This builds a standalone app at `release/Noteboard.app`, signs it locally with an ad hoc signature and copies it into `~/Applications`. The installed app runs without the repository, Node or a development server. It uses the existing Inquiry desktop data directory, preserving Boards and provider settings. This local build has no Developer ID signing or notarisation for distribution.
+This builds a standalone app at `release/Noteboard.app`, embeds the profile, signs it with the selected identity and copies it into `~/Applications`. Packaging checks the profile's expiry, macOS platform, app identifier, access group and authorised signing certificate before building or replacing anything. Missing signing configuration fails explicitly; ad hoc signing is no longer used. The installed app runs without the repository, Node or a development server. It uses the existing Inquiry desktop data directory, preserving Boards and provider settings. Development signing does not provide notarisation or establish suitability for distribution.
 
 `npm run package:macos` builds without installing. Installation refuses to overwrite an existing bundle. To reinstall or update, quit Noteboard, then run:
 
@@ -71,9 +81,11 @@ New Notes ask the selected model to answer naturally, lead with the useful concl
 
 In **Provider settings**, edit **Custom instructions** to personalise future Notes and generated synthesis. Defaults cover response style, Australian English, accuracy, uncertainty, sources and recommendations. **Save settings** commits the draft; **Cancel** or closing the dialog discards it. **Restore response preferences** restores the default draft. Clearing the field keeps only basic Noteboard guidance. These settings apply across providers; scripted demo responses do not follow them. Web search is available for ChatGPT Notes when enabled. The app has no connection to ChatGPT projects or personalisation. Instructions actually used are recorded in generation context and included in Board exports; changing settings never rewrites earlier responses.
 
-Credentials are encrypted with Electron `safeStorage`, written atomically with owner-only permissions to `chatgpt-credentials.bin` in the app’s user-data directory, and excluded from SQLite, renderer state and Board exports. Platforms without secure credential storage are refused, including Linux’s plaintext fallback. Refreshes are serialised within the process. A single-instance lock prevents concurrent desktop processes from racing credential rotation.
+Credentials are written atomically with owner-only permissions to `chatgpt-credentials.bin` in the app’s user-data directory and excluded from SQLite, renderer state and Board exports. On macOS, AES-256-GCM protects the file with a random key held in the data protection Keychain under user-presence access control. Unlocking uses the native Touch ID prompt with macOS password fallback when necessary. Other platforms use Electron `safeStorage`; insecure backends, including Linux’s plaintext fallback, are refused. Refreshes are serialised within the process. A single-instance lock prevents concurrent desktop processes from racing credential rotation.
 
-Account listings reuse credentials already unlocked in the main process; creating another Board does not require unlocking them again. With no credential file, listing accounts does not access secure storage. Opening an existing file does not rewrite it. On macOS, the initial access may show a Keychain permission dialog: choose **Always Allow** to remember access for the installed build. Locally packaged apps use ad hoc signatures, so rebuilding or reinstalling can prompt again even after Always Allow. A consistent signing identity is needed for reliable recognition across updates; see [Electron’s safeStorage guidance](https://www.electronjs.org/docs/latest/api/safe-storage/). Do not disable credential encryption to work around these prompts.
+Account listings reuse credentials already unlocked in the main process; creating another Board does not require unlocking them again. With no credential file, listing accounts does not access secure storage. Opening a current-format file does not rewrite it. The first access to an older macOS credential file migrates it automatically, preserving registrations and tokens. That one migration may still ask for the original login-Keychain password, followed by Touch ID. Cancellation or failure leaves the old file intact. Later launches unlock the new Keychain item through user presence. macOS can require a password when Touch ID is unavailable or locked out; the app cannot override system policy. See [Apple’s Keychain access-control guidance](https://developer.apple.com/documentation/security/restricting-keychain-item-accessibility).
+
+The native module is compiled with Xcode command-line tools during desktop builds, using the pinned `node-api-headers` development dependency. It is loaded only by main, with no new renderer or preload permissions. `npm run dev` uses an unprovisioned Electron host, so macOS ChatGPT credentials require the signed installed app; browser/demo and Ollama development remain available. Never use mock Keychain flags with real credentials. The vault key is device-local and tied to the credential path: copying the encrypted credential file to another Mac or directory is not a credential backup or supported migration.
 
 ChatGPT inference uses account-specific model discovery and `POST /v1/responses` with `store: false`, `stream: true` and complete effective messages. System instructions become developer messages before both transmission and provenance recording. The local context estimate includes a 1,024-token reserve; this preview does not support an output cap or exact model-budget discovery, so the service may still reject a request or generate a longer response. No context is automatically reduced.
 

@@ -1,4 +1,5 @@
 import { build } from "esbuild";
+import "./build-keychain.mjs";
 await build({
   entryPoints: ["electron/main.ts"],
   outfile: "dist-electron/main.cjs",

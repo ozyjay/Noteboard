@@ -13,6 +13,7 @@ import {
   existsSync,
   mkdirSync,
   chmodSync,
+  rmSync,
 } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
@@ -40,7 +41,10 @@ export interface CredentialCipher {
   available(): boolean;
   encrypt(text: string): Buffer;
   decrypt(value: Buffer): string;
+  needsMigration?(value: Buffer): boolean;
+  dispose?(): void;
 }
+export class CredentialStorageError extends Error {}
 export async function verifyIdentity(
   token: string,
   clientId: string,
@@ -131,14 +135,17 @@ export class ChatGPTAuth {
       );
     if (!this.data) {
       try {
-        const existing = existsSync(this.filename);
-        this.data = existing
-          ? Vault.parse(
-              JSON.parse(this.cipher.decrypt(readFileSync(this.filename))),
-            )
+        const saved = existsSync(this.filename)
+          ? readFileSync(this.filename)
+          : undefined;
+        this.data = saved
+          ? Vault.parse(JSON.parse(this.cipher.decrypt(saved)))
           : { hostId: `urn:uuid:${randomUUID()}`, accounts: [] };
-        if (!existing) this.save();
-      } catch {
+        if (!saved || this.cipher.needsMigration?.(saved)) this.save();
+      } catch (error) {
+        this.data = undefined;
+        this.cipher.dispose?.();
+        if (error instanceof CredentialStorageError) throw error;
         throw new Error(
           "Could not open protected ChatGPT credentials. Check the operating system credential store.",
         );
@@ -149,12 +156,16 @@ export class ChatGPTAuth {
   private save() {
     mkdirSync(path.dirname(this.filename), { recursive: true });
     const temp = `${this.filename}.${randomUUID()}.tmp`;
-    writeFileSync(temp, this.cipher.encrypt(JSON.stringify(this.data)), {
-      mode: 0o600,
-      flag: "wx",
-    });
-    renameSync(temp, this.filename);
-    chmodSync(this.filename, 0o600);
+    try {
+      writeFileSync(temp, this.cipher.encrypt(JSON.stringify(this.data)), {
+        mode: 0o600,
+        flag: "wx",
+      });
+      chmodSync(temp, 0o600);
+      renameSync(temp, this.filename);
+    } finally {
+      rmSync(temp, { force: true });
+    }
   }
   accounts(): ChatGPTAccount[] {
     // No credentials means no reason to access Keychain just to list accounts.
@@ -169,6 +180,11 @@ export class ChatGPTAuth {
   }
   cancel() {
     this.cancelAttempt?.();
+  }
+  dispose() {
+    this.cancel();
+    this.data = undefined;
+    this.cipher.dispose?.();
   }
   async signIn(accountId?: string): Promise<ChatGPTAccount[]> {
     if (this.cancelAttempt)
