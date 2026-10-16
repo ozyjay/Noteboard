@@ -100,6 +100,7 @@ import { appendRevision } from "./core/revisions";
 import { pathVersions, versionPath } from "./core/context";
 import { versionPrompt, noteAtVersion } from "./core/model";
 import { NoteTitle } from "./components/NoteTitle";
+import { WorkspaceMenu } from "./components/WorkspaceMenu";
 import { BoardMenu, type BoardMenuTarget } from "./components/BoardMenu";
 import {
   defaultCustomInstructions,
@@ -1052,6 +1053,7 @@ export default function App() {
             .map((b) => (
               <button
                 key={b.id}
+                title={b.title}
                 disabled={busy}
                 className={b.id === boardId ? "active" : ""}
                 aria-haspopup="menu"
@@ -1091,7 +1093,7 @@ export default function App() {
               >
                 <Layers size={16} />
                 <span>
-                  {b.title}
+                  <span className="board-list-title">{b.title}</span>
                   <small>{b.notes.length} Notes</small>
                 </span>
               </button>
@@ -1182,112 +1184,8 @@ export default function App() {
                 <PanelLeftOpen size={18} />
               )}
             </button>
-            <div className="breadcrumb">
-              Workspace <span>/</span>
-              <strong>{board?.title}</strong>
-            </div>
-          </div>
-          <div className="topbar-actions">
-            <button
-              aria-label="Delete Board"
-              title="Delete Board"
-              disabled={busy || !board}
-              onClick={() => {
-                setDeleteError("");
-                setDeleteTarget({ boardId });
-              }}
-            >
-              <Trash2 size={16} />
-            </button>
-            <button
-              aria-label="Appearance settings"
-              title="Appearance settings"
-              onClick={() => {
-                setAppearanceDraft(settings.appearance);
-                setError("");
-                setAppearanceOpen(true);
-              }}
-            >
-              <Palette size={16} />
-            </button>
-            <button
-              title="Import a Board"
-              aria-label="Import a Board"
-              disabled={busy}
-              onClick={() => fileInput.current?.click()}
-            >
-              <Upload size={16} />
-            </button>
-            <button
-              aria-label="Import ChatGPT conversation"
-              title="Import ChatGPT conversation"
-              disabled={busy || importSaving}
-              onClick={() => {
-                setImportOpen(true);
-                setError("");
-              }}
-            >
-              <Upload size={16} /> ChatGPT
-            </button>
-            <button
-              title="Export Board"
-              aria-label="Export Board"
-              onClick={() => {
-                if (board) {
-                  preserveDraft();
-                  const exported =
-                    documentDirty && artefact
-                      ? {
-                          ...board,
-                          artefacts: board.artefacts.map((a) =>
-                            a.id === artefact.id
-                              ? {
-                                  ...a,
-                                  versions: [
-                                    ...a.versions,
-                                    {
-                                      id: uid(),
-                                      text: documentText,
-                                      createdAt: now(),
-                                      kind: "edited" as const,
-                                      provider: "human" as const,
-                                      model: "editor",
-                                      context: [],
-                                    },
-                                  ],
-                                }
-                              : a,
-                          ),
-                        }
-                      : board;
-                  const serialised = JSON.stringify(exported, null, 2);
-                  if (
-                    new TextEncoder().encode(serialised).byteLength >
-                    MAX_EXPORT_BYTES
-                  ) {
-                    setError(
-                      "This Board exceeds the 50 MB export/import limit, including attached files and recorded contexts. Nothing has been removed.",
-                    );
-                    return;
-                  }
-                  download(
-                    "noteboard-board.json",
-                    serialised,
-                    "application/json",
-                  );
-                }
-              }}
-            >
-              <Download size={16} />
-            </button>
-            <span className="avatar">Y</span>
-          </div>
-        </header>
-        <div className="board-heading">
-          <div>
-            <div className="eyebrow">FOLLOW YOUR CURIOSITY</div>
             <div className="board-title-row">
-              <h1>{board?.title}</h1>
+              <h1 title={board?.title}>{board?.title}</h1>
               <button
                 className="rename-board"
                 aria-label="Rename Board"
@@ -1302,19 +1200,125 @@ export default function App() {
                 <Pencil size={16} />
               </button>
             </div>
-            <p>Every good question opens another door.</p>
           </div>
-          <button
-            className="primary"
-            disabled={busy || !board?.notes.length}
-            onClick={() => {
-              setScope(selected.length ? "selected" : "board");
-              setSynthOpen(true);
-            }}
-          >
-            <Sparkles size={15} /> Consolidate <ArrowUpRight size={15} />
-          </button>
-        </div>
+          <div className="topbar-actions">
+            <button
+              className="primary"
+              disabled={busy || !board?.notes.length}
+              onClick={() => {
+                setScope(selected.length ? "selected" : "board");
+                setSynthOpen(true);
+              }}
+            >
+              <Sparkles size={15} /> Consolidate <ArrowUpRight size={15} />
+            </button>
+            <WorkspaceMenu>
+              <button
+                role="menuitem"
+                tabIndex={-1}
+                aria-label="Appearance settings"
+                title="Appearance settings"
+                onClick={() => {
+                  setAppearanceDraft(settings.appearance);
+                  setError("");
+                  setAppearanceOpen(true);
+                }}
+              >
+                <Palette size={16} /> Appearance settings
+              </button>
+              <button
+                role="menuitem"
+                tabIndex={-1}
+                title="Import a Board"
+                aria-label="Import a Board"
+                disabled={busy}
+                onClick={() => fileInput.current?.click()}
+              >
+                <Upload size={16} /> Import a Board
+              </button>
+              <button
+                role="menuitem"
+                tabIndex={-1}
+                aria-label="Import ChatGPT conversation"
+                title="Import ChatGPT conversation"
+                disabled={busy || importSaving}
+                onClick={() => {
+                  setImportOpen(true);
+                  setError("");
+                }}
+              >
+                <Upload size={16} /> Import ChatGPT conversation
+              </button>
+              <button
+                role="menuitem"
+                tabIndex={-1}
+                title="Export Board"
+                aria-label="Export Board"
+                onClick={() => {
+                  if (board) {
+                    preserveDraft();
+                    const exported =
+                      documentDirty && artefact
+                        ? {
+                            ...board,
+                            artefacts: board.artefacts.map((a) =>
+                              a.id === artefact.id
+                                ? {
+                                    ...a,
+                                    versions: [
+                                      ...a.versions,
+                                      {
+                                        id: uid(),
+                                        text: documentText,
+                                        createdAt: now(),
+                                        kind: "edited" as const,
+                                        provider: "human" as const,
+                                        model: "editor",
+                                        context: [],
+                                      },
+                                    ],
+                                  }
+                                : a,
+                            ),
+                          }
+                        : board;
+                    const serialised = JSON.stringify(exported, null, 2);
+                    if (
+                      new TextEncoder().encode(serialised).byteLength >
+                      MAX_EXPORT_BYTES
+                    ) {
+                      setError(
+                        "This Board exceeds the 50 MB export/import limit, including attached files and recorded contexts. Nothing has been removed.",
+                      );
+                      return;
+                    }
+                    download(
+                      "noteboard-board.json",
+                      serialised,
+                      "application/json",
+                    );
+                  }
+                }}
+              >
+                <Download size={16} /> Export Board
+              </button>
+
+              <button
+                role="menuitem"
+                tabIndex={-1}
+                aria-label="Delete Board"
+                title="Delete Board"
+                disabled={busy || !board}
+                onClick={() => {
+                  setDeleteError("");
+                  setDeleteTarget({ boardId });
+                }}
+              >
+                <Trash2 size={16} /> Delete Board
+              </button>
+            </WorkspaceMenu>
+          </div>
+        </header>
         <div className="modebar">
           <div className="mode-tabs">
             <button

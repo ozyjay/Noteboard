@@ -137,8 +137,12 @@ test("desktop imports a chain, keeps retrospective anchors and reopens spatial N
   try {
     app = await electron.launch({ args: ["."], env });
     let page = await app.firstWindow();
+    await page.getByRole("button", { name: "More", exact: true }).click();
     await page
-      .getByRole("button", { name: "Import ChatGPT conversation", exact: true })
+      .getByRole("menuitem", {
+        name: "Import ChatGPT conversation",
+        exact: true,
+      })
       .click();
     await page.getByLabel("ChatGPT export file").setInputFiles({
       name: "conversations.json",
@@ -263,8 +267,9 @@ test("production desktop bridge saves and reopens an inquiry in SQLite", async (
     await expect(
       page.getByText("Saved locally", { exact: true }),
     ).toBeVisible();
+    await page.getByRole("button", { name: "More", exact: true }).click();
     await page
-      .getByRole("button", { name: "Appearance settings", exact: true })
+      .getByRole("menuitem", { name: "Appearance settings", exact: true })
       .click();
     await page.getByLabel("Theme", { exact: true }).selectOption("dark");
     await page.getByLabel("Reading text size").selectOption("large");
@@ -378,8 +383,9 @@ test("production desktop bridge saves and reopens an inquiry in SQLite", async (
         ),
       )
       .toBe(0);
+    await page.getByRole("button", { name: "More", exact: true }).click();
     await page
-      .getByRole("button", { name: "Delete Board", exact: true })
+      .getByRole("menuitem", { name: "Delete Board", exact: true })
       .click();
     await page
       .getByRole("button", { name: "Delete Board permanently", exact: true })

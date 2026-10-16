@@ -181,13 +181,13 @@ button:hover:not(:disabled) {
   overflow: hidden;
 }
 .sidebar {
-  width: 245px;
+  width: 220px;
   flex-shrink: 0;
   background: var(--sidebar);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  padding: 31px 20px 18px;
+  padding: 20px 16px 14px;
 }
 .sidebar[hidden] {
   display: none;
@@ -196,10 +196,10 @@ button:hover:not(:disabled) {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 30px;
+  font-size: 26px;
   font-weight: 600;
   letter-spacing: -1.3px;
-  margin-bottom: 39px;
+  margin-bottom: 22px;
 }
 .brand-icon {
   display: flex;
@@ -225,7 +225,7 @@ button:hover:not(:disabled) {
   border-radius: 3px;
 }
 .new-board {
-  margin-top: 15px;
+  margin-top: 12px;
   width: 100%;
   padding: 11px;
   border: 1px solid var(--border);
@@ -243,7 +243,7 @@ button:hover:not(:disabled) {
   color: var(--text-secondary);
   letter-spacing: 1.3px;
   font-weight: 650;
-  margin: 29px 4px 12px;
+  margin: 20px 4px 8px;
 }
 .boards {
   overflow: auto;
@@ -275,10 +275,10 @@ button:hover:not(:disabled) {
   text-align: left;
   justify-content: flex-start;
   align-items: flex-start;
-  padding: 12px 10px;
+  padding: 9px 8px;
   border-radius: 6px;
   font-size: 12px;
-  margin-bottom: 5px;
+  margin-bottom: 3px;
   line-height: 1.5;
 }
 .boards button.active {
@@ -383,22 +383,13 @@ button:hover:not(:disabled) {
   flex-direction: column;
 }
 .topbar {
-  height: 64px;
+  height: 56px;
   flex-shrink: 0;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 36px;
-}
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  color: var(--text-secondary);
-  font-size: 11px;
-  overflow: hidden;
-  white-space: nowrap;
+  padding: 0 20px;
 }
 .topbar-start {
   display: flex;
@@ -417,42 +408,15 @@ button:hover:not(:disabled) {
 .sidebar-toggle:hover {
   background: var(--surface-muted);
 }
-.breadcrumb strong {
-  font-weight: 450;
-  color: var(--text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.breadcrumb span {
-  color: var(--text-secondary);
-}
 .topbar-actions {
   display: flex;
-  gap: 15px;
+  gap: 10px;
+  flex-shrink: 0;
   align-items: center;
   color: var(--text-secondary);
 }
 .topbar-actions button {
   padding: 4px;
-}
-.avatar {
-  background: var(--surface-muted);
-  border: 1px solid var(--border);
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  display: grid;
-  place-items: center;
-  font-size: 10px;
-  color: var(--text-secondary);
-  margin-left: 9px;
-}
-.board-heading {
-  padding: 30px 36px 23px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
 }
 .eyebrow {
   font-size: 9px;
@@ -467,21 +431,19 @@ h1 {
   margin: 10px 0 8px;
   line-height: 1.3;
 }
-.board-heading p {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin: 0;
-}
-.board-heading > div {
-  min-width: 0;
-}
 .board-title-row {
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 12px;
 }
 .board-title-row h1 {
-  overflow-wrap: anywhere;
+  font-size: 18px;
+  letter-spacing: -0.4px;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .rename-board {
   flex-shrink: 0;
@@ -507,12 +469,12 @@ h1 {
   font-size: 12px;
 }
 .modebar {
-  height: 50px;
+  height: 40px;
   border-bottom: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 36px;
+  padding: 0 20px;
   flex-shrink: 0;
 }
 .mode-tabs {
@@ -1070,7 +1032,7 @@ h1 {
 }
 .reader {
   position: relative;
-  width: 33.333333%;
+  width: clamp(420px, 40%, 640px);
   max-width: calc(100% - min(240px, 30%));
   flex-shrink: 0;
   border-left: 1px solid var(--border);
@@ -1719,23 +1681,14 @@ h1 {
 }
 @media (max-width: 1150px) {
   .sidebar {
-    width: 210px;
-    padding: 25px 15px;
+    width: 200px;
+    padding: 20px 12px;
   }
   .topbar {
-    padding: 0 24px;
-  }
-  .board-heading {
-    padding: 24px;
-  }
-  .board-heading h1 {
-    font-size: 24px;
+    padding: 0 16px;
   }
   .modebar {
-    padding: 0 24px;
-  }
-  .reader {
-    width: 360px;
+    padding: 0 16px;
   }
   .reader-scroll {
     padding: 20px;
@@ -2067,4 +2020,50 @@ h1 {
 :root:is([data-note-style="index"], [data-note-style="blueprint"])
   .note-card.overview {
   min-height: 105px;
+}
+
+.board-list-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.topbar-actions > .primary {
+  padding: 8px 12px;
+}
+.workspace-menu {
+  position: relative;
+}
+.topbar-actions .workspace-menu-trigger {
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+.workspace-menu-items {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 100;
+  width: 260px;
+  padding: 5px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 24px #0003;
+}
+.workspace-menu-items button {
+  width: 100%;
+  justify-content: flex-start;
+  padding: 10px;
+  border-radius: 4px;
+  text-align: left;
+}
+.workspace-menu-items button:hover:not(:disabled),
+.workspace-menu-items button:focus-visible {
+  background: var(--surface-muted);
+}
+.workspace-menu-items button:last-child {
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 4px 4px;
+  margin-top: 4px;
 }

@@ -54,7 +54,9 @@ export function NoteReader({
   );
   const minimum = Math.min(320, maximum);
   const clamp = (value: number) => Math.min(maximum, Math.max(minimum, value));
-  const actualWidth = clamp(width ?? workspaceWidth / 3);
+  const actualWidth = clamp(
+    width ?? Math.min(640, Math.max(420, workspaceWidth * 0.4)),
+  );
   return (
     <aside
       ref={reader}
