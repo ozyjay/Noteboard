@@ -38,6 +38,8 @@ The ChatGPT model picker retains account-catalogue ordering and display names wh
 
 New Note composers initialise request-local model and thinking-effort choices from saved settings, including for Highlight branches. Model discovery uses the existing provider bridge. Changing the composer model clears its effort override; generating uses the selected request settings for budgeting and inference. No composer override writes saved settings or changes previous Notes, and each newly opened composer starts from the saved defaults. Failed or cancelled generation retains the draft choices for retry.
 
+Credential loading is lazy and cached in the main process. Listing accounts without an existing credential file does not access secure storage or create a file. Once unlocked, account listings and valid-token reads reuse the in-memory vault without repeating availability checks or rewriting credentials. Reopening an existing vault only decrypts it; new registrations and token changes still use encrypted atomic writes. Unavailable storage checks can be retried.
+
 ## Persistence
 
 Board schema version 4 adds file-bearing user messages, immutable per-version file inputs and optional web-search provenance. Older versions 1–3 migrate without adding inferred file, search or citation history. New exports require a version-4-aware app so older clients cannot silently remove attachments. SQLite tables are unchanged.

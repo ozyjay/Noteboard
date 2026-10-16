@@ -110,6 +110,7 @@ export async function verifyIdentity(
 }
 export class ChatGPTAuth {
   private data?: z.infer<typeof Vault>;
+  private secureStorageAvailable = false;
   private cancelAttempt?: () => void;
   private refreshing = new Map<string, Promise<string>>();
   constructor(
@@ -118,24 +119,30 @@ export class ChatGPTAuth {
     private openBrowser: (url: string) => Promise<void>,
     private validateIdentity = verifyIdentity,
   ) {}
+  private storageAvailable() {
+    // A successful check applies to this process; a failure may be retried.
+    return (this.secureStorageAvailable ||= this.cipher.available());
+  }
   private vault() {
-    if (!this.cipher.available())
+    if (this.data) return this.data;
+    if (!this.storageAvailable())
       throw new Error(
         "Secure credential storage is unavailable on this computer",
       );
     if (!this.data) {
       try {
-        this.data = existsSync(this.filename)
+        const existing = existsSync(this.filename);
+        this.data = existing
           ? Vault.parse(
               JSON.parse(this.cipher.decrypt(readFileSync(this.filename))),
             )
           : { hostId: `urn:uuid:${randomUUID()}`, accounts: [] };
+        if (!existing) this.save();
       } catch {
         throw new Error(
           "Could not open protected ChatGPT credentials. Check the operating system credential store.",
         );
       }
-      this.save();
     }
     return this.data;
   }
@@ -150,8 +157,9 @@ export class ChatGPTAuth {
     chmodSync(this.filename, 0o600);
   }
   accounts(): ChatGPTAccount[] {
-    // Listing is harmless even on machines without an OS credential store.
-    if (!this.cipher.available()) return [];
+    // No credentials means no reason to access Keychain just to list accounts.
+    if (!this.data && !existsSync(this.filename)) return [];
+    if (!this.data && !this.storageAvailable()) return [];
     return this.vault().accounts.map((a) => ({
       id: a.clientId,
       label: `${a.email} · ${a.clientId.slice(-8)}`,

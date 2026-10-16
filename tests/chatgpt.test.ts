@@ -8,6 +8,7 @@ import {
 } from "node:crypto";
 import {
   mkdtempSync,
+  existsSync,
   readFileSync,
   rmSync,
   statSync,
@@ -472,6 +473,68 @@ const cipher: CredentialCipher = {
   },
 };
 describe("ChatGPT OAuth and protected credentials", () => {
+  it("lists an unconfigured account without touching secure storage or creating a vault", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "noteboard-chatgpt-"));
+    const filename = path.join(dir, "credentials.bin");
+    const tracked = {
+      available: vi.fn(cipher.available),
+      encrypt: vi.fn(cipher.encrypt),
+      decrypt: vi.fn(cipher.decrypt),
+    };
+    try {
+      const auth = new ChatGPTAuth(filename, tracked, async () => {});
+      expect(auth.accounts()).toEqual([]);
+      expect(auth.accounts()).toEqual([]);
+      expect(tracked.available).not.toHaveBeenCalled();
+      expect(tracked.encrypt).not.toHaveBeenCalled();
+      expect(tracked.decrypt).not.toHaveBeenCalled();
+      expect(existsSync(filename)).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("unlocks once per process and reuses credentials without rewriting them", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "noteboard-chatgpt-"));
+    const filename = path.join(dir, "credentials.bin");
+    const encrypted = cipher.encrypt(
+      JSON.stringify({
+        hostId: "urn:uuid:test-host",
+        accounts: [
+          {
+            clientId: "issued-client",
+            subject: "test-user",
+            email: "user@example.com",
+            tokens: { ...tokenResponse(), expiresAt: Date.now() + 3600000 },
+          },
+        ],
+      }),
+    );
+    writeFileSync(filename, encrypted, { mode: 0o600 });
+    const tracked = {
+      available: vi.fn(cipher.available),
+      encrypt: vi.fn(cipher.encrypt),
+      decrypt: vi.fn(cipher.decrypt),
+    };
+    try {
+      for (let launch = 0; launch < 2; launch++) {
+        const auth = new ChatGPTAuth(filename, tracked, async () => {});
+        for (let board = 0; board < 3; board++) {
+          expect(auth.accounts()).toMatchObject([{ connected: true }]);
+          expect(await auth.accessToken("issued-client")).toBe(
+            "private-access",
+          );
+        }
+        expect(tracked.available).toHaveBeenCalledTimes(launch + 1);
+        expect(tracked.decrypt).toHaveBeenCalledTimes(launch + 1);
+        expect(tracked.encrypt).not.toHaveBeenCalled();
+        expect(readFileSync(filename)).toEqual(encrypted);
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("registers, reopens, refreshes once and signs out while retaining the issued registration", async () => {
     const dir = mkdtempSync(path.join(tmpdir(), "noteboard-chatgpt-"));
     const filename = path.join(dir, "credentials.bin");
