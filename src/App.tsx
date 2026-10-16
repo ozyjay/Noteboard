@@ -84,7 +84,7 @@ import {
   HighlightEdge,
   type HighlightFlowEdge,
 } from "./components/HighlightEdge";
-import { NoteReader } from "./components/NoteReader";
+import { NoteReader, ReaderTools } from "./components/NoteReader";
 import { NoteRevision, type RevisionMode } from "./components/NoteRevision";
 import { appendRevision } from "./core/revisions";
 import { pathVersions, versionPath } from "./core/context";
@@ -783,6 +783,7 @@ export default function App() {
       selected: readerId === n.id,
       data: {
         note: n,
+        noteStyle: appearance.noteStyle,
         index,
         children: board.edges.filter((e) => e.source === n.id).length,
         chosen: selected.includes(n.id),
@@ -1356,98 +1357,111 @@ export default function App() {
                       }))
                     }
                   />
-                  <div className="note-revisions">
-                    <label>
-                      Version
-                      <select
-                        aria-label="Note version"
-                        value={version!.id}
-                        disabled={busy}
-                        onChange={(e) => {
-                          setReaderVersionId(e.target.value);
-                          setAnchor(undefined);
-                          setHighlight(undefined);
-                          window.getSelection()?.removeAllRanges();
-                        }}
-                      >
-                        {note.versions.map((v, i) => (
-                          <option key={v.id} value={v.id}>
-                            v{i + 1} ·{" "}
-                            {v.origin === "edited"
-                              ? "Human-edited"
-                              : v.origin === "imported"
-                                ? "Imported"
-                                : v.provider === "demo"
-                                  ? "Synthetic demo"
-                                  : v.model}
-                            {i === note.versions.length - 1 ? " · Latest" : ""}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <div className="revision-actions">
-                      {(
-                        [
-                          ["prompt", "Edit prompt and regenerate"],
-                          ["regenerate", "Regenerate response"],
-                          ["edit", "Edit response"],
-                        ] as const
-                      ).map(([mode, label]) => (
-                        <button
-                          key={mode}
+                  <ReaderTools
+                    key={appearance.noteStyle}
+                    compact={
+                      appearance.noteStyle === "sticky" ||
+                      appearance.noteStyle === "studio"
+                    }
+                  >
+                    <div className="note-revisions">
+                      <label>
+                        Version
+                        <select
+                          aria-label="Note version"
+                          value={version!.id}
                           disabled={busy}
-                          onClick={() =>
-                            setRevisionTarget({
-                              noteId: note.id,
-                              versionId: version!.id,
-                              mode,
-                            })
-                          }
+                          onChange={(e) => {
+                            setReaderVersionId(e.target.value);
+                            setAnchor(undefined);
+                            setHighlight(undefined);
+                            window.getSelection()?.removeAllRanges();
+                          }}
                         >
-                          {label}
-                        </button>
-                      ))}
+                          {note.versions.map((v, i) => (
+                            <option key={v.id} value={v.id}>
+                              v{i + 1} ·{" "}
+                              {v.origin === "edited"
+                                ? "Human-edited"
+                                : v.origin === "imported"
+                                  ? "Imported"
+                                  : v.provider === "demo"
+                                    ? "Synthetic demo"
+                                    : v.model}
+                              {i === note.versions.length - 1
+                                ? " · Latest"
+                                : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <div className="revision-actions">
+                        {(
+                          [
+                            ["prompt", "Edit prompt and regenerate"],
+                            ["regenerate", "Regenerate response"],
+                            ["edit", "Edit response"],
+                          ] as const
+                        ).map(([mode, label]) => (
+                          <button
+                            key={mode}
+                            disabled={busy}
+                            onClick={() =>
+                              setRevisionTarget({
+                                noteId: note.id,
+                                versionId: version!.id,
+                                mode,
+                              })
+                            }
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      {version!.id !== response(note).id && (
+                        <p className="muted small">
+                          Viewing an earlier version. New branches use this
+                          version; the canvas and new synthesis use the latest
+                          version.
+                        </p>
+                      )}
                     </div>
-                    {version!.id !== response(note).id && (
-                      <p className="muted small">
-                        Viewing an earlier version. New branches use this
-                        version; the canvas and new synthesis use the latest
-                        version.
-                      </p>
-                    )}
-                  </div>
-                  <nav className="note-navigation" aria-label="Connected notes">
-                    <strong>Previous note</strong>
-                    {incoming ? (
-                      <button onClick={readParent}>
-                        <ArrowLeft size={14} />
-                        {board!.notes.find((n) => n.id === incoming.source)!
-                          .title ??
-                          board!.notes.find((n) => n.id === incoming.source)!
-                            .prompt}
-                      </button>
-                    ) : (
-                      <p className="muted">This is the starting note.</p>
-                    )}
-                    <strong>Subsequent notes</strong>
-                    {board!.edges.some((e) => e.source === note.id) ? (
-                      board!.edges
-                        .filter((e) => e.source === note.id)
-                        .map((e) => {
-                          const child = board!.notes.find(
-                            (n) => n.id === e.target,
-                          )!;
-                          return (
-                            <button key={e.id} onClick={() => read(child.id)}>
-                              <ArrowRight size={14} />
-                              {child.title ?? child.prompt}
-                            </button>
-                          );
-                        })
-                    ) : (
-                      <p className="muted">No subsequent notes yet.</p>
-                    )}
-                  </nav>
+                    <nav
+                      className="note-navigation"
+                      aria-label="Connected notes"
+                    >
+                      <strong>Previous note</strong>
+                      {incoming ? (
+                        <button onClick={readParent}>
+                          <ArrowLeft size={14} />
+                          {board!.notes.find((n) => n.id === incoming.source)!
+                            .title ??
+                            board!.notes.find((n) => n.id === incoming.source)!
+                              .prompt}
+                        </button>
+                      ) : (
+                        <p className="muted">This is the starting note.</p>
+                      )}
+                      <strong>Subsequent notes</strong>
+                      {board!.edges.some((e) => e.source === note.id) ? (
+                        board!.edges
+                          .filter((e) => e.source === note.id)
+                          .map((e) => {
+                            const child = board!.notes.find(
+                              (n) => n.id === e.target,
+                            )!;
+                            return (
+                              <button key={e.id} onClick={() => read(child.id)}>
+                                <ArrowRight size={14} />
+                                {child.title ?? child.prompt}
+                              </button>
+                            );
+                          })
+                      ) : (
+                        <p className="muted">No subsequent notes yet.</p>
+                      )}
+                    </nav>
+                  </ReaderTools>
                   {response(readingNote!).origin === "imported" && (
                     <p className="muted">
                       Imported from ChatGPT · Model:{" "}

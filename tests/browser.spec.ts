@@ -1537,7 +1537,7 @@ test("appearance previews, cancels, saves and follows system changes after reope
   );
 });
 
-for (const style of ["blueprint", "index", "studio"] as const) {
+for (const style of ["sticky", "blueprint", "index", "studio"] as const) {
   test(`${style} style previews, saves and supports light/dark reading`, async ({
     page,
   }, testInfo) => {
@@ -1582,10 +1582,33 @@ for (const style of ["blueprint", "index", "studio"] as const) {
       await page
         .getByRole("checkbox", { name: "Select Note 1 for synthesis" })
         .check();
-      await expect(page.locator(".note-card.chosen")).toHaveCSS(
-        "outline-style",
-        "solid",
-      );
+      await expect(page.locator(".note-card.chosen")).toHaveCount(1);
+      if (style === "blueprint") {
+        const peek = page.locator(".note-card").first().locator(".note-peek");
+        const collapsedHeight = (await page
+          .locator(".note-card")
+          .first()
+          .boundingBox())!.height;
+        await expect(peek.locator(".note-takeaway")).toBeHidden();
+        await peek.locator("summary").focus();
+        await page.keyboard.press("Enter");
+        await expect(peek.locator(".note-takeaway")).toBeVisible();
+        expect(
+          (await page.locator(".note-card").first().boundingBox())!.height,
+        ).toBeGreaterThan(collapsedHeight);
+        await expect(page.locator(".reader")).toHaveCount(0);
+        await page.keyboard.press("Enter");
+        await expect(peek.locator(".note-takeaway")).toBeHidden();
+      }
+      if (style === "studio") {
+        const footer = page
+          .locator(".note-card")
+          .first()
+          .locator(".note-bottom");
+        expect(
+          (await footer.getByRole("button").boundingBox())!.width,
+        ).toBeCloseTo((await footer.boundingBox())!.width, 0);
+      }
       await page.screenshot({
         path: testInfo.outputPath(`${style}-${theme}.png`),
       });
@@ -1599,6 +1622,27 @@ for (const style of ["blueprint", "index", "studio"] as const) {
       await page.screenshot({
         path: testInfo.outputPath(`${style}-${theme}-reader.png`),
       });
+      if (style === "sticky" || style === "studio") {
+        await expect(page.getByLabel("Note version")).toBeHidden();
+        await page.locator(".reader-tools summary").click();
+      }
+      await expect(page.getByLabel("Note version")).toBeVisible();
+      const navigation = page.getByRole("navigation", {
+        name: "Connected notes",
+      });
+      await navigation
+        .getByRole("button", { name: "What is emergence?", exact: true })
+        .click();
+      await expect(page.locator(".reader h2").first()).toHaveText(
+        "What is emergence?",
+      );
+      await navigation
+        .getByRole("button", {
+          name: "How do complex systems work?",
+          exact: true,
+        })
+        .click();
+      await expect(page.locator(".anchor-info")).toContainText("emergence");
       await page
         .getByRole("button", { name: "Close Note", exact: true })
         .click();

@@ -12,21 +12,22 @@ const noteStyles: Record<
   sticky: {
     label: "Sticky notes",
     description:
-      "Colourful paper, taped tops and curled corners on a warm canvas.",
+      "Scan Takeaways first, then open a Note for a focused read. Revision and navigation tools fold away.",
   },
   blueprint: {
     label: "Blueprint",
     description:
-      "Precise outlines, technical headers and a cool drafting canvas.",
+      "Compact nodes for mapping connections. Peek at a Takeaway in place without opening the reader.",
   },
   index: {
     label: "Index cards",
-    description: "Ruled cards, red margin lines and numbered research tabs.",
+    description:
+      "Wide reference cards with a number rail, version details and roomy ruled extracts.",
   },
   studio: {
     label: "Studio",
     description:
-      "Bold colour blocks, chunky borders and graphic offset shadows.",
+      "Large Takeaways for comparing ideas, a full-width reading action and fold-away reader tools.",
   },
 };
 

@@ -6,10 +6,16 @@ import {
   type Node,
 } from "@xyflow/react";
 import { ArrowUpRight, GitBranch } from "lucide-react";
-import { type Note, versionPrompt } from "../core/model";
+import {
+  type Appearance,
+  type Note,
+  response,
+  versionPrompt,
+} from "../core/model";
 export type CardNode = Node<
   {
     note: Note;
+    noteStyle: Appearance["noteStyle"];
     index: number;
     children: number;
     chosen: boolean;
@@ -20,11 +26,34 @@ export type CardNode = Node<
 >;
 export function NoteCard({ data, selected }: NodeProps<CardNode>) {
   const zoom = useStore((s) => s.transform[2]);
+  const style = data.noteStyle;
+  const takeawayFirst = style === "sticky" || style === "studio";
+  const detailed = zoom > 0.55;
+  const version = response(data.note);
+  const origin =
+    version.origin === "imported"
+      ? "Imported"
+      : version.origin === "edited"
+        ? "Human-edited"
+        : version.provider === "demo"
+          ? "Synthetic demo"
+          : "Generated";
+  const takeaway = (
+    <div className="note-extract">
+      {takeawayFirst && <span className="note-extract-label">Takeaway</span>}
+      <p className="note-takeaway">{data.note.takeaway}</p>
+    </div>
+  );
   return (
     <article
       className={`note-card colour-${data.index % 4} ${zoom <= 0.55 ? "overview" : ""} ${selected ? "focused" : ""} ${data.chosen ? "chosen" : ""}`}
     >
       <Handle type="target" position={Position.Left} isConnectable={false} />
+      {style === "index" && (
+        <span className="note-index" aria-hidden="true">
+          {String(data.index + 1).padStart(2, "0")}
+        </span>
+      )}
       <div className="note-top">
         <span className="note-number">
           {String(data.index + 1).padStart(2, "0")} /{" "}
@@ -38,15 +67,28 @@ export function NoteCard({ data, selected }: NodeProps<CardNode>) {
           onChange={() => data.onChoose(data.note.id)}
         />
       </div>
+      {detailed && takeawayFirst && takeaway}
       <button
         className="note-prompt nodrag"
         onClick={() => data.onRead(data.note.id)}
       >
         {data.note.title ?? versionPrompt(data.note)}
       </button>
-      {zoom > 0.55 && (
+      {detailed && (
         <>
-          <p className="note-takeaway">{data.note.takeaway}</p>
+          {style === "blueprint" ? (
+            <details className="note-peek nodrag nowheel">
+              <summary>Peek takeaway</summary>
+              {takeaway}
+            </details>
+          ) : (
+            !takeawayFirst && takeaway
+          )}
+          {(style === "index" || style === "blueprint") && (
+            <p className="note-catalogue-meta">
+              v{data.note.versions.length} · {origin}
+            </p>
+          )}
           <div className="note-bottom">
             <span>
               <GitBranch size={13} /> {data.children}{" "}
@@ -56,7 +98,12 @@ export function NoteCard({ data, selected }: NodeProps<CardNode>) {
               className="nodrag"
               onClick={() => data.onRead(data.note.id)}
             >
-              Read & explore <ArrowUpRight size={14} />
+              {style === "index"
+                ? "Open reference"
+                : style === "studio"
+                  ? "Explore this idea"
+                  : "Read & explore"}{" "}
+              <ArrowUpRight size={14} />
             </button>
           </div>
         </>

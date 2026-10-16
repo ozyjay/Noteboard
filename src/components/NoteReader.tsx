@@ -1,5 +1,22 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
+export function ReaderTools({
+  compact,
+  children,
+}: {
+  compact: boolean;
+  children: ReactNode;
+}) {
+  return compact ? (
+    <details className="reader-tools">
+      <summary>Versions, editing & connected Notes</summary>
+      {children}
+    </details>
+  ) : (
+    <>{children}</>
+  );
+}
+
 export function NoteReader({
   expanded,
   className,
