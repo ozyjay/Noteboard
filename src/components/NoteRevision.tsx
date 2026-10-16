@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { X, LoaderCircle } from "lucide-react";
 import { bridge } from "../bridge";
+import { useChatGPTModels } from "../model-discovery";
 import {
   type Board,
   type Note,
@@ -67,9 +68,17 @@ export function NoteRevision({
   const [reasoningEffort, setReasoningEffort] = useState(
     settings.reasoningEffort,
   );
-  const [choices, setChoices] = useState<ModelChoice[]>([]);
-  const [discovering, setDiscovering] = useState(false);
+  const [localChoices, setChoices] = useState<ModelChoice[]>([]);
+  const [localDiscovering, setDiscovering] = useState(false);
+  const catalogue = useChatGPTModels(settings, mode !== "edit");
+  const choices =
+    settings.provider === "chatgpt" ? catalogue.choices : localChoices;
+  const discovering =
+    settings.provider === "chatgpt" ? catalogue.loading : localDiscovering;
   const [error, setError] = useState("");
+  useEffect(() => {
+    if (catalogue.error) setError(catalogue.error);
+  }, [catalogue.error]);
   const title =
     mode === "prompt"
       ? "Edit prompt and regenerate"
@@ -85,6 +94,11 @@ export function NoteRevision({
     webSearch,
   };
   async function discover() {
+    if (settings.provider === "chatgpt") {
+      setError("");
+      await catalogue.refresh();
+      return;
+    }
     setDiscovering(true);
     setError("");
     try {
@@ -297,7 +311,11 @@ export function NoteRevision({
                     disabled={busy || discovering}
                     onClick={() => void discover()}
                   >
-                    {discovering ? "Discovering…" : "Discover models"}
+                    {discovering
+                      ? "Discovering…"
+                      : settings.provider === "chatgpt"
+                        ? "Refresh models"
+                        : "Discover models"}
                   </button>
                 </div>
               )}

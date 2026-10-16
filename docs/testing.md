@@ -31,3 +31,5 @@ On macOS arm64 with Node 24, typechecking, production build and 15 domain/persis
 A separate live Ollama adapter smoke test with the installed `qwen3:1.7b` model received 23 content chunks and input/output usage metadata. This confirms protocol integration, not explanation quality or research outcomes. Tests use isolated temporary desktop data directories and leave existing user Boards untouched.
 
 Conversation import tests use sanitised synthetic export fixtures. They cover selected paths, unsupported content, limits, version 1 migration, import provenance, retrospective anchors, inherited context and SQLite reopening. Browser/desktop checks verify preview, cancellation, navigation, branching and synthesis without live ChatGPT inference.
+
+Model-discovery browser checks use a mocked desktop bridge to verify automatic ChatGPT catalogue loading, reuse across root/Highlight composers and revisions, explicit refresh, account isolation, late results, visible failure/retry and sign-out/sign-in invalidation. These checks make no live provider requests.

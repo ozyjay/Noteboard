@@ -57,6 +57,7 @@ import {
 import { type Attachment } from "./core/research";
 import { ResearchInputs, ResearchRecord } from "./components/ResearchInputs";
 import { bridge, desktop } from "./bridge";
+import { useChatGPTModels } from "./model-discovery";
 import {
   type Board,
   type Note,
@@ -184,8 +185,20 @@ export default function App() {
       files: Attachment[];
     } | null>(null),
     [prompt, setPrompt] = useState("");
-  const [composerModels, setComposerModels] = useState<ModelChoice[]>([]);
-  const [composerDiscovering, setComposerDiscovering] = useState(false);
+  const [localComposerModels, setComposerModels] = useState<ModelChoice[]>([]);
+  const [localComposerDiscovering, setComposerDiscovering] = useState(false);
+  const composerCatalogue = useChatGPTModels(settings, ready && !!composer);
+  const composerModels =
+    settings.provider === "chatgpt"
+      ? composerCatalogue.choices
+      : localComposerModels;
+  const composerDiscovering =
+    settings.provider === "chatgpt"
+      ? composerCatalogue.loading
+      : localComposerDiscovering;
+  useEffect(() => {
+    if (composer && composerCatalogue.error) setError(composerCatalogue.error);
+  }, [composerCatalogue.error, !!composer]);
   const [composerReading, setComposerReading] = useState(false);
   const composerModelOptions = new Map<string, string>([
     [settings.model, settings.model || "Provider default"],
@@ -217,6 +230,11 @@ export default function App() {
   }
   async function discoverComposerModels() {
     if (!composer) return;
+    if (settings.provider === "chatgpt") {
+      setError("");
+      await composerCatalogue.refresh();
+      return;
+    }
     const session = composerSession.current;
     setComposerDiscovering(true);
     setError("");
@@ -250,10 +268,26 @@ export default function App() {
     Record<string, { width: number; height: number }>
   >({});
   const [search, setSearch] = useState(""),
-    [models, setModels] = useState<ModelChoice[]>([]),
+    [localModels, setModels] = useState<ModelChoice[]>([]),
     [settingsDraft, setSettingsDraft] = useState<Settings>(defaults),
-    [discovering, setDiscovering] = useState(false),
+    [localDiscovering, setDiscovering] = useState(false),
     [accountBusy, setAccountBusy] = useState(false);
+  const settingsCatalogue = useChatGPTModels(
+    settingsDraft,
+    providerOpen && !accountBusy,
+  );
+  const models =
+    settingsDraft.provider === "chatgpt"
+      ? settingsCatalogue.choices
+      : localModels;
+  const discovering =
+    settingsDraft.provider === "chatgpt"
+      ? settingsCatalogue.loading
+      : localDiscovering;
+  useEffect(() => {
+    if (providerOpen && settingsCatalogue.error)
+      setError(settingsCatalogue.error);
+  }, [providerOpen, settingsCatalogue.error]);
   const generation = useRef<string | undefined>(undefined),
     cancelled = useRef(false),
     readerSurface = useRef<HTMLDivElement>(null),
@@ -843,6 +877,11 @@ export default function App() {
     setMode("synthesis");
   }
   async function discover() {
+    if (settingsDraft.provider === "chatgpt") {
+      setError("");
+      await settingsCatalogue.refresh();
+      return;
+    }
     setDiscovering(true);
     setError("");
     const matchesCurrent = () => {
@@ -2209,7 +2248,11 @@ export default function App() {
                       disabled={busy || composerDiscovering}
                       onClick={() => void discoverComposerModels()}
                     >
-                      {composerDiscovering ? "Discovering…" : "Discover models"}
+                      {composerDiscovering
+                        ? "Discovering…"
+                        : settings.provider === "chatgpt"
+                          ? "Refresh models"
+                          : "Discover models"}
                     </button>
                   </div>
                   {settings.provider === "chatgpt" && (
@@ -2466,6 +2509,7 @@ export default function App() {
                 <ChatGPTSettings
                   accountId={settingsDraft.chatgptAccountId}
                   onAccount={(id) => {
+                    setError("");
                     setModels([]);
                     setSettingsDraft((s) => ({
                       ...s,
@@ -2514,7 +2558,7 @@ export default function App() {
                             }))
                           }
                         >
-                          <option value="">Discover and select a model</option>
+                          <option value="">Select a model</option>
                           {settingsDraft.model &&
                             !models.some(
                               (m) =>
@@ -2555,7 +2599,11 @@ export default function App() {
                         disabled={discovering || accountBusy}
                         onClick={discover}
                       >
-                        {discovering ? "Checking…" : "Discover"}
+                        {discovering
+                          ? "Checking…"
+                          : settingsDraft.provider === "chatgpt"
+                            ? "Refresh models"
+                            : "Discover"}
                       </button>
                     </div>
                     <datalist id="installed-models">

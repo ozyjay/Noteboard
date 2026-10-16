@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { bridge, type ChatGPTAccount } from "../bridge";
+import { invalidateChatGPTModels } from "../model-discovery";
 export function ChatGPTSettings({
   accountId,
   onAccount,
@@ -45,6 +46,7 @@ export function ChatGPTSettings({
         ? values.find((a) => a.id === accountId)
         : values.at(-1);
       if (selected) {
+        invalidateChatGPTModels(selected.id);
         onAccount(selected.id);
         if (
           selected.planEnabled &&
@@ -71,6 +73,7 @@ export function ChatGPTSettings({
     onError("");
     try {
       const { revoked } = await bridge.chatgptSignOut(accountId);
+      invalidateChatGPTModels(accountId);
       setAccounts(await bridge.chatgptAccounts());
       setNotice(
         revoked

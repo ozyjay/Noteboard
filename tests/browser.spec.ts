@@ -1295,7 +1295,7 @@ test("ChatGPT per-Note model and effort overrides preserve defaults and context 
 }, testInfo) => {
   await page.addInitScript(() => {
     const listeners = new Set<(event: { id: string; text: string }) => void>();
-    let connected = true;
+    let connected = localStorage.getItem("test.connected") === "true";
     const accounts = () => [
       {
         id: "test-client",
@@ -1337,20 +1337,30 @@ test("ChatGPT per-Note model and effort overrides preserve defaults and context 
       chatgptAccounts: async () => accounts(),
       chatgptSignIn: async () => {
         connected = true;
+        localStorage.setItem("test.connected", "true");
         return accounts();
       },
       chatgptCancelSignIn: async () => {},
       chatgptSignOut: async () => {
         connected = false;
+        localStorage.removeItem("test.connected");
         return { revoked: true };
       },
       chatgptUsage: async () => {
         localStorage.setItem("test.usage", "opened");
       },
-      models: async () => [
-        { id: "test-chatgpt-model", name: "Test ChatGPT Model" },
-        { id: "test-other-model", name: "Another ChatGPT Model" },
-      ],
+      models: async () => {
+        localStorage.setItem(
+          "test.model-discoveries",
+          String(
+            Number(localStorage.getItem("test.model-discoveries") || 0) + 1,
+          ),
+        );
+        return [
+          { id: "test-chatgpt-model", name: "Test ChatGPT Model" },
+          { id: "test-other-model", name: "Another ChatGPT Model" },
+        ];
+      },
       generate: async (req) => {
         if (req.messages.some((message) => message.role === "system"))
           throw new Error("Unexpected system message");
@@ -1437,7 +1447,20 @@ test("ChatGPT per-Note model and effort overrides preserve defaults and context 
     page.getByText("You’re using your ChatGPT plan", { exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Got it", exact: true }).click();
-  await page.getByRole("button", { name: "Discover", exact: true }).click();
+  await expect(
+    page.getByLabel("Model", { exact: true }).locator("option"),
+  ).toHaveCount(3);
+  expect(
+    await page.evaluate(() => localStorage.getItem("test.model-discoveries")),
+  ).toBe("1");
+  await page
+    .getByRole("button", { name: "Refresh models", exact: true })
+    .click();
+  await expect
+    .poll(() =>
+      page.evaluate(() => localStorage.getItem("test.model-discoveries")),
+    )
+    .toBe("2");
   await page
     .getByLabel("Model", { exact: true })
     .selectOption({ label: "Test ChatGPT Model" });
@@ -1453,9 +1476,12 @@ test("ChatGPT per-Note model and effort overrides preserve defaults and context 
   await expect(
     page.getByLabel("Note thinking effort", { exact: true }),
   ).toHaveValue("high");
-  await page
-    .getByRole("button", { name: "Discover models", exact: true })
-    .click();
+  await expect(
+    page.getByLabel("Note model", { exact: true }).locator("option"),
+  ).toHaveCount(2);
+  expect(
+    await page.evaluate(() => localStorage.getItem("test.model-discoveries")),
+  ).toBe("2");
   await page
     .getByLabel("Note model", { exact: true })
     .selectOption({ label: "Another ChatGPT Model" });
@@ -1515,6 +1541,16 @@ test("ChatGPT per-Note model and effort overrides preserve defaults and context 
     .getByRole("button", { name: "My ChatGPT inquiry", exact: true })
     .click();
   await expect(page.locator(".reader-response")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Regenerate response", exact: true })
+    .click();
+  await expect(page.getByLabel("Revision model").locator("option")).toHaveCount(
+    2,
+  );
+  expect(
+    await page.evaluate(() => localStorage.getItem("test.model-discoveries")),
+  ).toBe("2");
+  await page.getByRole("button", { name: "Close Note revision" }).click();
   await expect(page.locator(".research-record")).toContainText(
     "Web search used",
   );
@@ -1553,9 +1589,12 @@ test("ChatGPT per-Note model and effort overrides preserve defaults and context 
   await expect(
     page.getByLabel("Note thinking effort", { exact: true }),
   ).toHaveValue("high");
-  await page
-    .getByRole("button", { name: "Discover models", exact: true })
-    .click();
+  await expect(
+    page.getByLabel("Note model", { exact: true }).locator("option"),
+  ).toHaveCount(2);
+  expect(
+    await page.evaluate(() => localStorage.getItem("test.model-discoveries")),
+  ).toBe("2");
   await page
     .getByLabel("Note model", { exact: true })
     .selectOption("test-other-model");

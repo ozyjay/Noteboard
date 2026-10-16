@@ -14,7 +14,10 @@ export default defineConfig({
     reuseExistingServer: false,
   },
   projects: [
-    { name: "browser", testMatch: "browser.spec.ts" },
+    {
+      name: "browser",
+      testMatch: ["browser.spec.ts", "model-discovery.spec.ts"],
+    },
     { name: "desktop", testMatch: "desktop.spec.ts" },
   ],
 });
