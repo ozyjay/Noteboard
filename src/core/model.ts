@@ -36,6 +36,7 @@ export const ReasoningEffortSchema = z.enum([
   "high",
   "xhigh",
   "max",
+  "ultra",
 ]);
 export type ReasoningEffort = z.infer<typeof ReasoningEffortSchema>;
 export const SettingsSchema = z.object({

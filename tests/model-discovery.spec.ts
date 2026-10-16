@@ -68,7 +68,25 @@ test("ChatGPT catalogues isolate accounts, ignore late results and recover throu
           );
         if (localStorage.getItem("fail-models"))
           throw new Error("Catalogue temporarily unavailable");
-        return [{ id: `model-${id}`, name: `Model ${id}` }];
+        return [
+          {
+            id: `model-${id}`,
+            name: `Model ${id}`,
+            ...(id === "b"
+              ? {
+                  defaultReasoningEffort: "high",
+                  reasoningEfforts: localStorage.getItem("changed-levels")
+                    ? [{ effort: "high" }]
+                    : [
+                        { effort: "high", description: "Deeper reasoning" },
+                        { effort: "low" },
+                        { effort: "ultra" },
+                        { effort: "future-level" },
+                      ],
+                }
+              : {}),
+          },
+        ];
       },
     };
   });
@@ -98,8 +116,30 @@ test("ChatGPT catalogues isolate accounts, ignore late results and recover throu
     "Select a model",
     "Model a",
   ]);
+  await model.selectOption("model-a");
+  await expect(
+    page.getByLabel("Thinking effort", { exact: true }).locator("option"),
+  ).toHaveText(["Model default"]);
+  await expect(
+    page.getByText(
+      "Thinking levels were not provided for this model. Refresh models to check again.",
+    ),
+  ).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("calls.a"))).toBe("1");
   await account.selectOption("b");
+  await model.selectOption("model-b");
+  const thinking = page.getByLabel("Thinking effort", { exact: true });
+  await expect(thinking.locator("option")).toHaveText([
+    "Model default (High)",
+    "High",
+    "Low",
+    "Ultra",
+    "future-level",
+  ]);
+  await expect(
+    thinking.locator('option[value="future-level"]'),
+  ).toHaveJSProperty("disabled", true);
+  await thinking.selectOption("low");
   await page.evaluate(() => localStorage.setItem("fail-models", "yes"));
   await page
     .getByRole("button", { name: "Refresh models", exact: true })
@@ -110,6 +150,7 @@ test("ChatGPT catalogues isolate accounts, ignore late results and recover throu
     "Model b",
   ]);
   await page.evaluate(() => localStorage.removeItem("fail-models"));
+  await page.evaluate(() => localStorage.setItem("changed-levels", "yes"));
   await page
     .getByRole("button", { name: "Refresh models", exact: true })
     .click();
@@ -119,8 +160,22 @@ test("ChatGPT catalogues isolate accounts, ignore late results and recover throu
   await expect
     .poll(() => page.evaluate(() => localStorage.getItem("calls.b")))
     .toBe("3");
+  await expect(thinking).toHaveValue("low");
+  await expect(thinking.locator("option")).toHaveText([
+    "Model default (High)",
+    "Low (support unconfirmed)",
+    "High",
+  ]);
+  await thinking.selectOption("high");
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
-  await expect(model.locator("option")).toHaveText(["Select a model"]);
+  await expect(model.locator("option")).toHaveText([
+    "Select a model",
+    "model-b",
+  ]);
+  await expect(thinking.locator("option")).toHaveText([
+    "Model default",
+    "High (support unconfirmed)",
+  ]);
   await page
     .getByRole("button", { name: "Continue with ChatGPT", exact: true })
     .click();

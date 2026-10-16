@@ -30,7 +30,7 @@ export interface InquiryBridge {
   deleteBoard(id: string): Promise<void>;
   getSettings(): Promise<Settings>;
   saveSettings(settings: Settings): Promise<void>;
-  models(settings: Settings): Promise<ModelChoice[]>;
+  models(settings: Settings, refresh?: boolean): Promise<ModelChoice[]>;
   generate(request: GenerationRequest): Promise<GenerationResult>;
   cancel(id: string): Promise<void>;
   onDelta(listener: (event: { id: string; text: string }) => void): () => void;

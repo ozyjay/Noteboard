@@ -1357,8 +1357,18 @@ test("ChatGPT per-Note model and effort overrides preserve defaults and context 
           ),
         );
         return [
-          { id: "test-chatgpt-model", name: "Test ChatGPT Model" },
-          { id: "test-other-model", name: "Another ChatGPT Model" },
+          {
+            id: "test-chatgpt-model",
+            name: "Test ChatGPT Model",
+            defaultReasoningEffort: "high",
+            reasoningEfforts: [{ effort: "high" }, { effort: "low" }],
+          },
+          {
+            id: "test-other-model",
+            name: "Another ChatGPT Model",
+            defaultReasoningEffort: "medium",
+            reasoningEfforts: [{ effort: "medium" }, { effort: "low" }],
+          },
         ];
       },
       generate: async (req) => {
@@ -1464,6 +1474,9 @@ test("ChatGPT per-Note model and effort overrides preserve defaults and context 
   await page
     .getByLabel("Model", { exact: true })
     .selectOption({ label: "Test ChatGPT Model" });
+  await expect(
+    page.getByLabel("Thinking effort", { exact: true }).locator("option"),
+  ).toHaveText(["Model default (High)", "High", "Low"]);
   await page
     .getByLabel("Thinking effort", { exact: true })
     .selectOption("high");
@@ -1485,6 +1498,9 @@ test("ChatGPT per-Note model and effort overrides preserve defaults and context 
   await page
     .getByLabel("Note model", { exact: true })
     .selectOption({ label: "Another ChatGPT Model" });
+  await expect(
+    page.getByLabel("Note thinking effort").locator("option"),
+  ).toHaveText(["Model default (Medium)", "Medium", "Low"]);
   await expect(
     page.getByLabel("Note thinking effort", { exact: true }),
   ).toHaveValue("");
@@ -1550,6 +1566,9 @@ test("ChatGPT per-Note model and effort overrides preserve defaults and context 
   await expect(page.getByLabel("Revision thinking effort")).toHaveValue("high");
   await page.getByLabel("Revision thinking effort").selectOption("low");
   await page.getByLabel("Revision model").selectOption("test-other-model");
+  await expect(
+    page.getByLabel("Revision thinking effort").locator("option"),
+  ).toHaveText(["Model default (Medium)", "Medium", "Low"]);
   await expect(page.getByLabel("Revision thinking effort")).toHaveValue("");
   await page.getByLabel("Revision thinking effort").selectOption("medium");
   expect(

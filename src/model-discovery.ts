@@ -35,7 +35,7 @@ async function load(settings: Settings, refresh = false) {
     const account = accounts.find((value) => value.id === id);
     const choices =
       account?.connected && account.planEnabled
-        ? await bridge.models(settings)
+        ? await bridge.models(settings, refresh)
         : [];
     if (catalogues.get(id) === pending)
       catalogues.set(id, { choices, loading: false });
@@ -50,7 +50,7 @@ async function load(settings: Settings, refresh = false) {
   notify();
 }
 
-// Session-only and account-scoped: no catalogue or credentials enter Board data.
+// Shared UI cache; the desktop bridge also persists catalogues per account.
 export function useChatGPTModels(settings: Settings, enabled: boolean) {
   const id =
     settings.provider === "chatgpt" ? settings.chatgptAccountId : undefined;

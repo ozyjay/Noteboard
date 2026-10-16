@@ -56,6 +56,7 @@ import {
 } from "./core/providers";
 import { type Attachment } from "./core/research";
 import { ResearchInputs, ResearchRecord } from "./components/ResearchInputs";
+import { ThinkingEffort } from "./components/ThinkingEffort";
 import { bridge, desktop } from "./bridge";
 import { useChatGPTModels } from "./model-discovery";
 import {
@@ -2256,35 +2257,22 @@ export default function App() {
                     </button>
                   </div>
                   {settings.provider === "chatgpt" && (
-                    <label>
-                      Thinking effort
-                      <select
-                        aria-label="Note thinking effort"
-                        value={composer.reasoningEffort ?? ""}
-                        disabled={
-                          busy || composerDiscovering || !composer.model
-                        }
-                        onChange={(event) =>
-                          setComposer(
-                            (current) =>
-                              current && {
-                                ...current,
-                                reasoningEffort: (event.target.value ||
-                                  undefined) as ReasoningEffort | undefined,
-                              },
-                          )
-                        }
-                      >
-                        <option value="">Model default</option>
-                        <option value="none">None</option>
-                        <option value="minimal">Minimal</option>
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                        <option value="xhigh">Extra high</option>
-                        <option value="max">Maximum</option>
-                      </select>
-                    </label>
+                    <ThinkingEffort
+                      ariaLabel="Note thinking effort"
+                      choices={composerModels}
+                      model={composer.model}
+                      value={composer.reasoningEffort}
+                      disabled={busy || composerDiscovering}
+                      onChange={(reasoningEffort) =>
+                        setComposer(
+                          (current) =>
+                            current && {
+                              ...current,
+                              reasoningEffort,
+                            },
+                        )
+                      }
+                    />
                   )}
                   <p className="muted">
                     Applies to this Note only. Saved provider settings stay the
@@ -2632,30 +2620,19 @@ export default function App() {
                     />
                     Enable web search by default for Notes
                   </label>
-                  <label>
-                    Thinking effort
-                    <select
-                      aria-label="Thinking effort"
-                      value={settingsDraft.reasoningEffort ?? ""}
-                      disabled={accountBusy || !settingsDraft.model}
-                      onChange={(e) =>
-                        setSettingsDraft((s) => ({
-                          ...s,
-                          reasoningEffort: (e.target.value || undefined) as
-                            ReasoningEffort | undefined,
-                        }))
-                      }
-                    >
-                      <option value="">Model default</option>
-                      <option value="none">None</option>
-                      <option value="minimal">Minimal</option>
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                      <option value="xhigh">Extra high</option>
-                      <option value="max">Maximum</option>
-                    </select>
-                  </label>
+                  <ThinkingEffort
+                    ariaLabel="Thinking effort"
+                    choices={models}
+                    model={settingsDraft.model}
+                    value={settingsDraft.reasoningEffort}
+                    disabled={accountBusy || discovering}
+                    onChange={(reasoningEffort) =>
+                      setSettingsDraft((s) => ({
+                        ...s,
+                        reasoningEffort,
+                      }))
+                    }
+                  />
                   <p className="muted">
                     Higher effort can take longer and use more of your plan.
                     Supported levels vary by model; Model default lets the model

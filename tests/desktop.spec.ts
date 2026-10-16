@@ -3,6 +3,78 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { chatGPTExportFixture } from "./fixtures/chatgpt-export";
+import { Store } from "../electron/store";
+import { defaults } from "../src/core/model";
+
+test("desktop model catalogue and thinking metadata reopen through the isolated bridge without discovery", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "inquiry-desktop-catalogue-"));
+  const catalogue = {
+    discoveredAt: "2026-10-16T00:00:00.000Z",
+    models: [
+      {
+        id: "fixture-model",
+        name: "Fixture model",
+        reasoningEfforts: [
+          { effort: "low", description: "Faster" },
+          { effort: "high" },
+        ],
+        defaultReasoningEffort: "low",
+      },
+    ],
+  };
+  const store = new Store(path.join(dir, "inquiry.sqlite"));
+  store.saveModelCatalogue("fixture-account", catalogue);
+  store.close();
+  const env: Record<string, string> = Object.fromEntries(
+    Object.entries(process.env).filter(
+      (entry): entry is [string, string] => entry[1] !== undefined,
+    ),
+  );
+  env.INQUIRY_DEV = "0";
+  env.INQUIRY_DATA_DIR = dir;
+  delete env.ELECTRON_RUN_AS_NODE;
+  let app;
+  try {
+    for (let launch = 0; launch < 2; launch++) {
+      app = await electron.launch({
+        args: [".", `--user-data-dir=${dir}`],
+        env,
+      });
+      const page = await app.firstWindow();
+      await expect(page.locator(".note-card")).toHaveCount(3);
+      const models = await page.evaluate(
+        async (settings) => window.inquiry!.models(settings),
+        {
+          ...defaults,
+          provider: "chatgpt" as const,
+          chatgptAccountId: "fixture-account",
+        },
+      );
+      expect(models).toEqual(catalogue.models);
+      const rejected = await page.evaluate(
+        async (settings) => {
+          try {
+            await window.inquiry!.models(settings, "invalid" as never);
+            return false;
+          } catch {
+            return true;
+          }
+        },
+        {
+          ...defaults,
+          provider: "chatgpt" as const,
+          chatgptAccountId: "fixture-account",
+        },
+      );
+      expect(rejected).toBe(true);
+      await app.close();
+      app = undefined;
+    }
+  } finally {
+    await app?.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 test("desktop reopens a renamed Board from SQLite", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "inquiry-desktop-rename-"));

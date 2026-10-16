@@ -77,6 +77,61 @@ function stream(events: object[], terminal = true) {
   );
 }
 describe("ChatGPT plan provider", () => {
+  it("keeps missing, empty and future thinking metadata distinct and rejects malformed capabilities", async () => {
+    const fetcher = vi.fn(async () =>
+      Response.json({
+        models: [
+          { slug: "unknown", display_name: "Unknown", visibility: "list" },
+          {
+            slug: "empty",
+            display_name: "Empty",
+            visibility: "list",
+            supported_reasoning_levels: [],
+            default_reasoning_level: null,
+          },
+          {
+            slug: "future",
+            display_name: "Future",
+            visibility: "list",
+            supported_reasoning_levels: [
+              { effort: "future-level", description: "New capability" },
+            ],
+            default_reasoning_level: "future-level",
+            instructions: "Must not be retained",
+          },
+        ],
+      }),
+    );
+    vi.stubGlobal("fetch", fetcher);
+    const provider = chatGPTProvider({
+      accessToken: async () => "mock-access",
+    });
+    expect(await provider.models(request().settings)).toEqual([
+      { id: "unknown", name: "Unknown" },
+      { id: "empty", name: "Empty", reasoningEfforts: [] },
+      {
+        id: "future",
+        name: "Future",
+        reasoningEfforts: [
+          { effort: "future-level", description: "New capability" },
+        ],
+        defaultReasoningEffort: "future-level",
+      },
+    ]);
+    fetcher.mockImplementationOnce(async () =>
+      Response.json({
+        models: [
+          {
+            slug: "bad",
+            display_name: "Bad",
+            visibility: "list",
+            supported_reasoning_levels: "high",
+          },
+        ],
+      }),
+    );
+    await expect(provider.models(request().settings)).rejects.toThrow();
+  });
   it("discovers account models and streams exact effective context with usage", async () => {
     const sent: unknown[] = [];
     vi.stubGlobal(
@@ -92,6 +147,12 @@ describe("ChatGPT plan provider", () => {
                 slug: "account-model",
                 display_name: "Account Model",
                 visibility: "list",
+                supported_reasoning_levels: [
+                  { effort: "high", description: "More depth" },
+                  { effort: "low", description: "Faster" },
+                  { effort: "ultra", description: "Maximum" },
+                ],
+                default_reasoning_level: "low",
               },
               { slug: "hidden", display_name: "Hidden", visibility: "hidden" },
             ],
@@ -113,7 +174,16 @@ describe("ChatGPT plan provider", () => {
     const provider = chatGPTProvider({ accessToken });
     const req = request();
     expect(await provider.models(req.settings)).toEqual([
-      { id: "account-model", name: "Account Model" },
+      {
+        id: "account-model",
+        name: "Account Model",
+        reasoningEfforts: [
+          { effort: "high", description: "More depth" },
+          { effort: "low", description: "Faster" },
+          { effort: "ultra", description: "Maximum" },
+        ],
+        defaultReasoningEffort: "low",
+      },
     ]);
     const deltas: string[] = [];
     expect(

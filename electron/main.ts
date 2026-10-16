@@ -17,6 +17,7 @@ import { ollamaProvider, localEndpoint } from "./ollama";
 import { assertBudget } from "../src/core/context";
 import { ChatGPTAuth } from "./chatgpt-auth";
 import { chatGPTProvider } from "./chatgpt";
+import { ChatGPTModelCatalogues } from "./model-catalogues";
 let auth: ChatGPTAuth;
 let store: Store;
 let window: BrowserWindow | null = null;
@@ -124,6 +125,10 @@ if (primaryInstance)
       (url) => shell.openExternal(url),
     );
     const chatgpt = chatGPTProvider(auth);
+    store = new Store(path.join(app.getPath("userData"), "inquiry.sqlite"));
+    const catalogues = new ChatGPTModelCatalogues(store, (settings) =>
+      chatgpt.models(settings),
+    );
     const provider = (settings: z.infer<typeof SettingsSchema>) =>
       ({ demo: demoProvider, ollama: ollamaProvider, chatgpt })[
         settings.provider
@@ -133,20 +138,26 @@ if (primaryInstance)
         throw new Error("Finish or cancel generation before changing accounts");
     };
     handle("chatgpt:accounts", () => auth.accounts());
-    handle("chatgpt:signin", (id) => {
+    handle("chatgpt:signin", async (id) => {
       idle();
-      return auth.signIn(z.string().max(200).optional().parse(id));
+      const accountId = z.string().min(1).max(200).optional().parse(id);
+      if (accountId) catalogues.invalidate(accountId);
+      const accounts = await auth.signIn(accountId);
+      const selected = accountId || accounts.at(-1)?.id;
+      if (selected) catalogues.invalidate(selected);
+      return accounts;
     });
     handle("chatgpt:cancel", () => auth.cancel());
     handle("chatgpt:signout", (id) => {
       idle();
-      return auth.signOut(z.string().max(200).parse(id));
+      const accountId = z.string().min(1).max(200).parse(id);
+      catalogues.invalidate(accountId);
+      return auth.signOut(accountId);
     });
     handle("chatgpt:usage", () =>
       shell.openExternal("https://chatgpt.com/settings/usage"),
     );
     handle("web:open", (url) => shell.openExternal(WebUrlSchema.parse(url)));
-    store = new Store(path.join(app.getPath("userData"), "inquiry.sqlite"));
     handle("boards:list", () => store.list());
     handle("boards:save", (b) => store.save(b));
     handle("boards:delete", (id) => store.delete(id));
@@ -156,8 +167,11 @@ if (primaryInstance)
       if (parsed.provider === "ollama") localEndpoint(parsed.endpoint);
       store.saveSettings(parsed);
     });
-    handle("provider:models", (s) => {
+    handle("provider:models", (s, refresh) => {
       const settings = SettingsSchema.parse(s);
+      const force = z.boolean().optional().parse(refresh) ?? false;
+      if (settings.provider === "chatgpt")
+        return catalogues.models(settings, force);
       return provider(settings).models(settings);
     });
     handle("provider:generate", async (value) => {

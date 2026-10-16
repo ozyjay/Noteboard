@@ -4,6 +4,7 @@ import {
   webEnvironmentInstruction,
 } from "./instructions";
 import { AttachmentsSchema, type WebResearch } from "./research";
+import { type ModelMetadata } from "./model-catalogue";
 export interface GenerationRequest {
   id: string;
   messages: Message[];
@@ -17,7 +18,7 @@ export interface GenerationResult {
   webResearch?: WebResearch;
   usage?: { input?: number; output?: number };
 }
-export type ModelChoice = string | { id: string; name: string };
+export type ModelChoice = string | ModelMetadata;
 export interface Provider {
   id: string;
   capabilities: {

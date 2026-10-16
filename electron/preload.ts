@@ -12,7 +12,7 @@ const bridge: InquiryBridge = {
   deleteBoard: (id) => ipcRenderer.invoke("boards:delete", id),
   getSettings: () => ipcRenderer.invoke("settings:get"),
   saveSettings: (s) => ipcRenderer.invoke("settings:save", s),
-  models: (s) => ipcRenderer.invoke("provider:models", s),
+  models: (s, refresh) => ipcRenderer.invoke("provider:models", s, refresh),
   generate: (r) => ipcRenderer.invoke("provider:generate", r),
   cancel: (id) => ipcRenderer.invoke("provider:cancel", id),
   onDelta(listener) {

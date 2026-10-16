@@ -54,6 +54,16 @@ const ModelCatalog = z.object({
       slug: z.string().min(1),
       display_name: z.string(),
       visibility: z.string(),
+      supported_reasoning_levels: z
+        .array(
+          z.object({
+            effort: z.string().min(1).max(40),
+            description: z.string().max(2000).optional(),
+          }),
+        )
+        .max(100)
+        .nullish(),
+      default_reasoning_level: z.string().min(1).max(40).nullish(),
     }),
   ),
 });
@@ -92,7 +102,16 @@ export function chatGPTProvider(
       });
       return ModelCatalog.parse(await response.json())
         .models.filter((m) => m.visibility === "list")
-        .map((m) => ({ id: m.slug, name: m.display_name }));
+        .map((m) => ({
+          id: m.slug,
+          name: m.display_name,
+          ...(m.supported_reasoning_levels != null
+            ? { reasoningEfforts: m.supported_reasoning_levels }
+            : {}),
+          ...(m.default_reasoning_level != null
+            ? { defaultReasoningEffort: m.default_reasoning_level }
+            : {}),
+        }));
     },
     async generate(req, onDelta, signal) {
       signal.throwIfAborted();

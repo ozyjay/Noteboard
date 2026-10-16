@@ -1,6 +1,10 @@
 import { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
 import {
+  ModelCatalogueSchema,
+  type ModelCatalogue,
+} from "../src/core/model-catalogue";
+import {
   validateBoard,
   SettingsSchema,
   defaults,
@@ -12,7 +16,7 @@ export class Store {
   constructor(path: string) {
     this.db = new DatabaseSync(path);
     this.db.exec(
-      `PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS boards (id TEXT PRIMARY KEY, title TEXT NOT NULL, updated_at TEXT NOT NULL, data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK (id=1), data TEXT NOT NULL); PRAGMA user_version=1;`,
+      `PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS boards (id TEXT PRIMARY KEY, title TEXT NOT NULL, updated_at TEXT NOT NULL, data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK (id=1), data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS model_catalogues (account_id TEXT PRIMARY KEY, data TEXT NOT NULL); PRAGMA user_version=1;`,
     );
   }
   list(): Board[] {
@@ -49,5 +53,27 @@ export class Store {
   }
   close() {
     this.db.close();
+  }
+  modelCatalogue(accountId: unknown): ModelCatalogue | undefined {
+    const id = z.string().min(1).max(200).parse(accountId);
+    const row = this.db
+      .prepare("SELECT data FROM model_catalogues WHERE account_id=?")
+      .get(id);
+    return row
+      ? ModelCatalogueSchema.parse(JSON.parse(row.data as string))
+      : undefined;
+  }
+  saveModelCatalogue(accountId: unknown, value: unknown) {
+    const id = z.string().min(1).max(200).parse(accountId);
+    const catalogue = ModelCatalogueSchema.parse(value);
+    this.db
+      .prepare(
+        "INSERT INTO model_catalogues(account_id,data) VALUES(?,?) ON CONFLICT(account_id) DO UPDATE SET data=excluded.data",
+      )
+      .run(id, JSON.stringify(catalogue));
+  }
+  deleteModelCatalogue(accountId: unknown) {
+    const id = z.string().min(1).max(200).parse(accountId);
+    this.db.prepare("DELETE FROM model_catalogues WHERE account_id=?").run(id);
   }
 }
