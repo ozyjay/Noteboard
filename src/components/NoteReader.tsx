@@ -28,7 +28,7 @@ export function NoteReader({
 }) {
   const reader = useRef<HTMLElement>(null);
   const drag = useRef<{ x: number; width: number } | null>(null);
-  const [width, setWidth] = useState(410);
+  const [width, setWidth] = useState<number>();
   const [workspaceWidth, setWorkspaceWidth] = useState(0);
   const [resizing, setResizing] = useState(false);
   useLayoutEffect(() => {
@@ -54,7 +54,7 @@ export function NoteReader({
   );
   const minimum = Math.min(320, maximum);
   const clamp = (value: number) => Math.min(maximum, Math.max(minimum, value));
-  const actualWidth = clamp(width);
+  const actualWidth = clamp(width ?? workspaceWidth / 3);
   return (
     <aside
       ref={reader}

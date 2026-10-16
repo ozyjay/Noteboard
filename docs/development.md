@@ -43,7 +43,7 @@ The styles also change how you scan Notes. **Classic** balances questions and Ta
 
 All five styles support light/dark mode, accent and font preferences, live preview, Cancel, Reset defaults and saving across restarts. Note styles change presentation only; Board data, Highlight anchors and response text are retained.
 
-Drag the left edge of the detailed Note reader to resize it. With the divider focused, Left/Right arrows adjust the width, Shift makes larger adjustments, and Home/End select the narrowest/widest size. Expanding and collapsing a Note retains its side-panel width while it is open. Resizing leaves space for the canvas and adapts to the window size.
+The detailed Note reader starts at one-third of the workspace width, with a minimum reading width where space permits. Drag its left edge to resize it. With the divider focused, Left/Right arrows adjust the width, Shift makes larger adjustments, and Home/End select the narrowest/widest size. Expanding and collapsing a Note retains its side-panel width while it is open. Resizing leaves space for the canvas and adapts to the window size.
 
 ## Local Ollama
 

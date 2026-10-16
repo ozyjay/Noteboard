@@ -21,10 +21,9 @@ export function NoteTitle({
       tabIndex={busy ? -1 : 0}
       aria-label="Edit displayed prompt and regenerate"
       aria-disabled={busy}
-      title="Click to edit prompt and regenerate"
-      onClick={() => {
-        if (!busy && window.getSelection()?.isCollapsed !== false)
-          onEditPrompt();
+      title="Double-click to edit prompt and regenerate"
+      onDoubleClick={() => {
+        if (!busy) onEditPrompt();
       }}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {

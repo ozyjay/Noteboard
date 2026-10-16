@@ -1070,7 +1070,7 @@ h1 {
 }
 .reader {
   position: relative;
-  width: 410px;
+  width: 33.333333%;
   max-width: calc(100% - min(240px, 30%));
   flex-shrink: 0;
   border-left: 1px solid var(--border);

@@ -1669,6 +1669,8 @@ test("Note reader resizes by dragging and keyboard and keeps its width after exp
   const handle = page.getByRole("separator", { name: "Resize Note reader" });
   const source = await page.locator(".reader-response").textContent();
   const original = (await reader.boundingBox())!;
+  const workspace = (await page.locator(".exploration").boundingBox())!;
+  expect(original.width).toBeCloseTo(workspace.width / 3, 0);
   const grip = (await handle.boundingBox())!;
   await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
   await page.mouse.down();
@@ -1844,14 +1846,17 @@ test("Board deletion failures retain the Board for retry", async ({ page }) => {
   );
 });
 
-test("clicking Note text opens editors while selecting text still offers branching", async ({
+test("double-clicking Note text opens editors while single clicks and selection leave reading available", async ({
   page,
 }) => {
   await page.goto("/");
   await page.locator(".note-card .note-prompt").first().click();
-  await page
-    .getByRole("button", { name: "Edit displayed prompt and regenerate" })
-    .click();
+  const displayedPrompt = page.getByRole("button", {
+    name: "Edit displayed prompt and regenerate",
+  });
+  await displayedPrompt.click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await displayedPrompt.dblclick();
   await expect(page.getByLabel("Revised prompt")).toBeFocused();
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
 
@@ -1869,6 +1874,8 @@ test("clicking Note text opens editors while selecting text still offers branchi
 
   const response = page.locator(".reader-response");
   await response.locator("p").first().click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await response.locator("p").first().dblclick();
   await expect(page.getByLabel("Revised response")).toBeFocused();
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await response.focus();

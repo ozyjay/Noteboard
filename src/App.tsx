@@ -1491,19 +1491,19 @@ export default function App() {
                   <div
                     className="reader-response prose editable-note-text"
                     role="region"
-                    aria-label="Response — click or press Enter to edit"
+                    aria-label="Response — double-click or press Enter to edit"
                     aria-keyshortcuts="Enter"
                     tabIndex={busy ? -1 : 0}
-                    title="Click to edit response. Select text to explore a passage."
-                    onClick={(event) => {
+                    title="Double-click to edit response. Select text to explore a passage."
+                    onDoubleClick={(event) => {
                       if (
                         busy ||
-                        window.getSelection()?.isCollapsed === false ||
                         (event.target as HTMLElement).closest(
                           "button, a, input, textarea, select",
                         )
                       )
                         return;
+                      setHighlight(undefined);
                       setRevisionTarget({
                         noteId: note.id,
                         versionId: version!.id,
