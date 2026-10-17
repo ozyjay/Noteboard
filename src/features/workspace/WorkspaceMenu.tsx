@@ -1,5 +1,5 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 export function WorkspaceMenu({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);

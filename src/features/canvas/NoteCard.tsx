@@ -3,17 +3,17 @@ import {
   Position,
   useStore,
   useUpdateNodeInternals,
-  type NodeProps,
   type Node,
+  type NodeProps,
 } from "@xyflow/react";
-import { useEffect } from "react";
 import { ArrowUpRight, GitBranch } from "lucide-react";
+import { useEffect } from "react";
 import {
-  type Appearance,
-  type Note,
   response,
   versionPrompt,
-} from "../core/model";
+  type Appearance,
+  type Note,
+} from "../../core/model";
 export type CardNode = Node<
   {
     note: Note;

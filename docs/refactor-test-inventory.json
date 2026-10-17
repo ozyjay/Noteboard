@@ -1,0 +1,585 @@
+{
+  "baselineCommit": "a9313d4d2b2ee57901d1f1dc33a5df572076f7d6",
+  "baseline": {
+    "unitCases": 75,
+    "playwrightCases": 43
+  },
+  "result": {
+    "unitCases": 75,
+    "playwrightCases": 45
+  },
+  "playwright": [
+    {
+      "name": "appearance previews, cancels, saves and follows system changes after reopening",
+      "project": "browser",
+      "file": "tests/browser/appearance.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "classic style previews, saves and supports light/dark reading",
+      "project": "browser",
+      "file": "tests/browser/appearance.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "sticky style previews, saves and supports light/dark reading",
+      "project": "browser",
+      "file": "tests/browser/appearance.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "blueprint style previews, saves and supports light/dark reading",
+      "project": "browser",
+      "file": "tests/browser/appearance.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "index style previews, saves and supports light/dark reading",
+      "project": "browser",
+      "file": "tests/browser/appearance.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "studio style previews, saves and supports light/dark reading",
+      "project": "browser",
+      "file": "tests/browser/appearance.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "sidebar Board menu renames and deletes the targeted inactive Board",
+      "project": "browser",
+      "file": "tests/browser/board-management.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "sidebar Board menu supports keyboard navigation and dismissal",
+      "project": "browser",
+      "file": "tests/browser/board-management.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "Board names can be saved, cancelled and reopened without changing Notes",
+      "project": "browser",
+      "file": "tests/browser/board-management.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "an empty Board keeps its chosen name after its first question",
+      "project": "browser",
+      "file": "tests/browser/board-management.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "highlight, branch, reload, synthesise, revise and return to a source",
+      "project": "browser",
+      "file": "tests/browser/branching-journey.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "manual placement survives reopening the Board",
+      "project": "browser",
+      "file": "tests/browser/canvas-placement.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "Note prompts send on Enter while preserving multiline and composed input",
+      "project": "browser",
+      "file": "tests/browser/composer-keyboard.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "ChatGPT per-Note model and effort overrides preserve defaults and context after reopening",
+      "project": "browser",
+      "file": "tests/browser/composer-requests.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "ChatGPT import previews paths, cancels and rejects unsupported input",
+      "project": "browser",
+      "file": "tests/browser/conversation-import.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "imported chains retain retrospective anchors, branching context and synthesis sources after reopening",
+      "project": "browser",
+      "file": "tests/browser/conversation-import.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "deletion confirms subtrees, preserves synthesis sources and survives reopening",
+      "project": "browser",
+      "file": "tests/browser/deletion.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "Board deletion failures retain the Board for retry",
+      "project": "browser",
+      "file": "tests/browser/deletion.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "edge labels wrap and reveal complete text with pointer and keyboard access",
+      "project": "browser",
+      "file": "tests/browser/edge-navigation.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "selects a repeated occurrence across rich formatting with exact offsets",
+      "project": "browser",
+      "file": "tests/browser/highlight-selection.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "clearing a text selection reverts the Highlight controls",
+      "project": "browser",
+      "file": "tests/browser/highlight-selection.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "a new Studio Highlight branch displays its connection and reopens the source after reload",
+      "project": "browser",
+      "file": "tests/browser/highlight-selection.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "persists the second repeated passage using its rendered offsets",
+      "project": "browser",
+      "file": "tests/browser/highlight-selection.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "maths survives equation branching, synthesis editing and reopening",
+      "project": "browser",
+      "file": "tests/browser/maths.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "older rendered Highlights retain their exact surface with maths enabled",
+      "project": "browser",
+      "file": "tests/browser/maths.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "queued saves finish before deletion and cannot recreate a deleted Board",
+      "project": "browser",
+      "file": "tests/browser/persistence-ordering.spec.ts",
+      "baselineFile": null
+    },
+    {
+      "name": "Note reader resizes by dragging and keyboard and keeps its width after expanding",
+      "project": "browser",
+      "file": "tests/browser/reader-layout.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "expanded Note fills the workspace and retains passage navigation",
+      "project": "browser",
+      "file": "tests/browser/reader-layout.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "editable titles preserve prompts and connected notes navigate both ways after reopening",
+      "project": "browser",
+      "file": "tests/browser/reader-navigation.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "takeaway editing is collapsed and preserves the original response after reopening",
+      "project": "browser",
+      "file": "tests/browser/reader-navigation.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "custom instructions save, cancel and persist in future generation records",
+      "project": "browser",
+      "file": "tests/browser/response-preferences.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "double-clicking Note text opens editors while single clicks and selection leave reading available",
+      "project": "browser",
+      "file": "tests/browser/revision-editing.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "Note revisions preserve old Highlights, synthesis sources and prompts after reopening",
+      "project": "browser",
+      "file": "tests/browser/revision-editing.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "revision model choices, failed requests and cancellation preserve the original",
+      "project": "browser",
+      "file": "tests/browser/revision-requests.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "exporting a dirty synthesis includes one revision and retains history after reopening",
+      "project": "browser",
+      "file": "tests/browser/synthesis-history.spec.ts",
+      "baselineFile": null
+    },
+    {
+      "name": "compact workspace fits long titles at 900px and retains its canvas",
+      "project": "browser",
+      "file": "tests/browser/workspace-layout.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "compact workspace fits long titles at 1150px and retains its canvas",
+      "project": "browser",
+      "file": "tests/browser/workspace-layout.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "compact workspace fits long titles at 1512px and retains its canvas",
+      "project": "browser",
+      "file": "tests/browser/workspace-layout.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "More menu supports keyboard navigation, dismissal and dialog focus restoration",
+      "project": "browser",
+      "file": "tests/browser/workspace-layout.spec.ts",
+      "baselineFile": "tests/browser.spec.ts"
+    },
+    {
+      "name": "ChatGPT catalogues isolate accounts, ignore late results and recover through refresh and sign-in",
+      "project": "browser",
+      "file": "tests/model-discovery.spec.ts",
+      "baselineFile": "tests/model-discovery.spec.ts"
+    },
+    {
+      "name": "macOS unprovisioned desktop reports the signing requirement without changing credentials",
+      "project": "desktop",
+      "file": "tests/desktop.spec.ts",
+      "baselineFile": "tests/desktop.spec.ts"
+    },
+    {
+      "name": "desktop model catalogue and thinking metadata reopen through the isolated bridge without discovery",
+      "project": "desktop",
+      "file": "tests/desktop.spec.ts",
+      "baselineFile": "tests/desktop.spec.ts"
+    },
+    {
+      "name": "desktop reopens a renamed Board from SQLite",
+      "project": "desktop",
+      "file": "tests/desktop.spec.ts",
+      "baselineFile": "tests/desktop.spec.ts"
+    },
+    {
+      "name": "desktop imports a chain, keeps retrospective anchors and reopens spatial Notes",
+      "project": "desktop",
+      "file": "tests/desktop.spec.ts",
+      "baselineFile": "tests/desktop.spec.ts"
+    },
+    {
+      "name": "production desktop bridge saves and reopens an inquiry in SQLite",
+      "project": "desktop",
+      "file": "tests/desktop.spec.ts",
+      "baselineFile": "tests/desktop.spec.ts"
+    }
+  ],
+  "unit": [
+    {
+      "name": "opens older settings with appearance defaults and retains provider configuration",
+      "file": "tests/appearance.test.ts"
+    },
+    {
+      "name": "rejects invalid appearance settings at the persistence boundary",
+      "file": "tests/appearance.test.ts"
+    },
+    {
+      "name": "defaults font choices for existing appearance records",
+      "file": "tests/appearance.test.ts"
+    },
+    {
+      "name": "validates inline bytes, supported types, limits and external citation URLs",
+      "file": "tests/research.test.ts"
+    },
+    {
+      "name": "retains files and web provenance across context, reviews, schema migration and SQLite reopening",
+      "file": "tests/research.test.ts"
+    },
+    {
+      "name": "never drops files when a request targets an unsupported provider",
+      "file": "tests/research.test.ts"
+    },
+    {
+      "name": "deletes a subtree without reparenting siblings or mutating source records",
+      "file": "tests/deletion.test.ts"
+    },
+    {
+      "name": "preserves synthesis revisions and exact source versions after deleting the root",
+      "file": "tests/deletion.test.ts"
+    },
+    {
+      "name": "providers > streams split NDJSON and preserves effective messages and usage",
+      "file": "tests/providers.test.ts"
+    },
+    {
+      "name": "providers > rejects incomplete streams and model context limits",
+      "file": "tests/providers.test.ts"
+    },
+    {
+      "name": "providers > reports provider errors and honours cancellation",
+      "file": "tests/providers.test.ts"
+    },
+    {
+      "name": "providers > restricts Ollama endpoints to local inference",
+      "file": "tests/providers.test.ts"
+    },
+    {
+      "name": "providers > labels demo responses and can abort without committing a response",
+      "file": "tests/providers.test.ts"
+    },
+    {
+      "name": "Inquiry domain > defaults old settings, preserves blank instructions and rejects oversized instructions",
+      "file": "tests/core.test.ts"
+    },
+    {
+      "name": "Inquiry domain > records exact custom instructions without changing history, sources or previous versions",
+      "file": "tests/core.test.ts"
+    },
+    {
+      "name": "Inquiry domain > includes root-to-parent history and excludes unrelated siblings",
+      "file": "tests/core.test.ts"
+    },
+    {
+      "name": "Inquiry domain > supports full multilevel ancestry without taking sibling context",
+      "file": "tests/core.test.ts"
+    },
+    {
+      "name": "Inquiry domain > rejects over-budget context without altering it",
+      "file": "tests/core.test.ts"
+    },
+    {
+      "name": "Inquiry domain > validates the sample and prevents ambiguous parents, cycles, roots and broken anchors",
+      "file": "tests/core.test.ts"
+    },
+    {
+      "name": "Inquiry domain > keeps repeated passages independently anchored",
+      "file": "tests/core.test.ts"
+    },
+    {
+      "name": "Inquiry domain > keeps manual positions while finding room for a child",
+      "file": "tests/core.test.ts"
+    },
+    {
+      "name": "Inquiry domain > uses an explicit principal takeaway rather than a final sentence",
+      "file": "tests/core.test.ts"
+    },
+    {
+      "name": "Inquiry domain > selects branches and preserves original sources in learning journeys",
+      "file": "tests/core.test.ts"
+    },
+    {
+      "name": "reopens deleted Boards and Notes without losing other Boards or settings",
+      "file": "tests/store.test.ts"
+    },
+    {
+      "name": "reopens imported chains and migrates existing v1 JSON without replacing identities",
+      "file": "tests/store.test.ts"
+    },
+    {
+      "name": "reopens SQLite with spatial positions, exact anchors, effective context and document history",
+      "file": "tests/store.test.ts"
+    },
+    {
+      "name": "does not overwrite saved data with an invalid tree",
+      "file": "tests/store.test.ts"
+    },
+    {
+      "name": "pins distant ancestors and isolates siblings after parent and root revisions",
+      "file": "tests/revisions.test.ts"
+    },
+    {
+      "name": "keeps imported chronology and unknown metadata when originals acquire revisions",
+      "file": "tests/revisions.test.ts"
+    },
+    {
+      "name": "reopens prompt revisions, human edits and synthesis references without changing history",
+      "file": "tests/revisions.test.ts"
+    },
+    {
+      "name": "reviews the viewed answer with exact historical context, retaining repeated reviews and human edits",
+      "file": "tests/revisions.test.ts"
+    },
+    {
+      "name": "reviews imported answers from preserved visible history without inventing historical context",
+      "file": "tests/revisions.test.ts"
+    },
+    {
+      "name": "rejects duplicate versions, missing revision bases and invalid ancestry pins",
+      "file": "tests/revisions.test.ts"
+    },
+    {
+      "name": "retains recorded Highlight framing after retrospective annotations change",
+      "file": "tests/revisions.test.ts"
+    },
+    {
+      "name": "Touch ID protected credential storage > encrypts authenticated envelopes, unlocks once and clears the cached key on disposal",
+      "file": "tests/macos-credentials.test.ts"
+    },
+    {
+      "name": "Touch ID protected credential storage > rejects tampering, unsupported formats and envelopes from another vault without legacy fallback",
+      "file": "tests/macos-credentials.test.ts"
+    },
+    {
+      "name": "Touch ID protected credential storage > refuses missing entitlements and never creates a missing key while decrypting",
+      "file": "tests/macos-credentials.test.ts"
+    },
+    {
+      "name": "Touch ID protected credential storage > migrates validated legacy credentials atomically, preserving registrations and reopening with the new key",
+      "file": "tests/macos-credentials.test.ts"
+    },
+    {
+      "name": "Touch ID protected credential storage > leaves legacy credentials untouched after cancellation and retries rather than caching a failed migration",
+      "file": "tests/macos-credentials.test.ts"
+    },
+    {
+      "name": "Touch ID protected credential storage > validates legacy records before creating a key or replacing the file",
+      "file": "tests/macos-credentials.test.ts"
+    },
+    {
+      "name": "Markdown maths > renders Markdown, inline/block maths and alternative TeX delimiters",
+      "file": "tests/math.test.tsx"
+    },
+    {
+      "name": "Markdown maths > preserves literal maths inside inline and fenced code",
+      "file": "tests/math.test.tsx"
+    },
+    {
+      "name": "Markdown maths > keeps invalid maths readable and prevents trusted TeX HTML commands",
+      "file": "tests/math.test.tsx"
+    },
+    {
+      "name": "Markdown maths > can reproduce the original pre-maths rendering for existing anchors",
+      "file": "tests/math.test.tsx"
+    },
+    {
+      "name": "ChatGPT plan provider > keeps missing, empty and future thinking metadata distinct and rejects malformed capabilities",
+      "file": "tests/chatgpt.test.ts"
+    },
+    {
+      "name": "ChatGPT plan provider > discovers account models and streams exact effective context with usage",
+      "file": "tests/chatgpt.test.ts"
+    },
+    {
+      "name": "ChatGPT plan provider > transmits and records explicit low thinking effort",
+      "file": "tests/chatgpt.test.ts"
+    },
+    {
+      "name": "ChatGPT plan provider > transmits and records explicit medium thinking effort",
+      "file": "tests/chatgpt.test.ts"
+    },
+    {
+      "name": "ChatGPT plan provider > transmits and records explicit high thinking effort",
+      "file": "tests/chatgpt.test.ts"
+    },
+    {
+      "name": "ChatGPT plan provider > transmits and records explicit xhigh thinking effort",
+      "file": "tests/chatgpt.test.ts"
+    },
+    {
+      "name": "ChatGPT plan provider > transmits and records explicit max thinking effort",
+      "file": "tests/chatgpt.test.ts"
+    },
+    {
+      "name": "ChatGPT plan provider > reports unsupported effort without retrying or changing the request",
+      "file": "tests/chatgpt.test.ts"
+    },
+    {
+      "name": "ChatGPT plan provider > sends inline files with web search and retains completed calls and citation ranges",
+      "file": "tests/chatgpt.test.ts"
+    },
+    {
+      "name": "ChatGPT plan provider > records search as unused when no completed search call is returned",
+      "file": "tests/chatgpt.test.ts"
+    },
+    {
+      "name": "ChatGPT plan provider > rejects incomplete, failed, empty and interrupted responses",
+      "file": "tests/chatgpt.test.ts"
+    },
+    {
+      "name": "ChatGPT plan provider > rejects incomplete, failed, empty and interrupted responses",
+      "file": "tests/chatgpt.test.ts"
+    },
+    {
+      "name": "ChatGPT plan provider > rejects incomplete, failed, empty and interrupted responses",
+      "file": "tests/chatgpt.test.ts"
+    },
+    {
+      "name": "ChatGPT plan provider > rejects incomplete, failed, empty and interrupted responses",
+      "file": "tests/chatgpt.test.ts"
+    },
+    {
+      "name": "ChatGPT plan provider > rejects incomplete, failed, empty and interrupted responses",
+      "file": "tests/chatgpt.test.ts"
+    },
+    {
+      "name": "ChatGPT plan provider > honours cancellation after a delta and refuses oversized contexts before token access",
+      "file": "tests/chatgpt.test.ts"
+    },
+    {
+      "name": "ChatGPT plan provider > does not expose remote error bodies or use an API key fallback",
+      "file": "tests/chatgpt.test.ts"
+    },
+    {
+      "name": "ChatGPT OAuth and protected credentials > lists an unconfigured account without touching secure storage or creating a vault",
+      "file": "tests/chatgpt.test.ts"
+    },
+    {
+      "name": "ChatGPT OAuth and protected credentials > unlocks once per process and reuses credentials without rewriting them",
+      "file": "tests/chatgpt.test.ts"
+    },
+    {
+      "name": "ChatGPT OAuth and protected credentials > registers, reopens, refreshes once and signs out while retaining the issued registration",
+      "file": "tests/chatgpt.test.ts"
+    },
+    {
+      "name": "ChatGPT OAuth and protected credentials > rejects mismatched callbacks, permits cancellation and refuses insecure storage",
+      "file": "tests/chatgpt.test.ts"
+    },
+    {
+      "name": "ChatGPT OAuth and protected credentials > keeps independent registrations separate during refresh and clears terminally expired sessions",
+      "file": "tests/chatgpt.test.ts"
+    },
+    {
+      "name": "ChatGPT OAuth and protected credentials > verifies identity signatures, issuer, audience, nonce and expiry",
+      "file": "tests/chatgpt.test.ts"
+    },
+    {
+      "name": "ChatGPT text import > preserves the chosen text path, identities and metadata without reconstructing inference",
+      "file": "tests/chatgpt-import.test.ts"
+    },
+    {
+      "name": "ChatGPT text import > joins string parts with newlines and retains missing source dates as unknown",
+      "file": "tests/chatgpt-import.test.ts"
+    },
+    {
+      "name": "ChatGPT text import > rejects invalid structure, missing references, cycles and oversized inputs",
+      "file": "tests/chatgpt-import.test.ts"
+    },
+    {
+      "name": "ChatGPT text import > rejects unsupported content and incomplete turns without defaulting to an invalid path",
+      "file": "tests/chatgpt-import.test.ts"
+    },
+    {
+      "name": "ChatGPT text import > attaches, replaces and removes exact retrospective anchors without changing messages or ancestry",
+      "file": "tests/chatgpt-import.test.ts"
+    },
+    {
+      "name": "ChatGPT text import > migrates v1 deterministically and preserves generated records and artefacts",
+      "file": "tests/chatgpt-import.test.ts"
+    },
+    {
+      "name": "persists account-specific model capabilities across reopening and replaces only a successfully refreshed catalogue",
+      "file": "tests/model-catalogues.test.ts"
+    },
+    {
+      "name": "deduplicates discovery and prevents an invalidated request from restoring a signed-out account's catalogue",
+      "file": "tests/model-catalogues.test.ts"
+    }
+  ]
+}

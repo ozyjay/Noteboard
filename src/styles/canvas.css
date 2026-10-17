@@ -1,0 +1,135 @@
+.exploration {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.canvas {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.react-flow__controls {
+  box-shadow: none !important;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  bottom: 50px !important;
+  left: 24px !important;
+}
+.react-flow__controls button {
+  background: var(--surface) !important;
+  border-bottom: 1px solid var(--border) !important;
+  width: 29px !important;
+  height: 29px !important;
+  fill: var(--text-secondary) !important;
+}
+.react-flow__minimap {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-muted) !important;
+  width: 135px !important;
+  height: 90px !important;
+  bottom: 45px !important;
+}
+.react-flow__edge {
+  cursor: pointer;
+}
+.react-flow__edge-text {
+  font-family: inherit;
+}
+.edge-label {
+  position: absolute;
+  pointer-events: all;
+  max-width: 200px;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: var(--canvas);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: center;
+  cursor: pointer;
+}
+.edge-label > span {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.edge-label-distant {
+  opacity: 0;
+  pointer-events: none;
+}
+.edge-label:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.edge-preview {
+  position: fixed;
+  z-index: 50;
+  width: max-content;
+  max-width: min(380px, calc(100vw - 16px));
+  max-height: min(360px, calc(100vh - 16px));
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 6px 24px #0002;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.edge-preview-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin-bottom: 10px;
+}
+.edge-preview:focus-visible {
+  outline: 2px solid var(--accent);
+}
+.edge-preview-hint {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.edge-preview button {
+  color: var(--accent);
+  text-decoration: underline;
+  padding: 0;
+}
+.react-flow__handle {
+  background: var(--surface-muted) !important;
+  border: 2px solid var(--canvas) !important;
+  width: 8px !important;
+  height: 8px !important;
+}
+.note-card {
+  width: 300px;
+  min-height: 220px;
+  border-radius: 8px;
+  padding: 20px 20px 14px;
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--note-paper);
+  background: color-mix(in srgb, var(--surface), var(--note-paper) 12%);
+  box-shadow: 0 2px 5px #00000008;
+  transition: box-shadow 0.2s;
+}
+.colour-0 {
+  --note-paper: var(--note-0);
+}
+.colour-1 {
+  --note-paper: var(--note-1);
+}
+.colour-2 {
+  --note-paper: var(--note-2);
+}
+.colour-3 {
+  --note-paper: var(--note-3);
+}

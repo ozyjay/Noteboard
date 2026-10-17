@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import type { Note } from "../core/model";
+import type { Note } from "../../core/model";
 
 export function NoteTitle({
   note,

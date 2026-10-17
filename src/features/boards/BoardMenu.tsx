@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
 import { Pencil, Trash2 } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 export type BoardMenuTarget = {
   boardId: string;

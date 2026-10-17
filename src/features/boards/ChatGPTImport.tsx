@@ -1,13 +1,13 @@
-import { useRef, useState } from "react";
 import { X } from "lucide-react";
+import { useRef, useState } from "react";
 import {
   importChatGPTPath,
   MAX_EXPORT_BYTES,
   parseChatGPTExport,
   previewChatGPTPath,
   type ImportConversation,
-} from "../core/chatgpt-import";
-import type { Board } from "../core/model";
+} from "../../core/chatgpt-import";
+import type { Board } from "../../core/model";
 
 export function ChatGPTImport({
   onClose,

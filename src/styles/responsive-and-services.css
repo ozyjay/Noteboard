@@ -1,0 +1,64 @@
+@media (max-width: 1150px) {
+  .sidebar {
+    width: 200px;
+    padding: 20px 12px;
+  }
+  .topbar {
+    padding: 0 16px;
+  }
+  .modebar {
+    padding: 0 16px;
+  }
+  .reader-scroll {
+    padding: 20px;
+  }
+  .document-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .synthesis-workspace {
+    padding: 25px;
+  }
+  .react-flow__minimap {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}
+.note-card.overview {
+  min-height: 105px;
+}
+.note-card.overview .note-top {
+  margin-bottom: 12px;
+}
+.prose .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35rem 0;
+}
+
+.prose .katex {
+  font-size: 1.1em;
+}
+
+.chatgpt-settings {
+  margin: 16px 0;
+}
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+.chatgpt-signin {
+  background: #111;
+  color: white;
+  border: 1px solid #111;
+  border-radius: 8px;
+  padding: 10px 16px;
+}

@@ -1,0 +1,117 @@
+.empty-board,
+.synthesis-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+}
+.empty-board {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.empty-board > * {
+  pointer-events: auto;
+}
+.empty-board > span {
+  background: var(--surface-muted);
+  border-radius: 50%;
+  padding: 20px;
+  color: var(--text-secondary);
+}
+.empty-board h2,
+.synthesis-empty h2 {
+  font-family: Georgia, serif;
+  font-size: 25px;
+  font-weight: 450;
+}
+.empty-board p,
+.synthesis-empty p {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+  margin: 0 0 24px;
+}
+.synthesis-workspace {
+  overflow: auto;
+  flex: 1;
+  padding: 30px 45px;
+}
+.synthesis-empty {
+  height: 100%;
+  color: var(--text-secondary);
+}
+.document-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.document-toolbar h2 {
+  margin: 8px 0 0;
+  font-family: Georgia, serif;
+  font-size: 23px;
+  font-weight: 450;
+}
+.document-toolbar > div:last-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.document-toolbar select {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 8px;
+  border-radius: 5px;
+  font-size: 10px;
+  max-width: 180px;
+}
+.document-editor {
+  width: 100%;
+  min-height: 390px;
+  height: calc(100vh - 450px);
+  padding: 25px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  font: 13px/1.85 monospace;
+  resize: vertical;
+}
+.document-preview {
+  padding: 30px 40px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  max-width: 880px;
+  margin: auto;
+  font-size: 14px;
+}
+.document-preview h1 {
+  font-size: 30px;
+}
+.document-sources {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+.document-sources button {
+  background: var(--surface-muted);
+  border-radius: 4px;
+  padding: 6px 9px;
+  font-size: 10px;
+  max-width: 250px;
+  text-align: left;
+}
+.source-link {
+  display: inline;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-size: inherit;
+  padding: 0;
+}

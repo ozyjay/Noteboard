@@ -16,7 +16,7 @@ export default defineConfig({
   projects: [
     {
       name: "browser",
-      testMatch: ["browser.spec.ts", "model-discovery.spec.ts"],
+      testMatch: ["browser/**/*.spec.ts", "model-discovery.spec.ts"],
     },
     { name: "desktop", testMatch: "desktop.spec.ts" },
   ],

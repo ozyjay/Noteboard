@@ -1,0 +1,177 @@
+:root {
+  color-scheme: light;
+  --canvas: #f7f6f2;
+  --sidebar: #f0f1e9;
+  --surface: #fffef9;
+  --surface-muted: #e9eddf;
+  --border: #d8dece;
+  --text: #303a30;
+  --text-secondary: #65705c;
+  --accent: #526744;
+  --accent-button: #526744;
+  --grid: #c8cdc0;
+  --edge: #9b9d90;
+  --minimap-mask: #f7f6f2a6;
+  --note-0: #f1e9b7;
+  --note-1: #e3ecd8;
+  --note-2: #e8e1ef;
+  --note-3: #dcebef;
+  --selection: #d0dca9;
+  --warning-bg: #f3edcc;
+  --warning-text: #70602e;
+  --error-bg: #f8e8e2;
+  --error-border: #e8cdc1;
+  --error-text: #884b37;
+  --reading-scale: 1;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: #202520;
+  --sidebar: #272e27;
+  --surface: #2d352d;
+  --surface-muted: #364036;
+  --border: #4e5a4e;
+  --text: #edf0e8;
+  --text-secondary: #bbc5b4;
+  --accent: #b4ce98;
+  --grid: #4b574b;
+  --edge: #9aa98e;
+  --minimap-mask: #202520b3;
+  --note-0: #47432a;
+  --note-1: #344333;
+  --note-2: #44384c;
+  --note-3: #30444b;
+  --selection: #526744;
+  --warning-bg: #494128;
+  --warning-text: #f1d88f;
+  --error-bg: #4b302b;
+  --error-border: #795047;
+  --error-text: #ffc5af;
+}
+:root[data-accent="blue"] {
+  --accent: #365d95;
+  --accent-button: #365d95;
+}
+:root[data-accent="plum"] {
+  --accent: #795087;
+  --accent-button: #795087;
+}
+:root[data-theme="dark"][data-accent="blue"] {
+  --accent: #a5c9ff;
+}
+:root[data-theme="dark"][data-accent="plum"] {
+  --accent: #e0b9ed;
+}
+:root[data-text-size="large"] {
+  --reading-scale: 1.17;
+}
+:root[data-text-size="larger"] {
+  --reading-scale: 1.33;
+}
+:root {
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  color: var(--text);
+  background: var(--canvas);
+  font-synthesis: none;
+  font-size: 14px;
+}
+* {
+  box-sizing: border-box;
+}
+.modal.import-modal {
+  width: min(850px, 94vw);
+  display: flex;
+  flex-direction: column;
+}
+.import-body {
+  min-height: 0;
+  overflow: auto;
+  padding-right: 5px;
+}
+.import-modal > .panel-head,
+.import-modal > .modal-actions {
+  flex-shrink: 0;
+}
+.import-preview {
+  max-height: 40vh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  padding: 16px;
+  margin: 16px 0;
+}
+.import-preview pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
+.import-preview article + article {
+  border-top: 1px solid var(--border);
+}
+.reader-footer label {
+  display: block;
+  margin: 8px 0;
+}
+.reader-footer select {
+  max-width: 100%;
+  background: var(--surface);
+}
+body {
+  margin: 0;
+}
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.danger {
+  background: var(--error-bg);
+  color: var(--error-text);
+  border: 1px solid var(--error-border);
+  border-radius: 6px;
+  padding: 10px 16px;
+}
+.archived-source {
+  overflow: auto;
+}
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+input,
+textarea,
+select {
+  color: var(--text);
+}
+input,
+select {
+  min-width: 0;
+}
+textarea {
+  resize: vertical;
+}
+button:hover:not(:disabled) {
+  filter: brightness(0.95);
+}

@@ -1,33 +1,33 @@
+import { LoaderCircle, X } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
-import { X, LoaderCircle } from "lucide-react";
-import { bridge } from "../bridge";
-import { useChatGPTModels } from "../model-discovery";
+import { bridge } from "../../bridge";
+import { ResearchInputs } from "../../components/ResearchInputs";
+import { ThinkingEffort } from "../../components/ThinkingEffort";
 import {
-  type Board,
-  type Note,
-  type Settings,
-  type ResponseVersion,
-  type Message,
-  versionPrompt,
-  uid,
-  now,
-} from "../core/model";
-import {
-  revisionContext,
+  estimateTokens,
   improvementContext,
   improvementPrompt,
-  estimateTokens,
+  revisionContext,
   versionFiles,
   versionPath,
-} from "../core/context";
+} from "../../core/context";
+import {
+  now,
+  uid,
+  versionPrompt,
+  type Board,
+  type Message,
+  type Note,
+  type ResponseVersion,
+  type Settings,
+} from "../../core/model";
 import {
   providerMessages,
   type GenerationResult,
   type ModelChoice,
-} from "../core/providers";
-import { ResearchInputs } from "./ResearchInputs";
-import { ThinkingEffort } from "./ThinkingEffort";
-import { type Attachment, combineFiles } from "../core/research";
+} from "../../core/providers";
+import { combineFiles, type Attachment } from "../../core/research";
+import { useChatGPTModels } from "../../model-discovery";
 
 export type RevisionMode = "prompt" | "regenerate" | "edit" | "improve";
 export function NoteRevision({

@@ -1,0 +1,118 @@
+.primary {
+  background: var(--accent-button);
+  border-color: var(--accent-button);
+}
+.react-flow {
+  --xy-background-color: var(--canvas);
+  --xy-minimap-background-color: var(--surface);
+}
+.react-flow__controls button {
+  color: var(--text);
+}
+.prose,
+.takeaway-editor textarea {
+  font-size: calc(12px * var(--reading-scale));
+}
+.prose h2 {
+  font-size: calc(17px * var(--reading-scale));
+}
+.prose h3 {
+  font-size: calc(13px * var(--reading-scale));
+}
+.prose code {
+  font-size: 0.92em;
+}
+.document-preview {
+  font-size: calc(14px * var(--reading-scale));
+}
+.document-editor {
+  font-size: calc(13px * var(--reading-scale));
+}
+.exploration {
+  position: relative;
+}
+.reader.reader-expanded {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  border-left: 0;
+}
+.reader-expanded .reader-scroll {
+  padding: 32px max(32px, calc((100% - 880px) / 2));
+}
+.reader-expanded .reader-response,
+.reader-expanded .takeaway-editor textarea {
+  font-size: calc(14px * var(--reading-scale));
+}
+.reader > .panel-head > span {
+  margin-right: auto;
+}
+.reader > .panel-head button + button {
+  margin-left: 12px;
+}
+.appearance-fields {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.appearance-fields label {
+  display: block;
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 20px;
+}
+.appearance-fields .appearance-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.appearance-checkbox input {
+  width: auto;
+  margin: 0;
+  accent-color: var(--accent-button);
+}
+:root {
+  --font-sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: Consolas, Menlo, Monaco, monospace;
+  --font-interface: var(--font-sans);
+  --font-interface-heading: Georgia, serif;
+  --font-reading: var(--font-sans);
+  --font-reading-heading: Georgia, serif;
+  font-family: var(--font-interface);
+}
+:root[data-interface-font="monospace"] {
+  --font-interface: var(--font-mono);
+  --font-interface-heading: var(--font-mono);
+}
+:root[data-reading-font="serif"] {
+  --font-reading: Georgia, serif;
+  --font-reading-heading: Georgia, serif;
+}
+:root[data-reading-font="monospace"] {
+  --font-reading: var(--font-mono);
+  --font-reading-heading: var(--font-mono);
+}
+.note-prompt,
+.reader h2,
+.document-toolbar h2 {
+  font-family: var(--font-reading-heading);
+}
+.note-takeaway,
+.prose,
+.takeaway-editor textarea {
+  font-family: var(--font-reading);
+}
+.empty-board h2,
+.synthesis-empty h2,
+.modal h2 {
+  font-family: var(--font-interface-heading);
+}
+.prose h2 {
+  font-family: inherit;
+}
+.prose code,
+.prose pre,
+.document-editor {
+  font-family: var(--font-mono);
+}

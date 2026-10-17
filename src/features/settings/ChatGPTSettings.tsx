@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { bridge, type ChatGPTAccount } from "../bridge";
-import { invalidateChatGPTModels } from "../model-discovery";
+import { bridge, type ChatGPTAccount } from "../../bridge";
+import { invalidateChatGPTModels } from "../../model-discovery";
 export function ChatGPTSettings({
   accountId,
   onAccount,

@@ -1,5 +1,5 @@
 import { Check, Palette, X } from "lucide-react";
-import { defaultAppearance, type Appearance } from "../core/model";
+import { defaultAppearance, type Appearance } from "../../core/model";
 
 const noteStyles: Record<
   Appearance["noteStyle"],

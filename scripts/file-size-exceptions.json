@@ -1,0 +1,6 @@
+{
+  "tests/chatgpt.test.ts": {
+    "maxLines": 759,
+    "reason": "Existing ChatGPT protocol and protected-credential integration checks share the local mock-server/identity harness. Retained during the renderer refactor to avoid coupling credential verification changes to UI extraction; growth requires review."
+  }
+}

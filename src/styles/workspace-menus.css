@@ -1,0 +1,45 @@
+.board-list-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.topbar-actions > .primary {
+  padding: 8px 12px;
+}
+.workspace-menu {
+  position: relative;
+}
+.topbar-actions .workspace-menu-trigger {
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+.workspace-menu-items {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 100;
+  width: 260px;
+  padding: 5px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 24px #0003;
+}
+.workspace-menu-items button {
+  width: 100%;
+  justify-content: flex-start;
+  padding: 10px;
+  border-radius: 4px;
+  text-align: left;
+}
+.workspace-menu-items button:hover:not(:disabled),
+.workspace-menu-items button:focus-visible {
+  background: var(--surface-muted);
+}
+.workspace-menu-items button:last-child {
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 4px 4px;
+  margin-top: 4px;
+}

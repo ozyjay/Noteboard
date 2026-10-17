@@ -12,12 +12,14 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "check": "npm run typecheck && npm test && npm run build",
+    "check": "npm run size:check && npm run typecheck && npm test && npm run build",
     "format": "prettier --write src electron scripts tests docs skills AGENTS.md README.md *.json *.ts",
     "format:check": "prettier --check src electron scripts tests docs skills AGENTS.md README.md *.json *.ts",
     "package:macos": "pwsh -NoProfile -File scripts/package-macos.ps1",
     "install:macos": "pwsh -NoProfile -File scripts/package-macos.ps1 -Install",
-    "reinstall:macos": "pwsh -NoProfile -File scripts/reinstall-macos.ps1"
+    "reinstall:macos": "pwsh -NoProfile -File scripts/reinstall-macos.ps1",
+    "size:report": "node scripts/file-sizes.mjs",
+    "size:check": "node scripts/file-sizes.mjs --check"
   },
   "dependencies": {
     "@xyflow/react": "^12.12.0",

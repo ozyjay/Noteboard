@@ -21,7 +21,9 @@ Noteboard is a human-directed, provider-independent spatial conversation environ
 ## Repository map and checks
 
 - `src/core/`: graph schema, context, selection anchors, providers and synthesis.
-- `src/components/`, `src/App.tsx`, `src/styles.css`: React reading, canvas and document surfaces.
+- `src/features/`: feature components, local state and workflow coordination; see the ownership map in `docs/architecture.md`.
+- `src/App.tsx`: feature composition and cross-feature navigation. `src/components/` contains reused rendering/input components.
+- `src/styles.css`: ordered stylesheet imports; feature styles live in `src/styles/`.
 - `electron/`: trusted main process, narrow preload bridge, SQLite and local Ollama adapter.
 - `tests/`: domain, persistence, provider and end-to-end verification.
 - `docs/`: maintained product plan, decisions, setup and testing.
@@ -31,6 +33,14 @@ Use Node 24+. `npm ci`, `npm run dev`, `npm run check`, `npm run test:e2e`. See 
 Renderer code must not gain direct filesystem, Node or network access. Validate external JSON and IPC input. Keep `contextIsolation`, sandboxing and `nodeIntegration: false`. Ollama is local-only in this version.
 
 Run relevant tests for changed behaviour, typecheck and build before delivery. Test branching, source navigation and reopening data when changing anchors or persistence. Update architecture/decisions when the design changes. Do not claim live inference validation from synthetic or mocked tests.
+
+## Refactor maintenance
+
+Keep feature-specific components and hooks together. Pass named actions across features; keep simple state local and avoid a universal controller/context. Instantiate the shared generation owner and Board persistence owner once in the application. Keep save ordering and deleted-Board protection together.
+
+Preserve the response DOM surface when extracting reader code: equivalent-looking markup can change Highlight offsets. Preserve stylesheet import/rule order when moving CSS. Browser suites live in `tests/browser/`; keep Playwright discovery and parameterised cases intact when moving tests.
+
+Review responsibilities before extending files beyond 400 lines. `npm run size:report` lists these files; `npm run check` rejects authored files over 500 lines without a bounded, justified exception in `scripts/file-size-exceptions.json`. Count normally formatted physical lines; do not compress or fragment cohesive code to satisfy the report.
 
 ## Ideas and approved work
 
