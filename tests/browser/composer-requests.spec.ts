@@ -263,6 +263,7 @@ test("ChatGPT per-Note model and effort overrides preserve defaults and context 
   await page.evaluate(() => localStorage.removeItem("test.fail"));
   await page.getByRole("textbox", { name: "Your question" }).press("Enter");
   await expect(page.locator(".note-card")).toHaveCount(1);
+  await page.getByRole("button", { name: "Back to Board" }).click();
   await page
     .getByRole("button", { name: "My ChatGPT inquiry", exact: true })
     .click();
@@ -354,18 +355,16 @@ test("ChatGPT per-Note model and effort overrides preserve defaults and context 
   ).toBeVisible();
   await page.getByRole("textbox", { name: "Your question" }).press("Enter");
   const cancelGeneration = page.getByRole("button", {
-    name: "Cancel generation",
+    name: "Stop",
     exact: true,
   });
   await expect(cancelGeneration).toBeFocused();
-  await expect(page.getByLabel("Note model", { exact: true })).toBeDisabled();
+  await expect(page.getByLabel("Note model", { exact: true })).toHaveCount(0);
   await expect(
     page.getByLabel("Note thinking effort", { exact: true }),
-  ).toBeDisabled();
+  ).toHaveCount(0);
   await page.keyboard.press("Tab");
-  await expect(
-    page.getByRole("button", { name: "Manage usage", exact: true }),
-  ).toBeFocused();
+  await expect(cancelGeneration).toBeFocused();
   await page.keyboard.press("Shift+Tab");
   await expect(cancelGeneration).toBeFocused();
   await page.evaluate(() => {

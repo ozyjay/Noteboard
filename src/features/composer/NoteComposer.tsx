@@ -14,6 +14,8 @@ import { highlightLabel, type Board, type Settings } from "../../core/model";
 import { type ModelChoice } from "../../core/providers";
 import { errorText } from "../workspace/browser-actions";
 import { type ComposerDraft } from "./types";
+import { GenerationView } from "../generation/GenerationView";
+import { type GenerationPreview } from "../generation/useGeneration";
 
 interface Props {
   composer: ComposerDraft;
@@ -33,6 +35,7 @@ interface Props {
   error: string;
   onCancel: () => void;
   composerReading: boolean;
+  progress?: GenerationPreview;
 }
 export function NoteComposer({
   composer,
@@ -52,7 +55,17 @@ export function NoteComposer({
   error,
   onCancel,
   composerReading,
+  progress,
 }: Props) {
+  if (busy && progress)
+    return (
+      <GenerationView
+        question={prompt.trim()}
+        progress={progress}
+        synthetic={settings.provider === "demo"}
+        onCancel={onCancel}
+      />
+    );
   return (
     <div className="modal-backdrop">
       <section

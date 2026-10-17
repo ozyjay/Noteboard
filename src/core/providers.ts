@@ -5,6 +5,7 @@ import {
 } from "./instructions";
 import { AttachmentsSchema, type WebResearch } from "./research";
 import { type ModelMetadata } from "./model-catalogue";
+import { type GenerationActivity } from "./generation-progress";
 export interface GenerationRequest {
   id: string;
   messages: Message[];
@@ -31,6 +32,7 @@ export interface Provider {
     request: GenerationRequest,
     onDelta: (text: string) => void,
     signal: AbortSignal,
+    onProgress?: (activity: GenerationActivity) => void,
   ): Promise<GenerationResult>;
 }
 const abort = () => new DOMException("Generation cancelled", "AbortError");

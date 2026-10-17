@@ -56,6 +56,7 @@ test("maths survives equation branching, synthesis editing and reopening", async
     .getByRole("button", { name: "Create branch", exact: true })
     .click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.getByRole("button", { name: "Back to Board" }).click();
   await expect(page.getByText("Saved locally", { exact: true })).toBeVisible();
   const saved = await page.evaluate(
     () => JSON.parse(localStorage.getItem("inquiry.boards")!)[0],

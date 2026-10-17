@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import { type InquiryBridge } from "../src/bridge";
+import { GenerationProgressSchema } from "../src/core/generation-progress";
 const bridge: InquiryBridge = {
   openWebLink: (url) => ipcRenderer.invoke("web:open", url),
   chatgptAccounts: () => ipcRenderer.invoke("chatgpt:accounts"),
@@ -20,6 +21,14 @@ const bridge: InquiryBridge = {
       listener(data);
     ipcRenderer.on("provider:delta", handler);
     return () => ipcRenderer.removeListener("provider:delta", handler);
+  },
+  onProgress(listener) {
+    const handler = (_event: unknown, data: unknown) => {
+      const parsed = GenerationProgressSchema.safeParse(data);
+      if (parsed.success) listener(parsed.data);
+    };
+    ipcRenderer.on("provider:progress", handler);
+    return () => ipcRenderer.removeListener("provider:progress", handler);
   },
 };
 contextBridge.exposeInMainWorld("inquiry", bridge);

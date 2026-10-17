@@ -57,7 +57,7 @@ export const ollamaProvider: Provider = {
       )
       .map((m: { name: string }) => m.name);
   },
-  async generate(req: GenerationRequest, onDelta, signal) {
+  async generate(req: GenerationRequest, onDelta, signal, onProgress) {
     validateRequestFeatures(req);
     if (!req.settings.model.trim())
       throw new Error("Choose an installed Ollama model in provider settings");
@@ -91,6 +91,7 @@ export const ollamaProvider: Provider = {
       signal: combined,
     });
     if (!r.body) throw new Error("Ollama returned no response stream");
+    onProgress?.("working");
     const reader = r.body.getReader(),
       decoder = new TextDecoder();
     let buffer = "",
@@ -101,6 +102,8 @@ export const ollamaProvider: Provider = {
       if (!line.trim()) return;
       const item = JSON.parse(line);
       if (item.error) throw new Error(item.error);
+      if (typeof item.message?.thinking === "string" && item.message.thinking)
+        onProgress?.("thinking");
       const delta = item.message?.content || "";
       text += delta;
       if (delta) onDelta(delta);

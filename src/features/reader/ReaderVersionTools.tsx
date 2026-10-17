@@ -16,7 +16,7 @@ type Props = Pick<
   | "readParent"
   | "board"
   | "read"
->;
+> & { focused?: boolean; onDeleteNote?: () => void };
 export function ReaderVersionTools({
   appearance,
   version,
@@ -30,15 +30,24 @@ export function ReaderVersionTools({
   readParent,
   board,
   read,
+  focused,
+  onDeleteNote,
 }: Props) {
   return (
     <ReaderTools
       key={appearance.noteStyle}
       compact={
-        appearance.noteStyle === "sticky" || appearance.noteStyle === "studio"
+        focused ||
+        appearance.noteStyle === "sticky" ||
+        appearance.noteStyle === "studio"
       }
     >
       <div className="note-revisions">
+        {focused && (
+          <button disabled={busy} onClick={onDeleteNote}>
+            Delete Note
+          </button>
+        )}
         <label>
           Version
           <select

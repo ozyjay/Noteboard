@@ -70,6 +70,7 @@ const ModelCatalog = z.object({
 const Event = z.object({
   type: z.string(),
   delta: z.string().optional(),
+  item: z.object({ type: z.string() }).optional(),
   code: z.string().optional(),
   response: z
     .object({
@@ -113,7 +114,7 @@ export function chatGPTProvider(
             : {}),
         }));
     },
-    async generate(req, onDelta, signal) {
+    async generate(req, onDelta, signal, onProgress) {
       signal.throwIfAborted();
       validateRequestFeatures(req);
       assertBudget(req.messages, req.settings.contextLimit);
@@ -178,6 +179,25 @@ export function chatGPTProvider(
           .join("\n");
         if (!data || data === "[DONE]") return;
         const event = Event.parse(JSON.parse(data));
+        if (
+          event.type === "response.created" ||
+          event.type === "response.in_progress"
+        )
+          onProgress?.("working");
+        if (
+          event.type === "response.output_item.added" &&
+          event.item?.type === "reasoning"
+        )
+          onProgress?.("thinking");
+        if (event.type === "response.reasoning_summary_text.delta")
+          onProgress?.("thinking");
+        if (
+          event.type === "response.web_search_call.in_progress" ||
+          event.type === "response.web_search_call.searching"
+        )
+          onProgress?.("searching");
+        if (event.type === "response.web_search_call.completed")
+          onProgress?.("working");
         if (event.type === "response.failed" || event.type === "error")
           throw failure(0, event.response?.error?.code || event.code);
         if (event.type === "response.incomplete")

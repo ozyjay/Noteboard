@@ -41,7 +41,7 @@ export default function App() {
   const [selected, setSelected] = useState<string[]>([]);
   const board = store.boards.find((b) => b.id === store.boardId);
   const reader = useReader(board, setMode);
-  const { busy, generate, cancelGeneration } = useGeneration(
+  const { busy, progress, generate, cancelGeneration } = useGeneration(
     store.settings,
     setError,
   );
@@ -174,7 +174,9 @@ export default function App() {
       </main>
     );
   return (
-    <div className="app-shell">
+    <div
+      className={`app-shell ${reader.readerFocused && reader.note && mode === "explore" ? "focus-reading" : ""}`}
+    >
       <WorkspaceSidebar
         sidebarVisible={sidebarVisible}
         createBoard={createBoard}
@@ -224,7 +226,7 @@ export default function App() {
         {mode === "explore" ? (
           <div className="exploration">
             <BoardCanvas
-              readerExpanded={reader.readerExpanded}
+              readerExpanded={reader.readerExpanded || reader.readerFocused}
               nodes={nodes}
               edges={edges}
               trackDimensions={trackDimensions}
@@ -279,6 +281,7 @@ export default function App() {
           setError={setError}
           error={error}
           onCancel={cancelGeneration}
+          progress={progress}
           composer={composerState.composer!}
         />
       )}

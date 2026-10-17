@@ -5,6 +5,7 @@ import type { ReaderPanelProps } from "./ReaderPanel";
 type Props = Pick<
   ReaderPanelProps,
   | "highlight"
+  | "readerFocused"
   | "version"
   | "board"
   | "note"
@@ -18,6 +19,7 @@ type Props = Pick<
 >;
 export function HighlightActions({
   highlight,
+  readerFocused,
   version,
   board,
   note,
@@ -29,6 +31,7 @@ export function HighlightActions({
   setHighlight,
   branch,
 }: Props) {
+  if (readerFocused && !highlight) return null;
   return (
     <div className="reader-footer">
       {highlight ? (

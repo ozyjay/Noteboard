@@ -12,6 +12,7 @@ import {
   type ModelChoice,
 } from "./core/providers";
 import { WebUrlSchema } from "./core/research";
+import { type GenerationActivity } from "./core/generation-progress";
 export interface ChatGPTAccount {
   id: string;
   label: string;
@@ -34,6 +35,9 @@ export interface InquiryBridge {
   generate(request: GenerationRequest): Promise<GenerationResult>;
   cancel(id: string): Promise<void>;
   onDelta(listener: (event: { id: string; text: string }) => void): () => void;
+  onProgress?(
+    listener: (event: { id: string; activity: GenerationActivity }) => void,
+  ): () => void;
 }
 declare global {
   interface Window {

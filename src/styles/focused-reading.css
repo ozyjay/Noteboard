@@ -1,0 +1,85 @@
+.focus-reading > .sidebar,
+.focus-reading > .workspace > .topbar,
+.focus-reading > .workspace > .modebar,
+.focus-reading > .workspace > .preview-banner {
+  display: none;
+}
+.reader-focused.reader {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  border: 0;
+  border-radius: 0;
+  background: var(--surface);
+  box-shadow: none;
+}
+.reader-focused > .panel-head {
+  padding: 18px max(24px, calc((100% - 760px) / 2));
+  gap: 16px;
+}
+.reader-focused > .panel-head > span {
+  margin-left: auto;
+}
+.reader-focused .panel-head button[hidden],
+.reader-focused .note-meta[hidden] {
+  display: none;
+}
+.reader-focused .reader-scroll {
+  padding: 24px max(24px, calc((100% - 760px) / 2)) 64px;
+}
+.reader-focused .back-to-board {
+  font-size: 13px;
+  gap: 7px;
+}
+.reader-focused .reader-response {
+  font-size: calc(16px * var(--reading-scale));
+  line-height: 1.8;
+}
+.reader-focused .note-title[data-has-title="false"] .original-prompt {
+  display: none;
+}
+.generation-backdrop {
+  background: var(--surface);
+  backdrop-filter: none;
+  padding: 0;
+  align-items: stretch;
+}
+.generation-view.modal {
+  width: 100%;
+  max-height: none;
+  padding: 24px max(24px, calc((100% - 760px) / 2)) 64px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.generation-heading,
+.generation-activity,
+.generation-activity [role="status"] {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.generation-heading,
+.generation-activity {
+  justify-content: space-between;
+}
+.generation-heading > span {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--text-secondary);
+}
+.generation-activity {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin: 24px 0;
+}
+.generation-view h2 {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.generation-response {
+  font-size: calc(16px * var(--reading-scale));
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}

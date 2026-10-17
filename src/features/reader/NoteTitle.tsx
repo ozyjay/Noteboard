@@ -48,7 +48,7 @@ export function NoteTitle({
     </span>
   );
   return (
-    <div className="note-title">
+    <div className="note-title" data-has-title={Boolean(note.title)}>
       <h2 aria-label={displayTitle}>
         {editing ? (
           <input

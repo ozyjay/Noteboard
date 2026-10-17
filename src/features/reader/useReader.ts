@@ -22,6 +22,7 @@ export function useReader(
     mode: RevisionMode;
   }>();
   const [readerExpanded, setReaderExpanded] = useState(false);
+  const [readerFocused, setReaderFocused] = useState(false);
   const [readerId, setReaderId] = useState<string>(),
     [highlight, setHighlight] = useState<Highlight>(),
     [anchor, setAnchor] = useState<Highlight>();
@@ -29,7 +30,10 @@ export function useReader(
   const readerSurface = useRef<HTMLDivElement>(null);
   useEffect(() => {
     setContinuationTarget("");
-    if (!readerId) setReaderExpanded(false);
+    if (!readerId) {
+      setReaderExpanded(false);
+      setReaderFocused(false);
+    }
   }, [readerId]);
   const note = board?.notes.find((n) => n.id === readerId);
   const version = note
@@ -67,6 +71,7 @@ export function useReader(
       setAnchor(incoming.highlight);
   }
   function resetReader() {
+    setReaderFocused(false);
     setReaderId(undefined);
     setReaderVersionId(undefined);
     setRevisionTarget(undefined);
@@ -76,6 +81,7 @@ export function useReader(
 
   const { setCenter } = useReactFlow();
   function openCreatedNote(note: Note) {
+    setReaderFocused(true);
     setReaderId(note.id);
     setReaderVersionId(undefined);
     setAnchor(undefined);
@@ -87,6 +93,8 @@ export function useReader(
   }
   return {
     openCreatedNote,
+    readerFocused,
+    setReaderFocused,
     sourcePreview,
     setSourcePreview,
     readerVersionId,

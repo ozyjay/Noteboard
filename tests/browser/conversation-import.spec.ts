@@ -190,6 +190,7 @@ test("imported chains retain retrospective anchors, branching context and synthe
   await page
     .getByRole("button", { name: "Create branch", exact: true })
     .click();
+  await page.getByRole("button", { name: "Back to Board" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   const branched = await stored();
   expect(branched.notes[2].versions[0].context.slice(1, 5)).toEqual([

@@ -45,6 +45,7 @@ test("highlight, branch, reload, synthesise, revise and return to a source", asy
   await expect(page.locator(".reader h2").first()).toHaveText(
     "How does emergence relate to feedback?",
   );
+  await page.getByRole("button", { name: "Back to Board" }).click();
   await expect(page.getByText("Saved locally", { exact: true })).toBeVisible();
   await page.reload();
   await expect(page.locator(".note-card")).toHaveCount(4);

@@ -202,6 +202,11 @@ if (primaryInstance)
           (text) =>
             window?.webContents.send("provider:delta", { id: req.id, text }),
           controller.signal,
+          (activity) =>
+            window?.webContents.send("provider:progress", {
+              id: req.id,
+              activity,
+            }),
         );
       } finally {
         pending.delete(req.id);

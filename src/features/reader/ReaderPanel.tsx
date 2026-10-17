@@ -7,7 +7,13 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { type Dispatch, type RefObject, type SetStateAction } from "react";
+import {
+  useEffect,
+  useRef,
+  type Dispatch,
+  type RefObject,
+  type SetStateAction,
+} from "react";
 import { ResearchRecord } from "../../components/ResearchInputs";
 import { annotateContinuation } from "../../core/chatgpt-import";
 import { ancestry, versionFiles } from "../../core/context";
@@ -32,6 +38,8 @@ import { ResponseSurface } from "./ResponseSurface";
 
 export interface ReaderPanelProps {
   readerExpanded: boolean;
+  readerFocused: boolean;
+  setReaderFocused: Dispatch<SetStateAction<boolean>>;
   board: Board | undefined;
   note: Note;
   busy: boolean;
@@ -63,6 +71,8 @@ export interface ReaderPanelProps {
 }
 export function ReaderPanel({
   readerExpanded,
+  readerFocused,
+  setReaderFocused,
   board,
   note,
   busy,
@@ -88,17 +98,39 @@ export function ReaderPanel({
   setContinuationTarget,
   branch,
 }: ReaderPanelProps) {
+  const backButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (readerFocused) backButton.current?.focus();
+  }, [readerFocused, note.id]);
   return (
     <NoteReader
-      expanded={readerExpanded}
-      className={`reader colour-${board!.notes.findIndex((n) => n.id === note.id) % 4} ${readerExpanded ? "reader-expanded" : ""}`}
+      expanded={readerExpanded || readerFocused}
+      className={`reader colour-${board!.notes.findIndex((n) => n.id === note.id) % 4} ${readerExpanded || readerFocused ? "reader-expanded" : ""} ${readerFocused ? "reader-focused" : ""}`}
     >
       <div className="panel-head">
+        {readerFocused && (
+          <button
+            ref={backButton}
+            className="back-to-board"
+            onClick={() => {
+              setReaderFocused(false);
+              setReaderExpanded(false);
+            }}
+          >
+            <ArrowLeft size={16} /> Back to Board
+          </button>
+        )}
         <span>
-          <BookOpen size={15} /> NOTE{" "}
+          <BookOpen size={15} />{" "}
+          {readerFocused &&
+          version?.origin === "generated" &&
+          version.provider === "demo"
+            ? "SYNTHETIC DEMO · NOTE"
+            : "NOTE"}{" "}
           {String(board!.notes.indexOf(note) + 1).padStart(2, "0")}
         </span>
         <button
+          hidden={readerFocused}
           aria-label="Delete Note"
           title="Delete Note"
           disabled={busy}
@@ -107,6 +139,7 @@ export function ReaderPanel({
           <Trash2 size={17} />
         </button>
         <button
+          hidden={readerFocused}
           aria-label={readerExpanded ? "Collapse Note" : "Expand Note"}
           title={readerExpanded ? "Return to side panel" : "Fill workspace"}
           aria-pressed={readerExpanded}
@@ -152,6 +185,8 @@ export function ReaderPanel({
           }
         />
         <ReaderVersionTools
+          focused={readerFocused}
+          onDeleteNote={onDeleteNote}
           appearance={appearance}
           version={version}
           busy={busy}
@@ -172,7 +207,7 @@ export function ReaderPanel({
             context, token estimates and usage are unknown.
           </p>
         )}
-        <div className="note-meta">
+        <div className="note-meta" hidden={readerFocused}>
           <span>
             {version?.origin === "edited"
               ? "HUMAN-EDITED"
@@ -269,6 +304,7 @@ export function ReaderPanel({
         />
       </div>
       <HighlightActions
+        readerFocused={readerFocused}
         highlight={highlight}
         version={version}
         board={board}

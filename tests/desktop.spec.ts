@@ -298,6 +298,7 @@ test("production desktop bridge saves and reopens an inquiry in SQLite", async (
       .fill("My persisted desktop question");
     await page.getByRole("button", { name: "Ask & explore" }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
+    await page.getByRole("button", { name: "Back to Board" }).click();
     await expect(
       page.getByText("Saved locally", { exact: true }),
     ).toBeVisible();

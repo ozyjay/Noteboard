@@ -35,9 +35,9 @@ test("Note prompts send on Enter while preserving multiline and composed input",
   });
   await expect(page.locator(".note-card")).toHaveCount(0);
   await prompt.press("Enter");
-  await expect(prompt).toBeDisabled();
+  await expect(prompt).toHaveCount(0);
   await expect(page.getByRole("status")).toHaveText(
-    "Generating your response…",
+    "Preparing synthetic demo…",
   );
   await expect(page.locator(".stream-preview")).toHaveCount(0);
   await expect(page.locator(".note-card")).toHaveCount(1);

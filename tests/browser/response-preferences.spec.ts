@@ -74,6 +74,7 @@ test("custom instructions save, cancel and persist in future generation records"
   expect(JSON.stringify(branched.notes[3].versions[0].context)).not.toContain(
     original.notes[2].versions[0].text,
   );
+  await page.getByRole("button", { name: "Back to Board" }).click();
   await page.getByRole("button", { name: "Consolidate", exact: true }).click();
   await page
     .getByRole("button", { name: "Create artefact", exact: true })
