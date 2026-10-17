@@ -6,12 +6,15 @@ param(
 
 $ErrorActionPreference = 'Stop'
 if (-not $IsMacOS) { throw 'This command requires macOS.' }
-if ([string]::IsNullOrWhiteSpace($SigningIdentity) -or $SigningIdentity -eq '-' -or
-    [string]::IsNullOrWhiteSpace($ProvisioningProfile)) {
-    throw 'Touch ID storage requires NOTEBOARD_SIGNING_IDENTITY and NOTEBOARD_PROVISIONING_PROFILE. Configure a macOS profile for app.noteboard.desktop with Keychain Sharing in Xcode; see docs/development.md. The installed app has not been changed.'
-}
-$ProvisioningProfile = (Resolve-Path $ProvisioningProfile).Path
 $projectRoot = Split-Path $PSScriptRoot -Parent
+if ([string]::IsNullOrWhiteSpace($ProvisioningProfile)) {
+    $ProvisioningProfile = Join-Path $projectRoot 'release/signing-setup/DerivedData/Build/Products/Debug/NoteboardSigning.app/Contents/embedded.provisionprofile'
+}
+if (-not (Test-Path -LiteralPath $ProvisioningProfile -PathType Leaf)) {
+    throw 'No provisioning profile found. Run scripts/prepare-macos-signing.ps1 -TeamId YOURTEAMID once, or supply -ProvisioningProfile (or NOTEBOARD_PROVISIONING_PROFILE). See docs/development.md. The installed app has not been changed.'
+}
+if ($SigningIdentity -eq '-') { throw 'Ad hoc signing cannot provide Touch ID storage. Select an Apple signing identity.' }
+$ProvisioningProfile = (Resolve-Path -LiteralPath $ProvisioningProfile).Path
 Push-Location $projectRoot
 try {
     $signingRoot = Join-Path $projectRoot 'release/signing'
@@ -43,13 +46,20 @@ try {
     # Match the selected local identity to a certificate authorised by the profile.
     $identities = & /usr/bin/security find-identity -v -p codesigning
     if ($LASTEXITCODE -ne 0) { throw 'Could not inspect signing identities.' }
-    $selected = @($identities | Where-Object { $_.Contains($SigningIdentity, [StringComparison]::OrdinalIgnoreCase) -and $_ -match '\b[0-9A-F]{40}\b' })
-    if ($selected.Count -ne 1) { throw 'SigningIdentity must identify exactly one valid local code-signing identity.' }
-    $fingerprint = [regex]::Match($selected[0], '\b[0-9A-F]{40}\b').Value
     $profileCertificates = @($profileDict.SelectNodes("key[.='DeveloperCertificates']/following-sibling::*[1]/data") | ForEach-Object {
         $certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new([Convert]::FromBase64String($_.InnerText))
         try { $certificate.Thumbprint } finally { $certificate.Dispose() }
     })
+    $selected = @($identities | Where-Object {
+        $hash = [regex]::Match($_, '\b[0-9A-F]{40}\b').Value
+        if ([string]::IsNullOrWhiteSpace($SigningIdentity)) {
+            $hash -and $hash -in $profileCertificates
+        } else {
+            $hash -and $_.Contains($SigningIdentity, [StringComparison]::OrdinalIgnoreCase)
+        }
+    })
+    if ($selected.Count -ne 1) { throw 'Could not select exactly one local signing identity. Supply -SigningIdentity (or NOTEBOARD_SIGNING_IDENTITY) matching a certificate authorised by the provisioning profile. The installed app has not been changed.' }
+    $fingerprint = [regex]::Match($selected[0], '\b[0-9A-F]{40}\b').Value
     if ($fingerprint -notin $profileCertificates) { throw 'The selected signing certificate is not authorised by this provisioning profile.' }
     $entitlements = Join-Path $signingRoot 'noteboard.entitlements.plist'
     @"

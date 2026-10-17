@@ -22,7 +22,9 @@ pwsh -NoProfile -File scripts/prepare-macos-signing.ps1 -TeamId 'YOURTEAMID'
 
 This builds a disposable signing target under `release/signing-setup`; it is never installed or run. Xcode may need account sign-in or device registration before it can issue a development profile. The team ID is the certificate's organisational unit (`OU`), which can differ from the identifier in its display name. If Xcode reports that this Mac is unregistered, adding `-RegisterDevice` explicitly authorises Xcode to add its identifier to the team's Apple Developer device list. Alternatively, supply an existing macOS profile for this app identifier with its Keychain access group. Keep the same app identifier and signing team for subsequent builds.
 
-Set the signing identity (as listed by `security find-identity -v -p codesigning`) and profile path, then install:
+Packaging automatically reuses the profile created by that setup command and selects its matching valid local signing identity. Once setup has succeeded, run `npm run install:macos` from any new PowerShell session.
+
+To use a different profile or select an identity when several match, supply `-SigningIdentity` and `-ProvisioningProfile` to either packaging or reinstall script, or set these environment variables for the current session:
 
 ```powershell
 $env:NOTEBOARD_SIGNING_IDENTITY = 'Apple Development: your signing identity'
@@ -31,7 +33,7 @@ npm run install:macos
 open (Join-Path $HOME 'Applications/Noteboard.app')
 ```
 
-This builds a standalone app at `release/Noteboard.app`, embeds the profile, signs it with the selected identity and copies it into `~/Applications`. Packaging checks the profile's expiry, macOS platform, app identifier, access group and authorised signing certificate before building or replacing anything. Missing signing configuration fails explicitly; ad hoc signing is no longer used. The installed app runs without the repository, Node or a development server. It uses the existing Inquiry desktop data directory, preserving Boards and provider settings. Development signing does not provide notarisation or establish suitability for distribution.
+This builds a standalone app at `release/Noteboard.app`, embeds the profile, signs it with the selected identity and copies it into `~/Applications`. Packaging checks the profile's expiry, macOS platform, app identifier, access group and authorised signing certificate before building or replacing anything. Missing profiles or ambiguous identities fail with setup instructions; ad hoc signing is no longer used. The installed app runs without the repository, Node or a development server. It uses the existing Inquiry desktop data directory, preserving Boards and provider settings. Development signing does not provide notarisation or establish suitability for distribution.
 
 `npm run package:macos` builds without installing. Installation refuses to overwrite an existing bundle. To reinstall or update, quit Noteboard, then run:
 

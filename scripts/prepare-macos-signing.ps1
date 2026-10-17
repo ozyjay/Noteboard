@@ -49,4 +49,4 @@ if ($LASTEXITCODE -ne 0) { throw 'Xcode could not provision Noteboard. Check Xco
 $profile = Join-Path $derivedData 'Build/Products/Debug/NoteboardSigning.app/Contents/embedded.provisionprofile'
 if (-not (Test-Path $profile)) { throw 'Xcode did not embed a provisioning profile for Keychain access.' }
 Write-Output "Provisioning profile ready: $profile"
-Write-Output 'Set NOTEBOARD_SIGNING_IDENTITY to your Apple Development signing identity and NOTEBOARD_PROVISIONING_PROFILE to this profile, then run npm run reinstall:macos.'
+Write-Output 'Run npm run reinstall:macos. Packaging automatically reuses this profile and its matching local signing identity.'

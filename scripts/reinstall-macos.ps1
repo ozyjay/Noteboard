@@ -1,8 +1,13 @@
+param(
+    [string]$SigningIdentity = $env:NOTEBOARD_SIGNING_IDENTITY,
+    [string]$ProvisioningProfile = $env:NOTEBOARD_PROVISIONING_PROFILE
+)
+
 $ErrorActionPreference = 'Stop'
 if (-not $IsMacOS) { throw 'This command requires macOS.' }
 
 # Quit Noteboard before running. Build successfully before replacing the app.
-& (Join-Path $PSScriptRoot 'package-macos.ps1')
+& (Join-Path $PSScriptRoot 'package-macos.ps1') -SigningIdentity $SigningIdentity -ProvisioningProfile $ProvisioningProfile
 if (-not $?) { throw 'Packaging failed; the installed app has not been changed.' }
 $projectRoot = Split-Path $PSScriptRoot -Parent
 $appPath = Join-Path $HOME 'Applications/Noteboard.app'
