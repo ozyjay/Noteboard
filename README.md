@@ -41,7 +41,7 @@ Provider settings support the synthetic demo, local Ollama and eligible ChatGPT 
 ## Documentation
 
 - [Product plan](docs/product-plan.md)
-- [Architecture](docs/architecture.md) and [decisions](docs/decisions.md)
+- [Architecture diagram](docs/architecture.md#high-level-architecture), [feature ownership](docs/architecture.md#renderer-feature-ownership) and [decisions](docs/decisions.md)
 - [Development](docs/development.md), [testing](docs/testing.md) and [roadmap](docs/roadmap.md)
 - [Ideas and feature requests](docs/ideas.md) — exploratory ideas rather than the implementation backlog
 - [Agent instructions](AGENTS.md) and [project development skill](skills/inquiry-development/SKILL.md)

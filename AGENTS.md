@@ -8,6 +8,8 @@ Use PowerShell (`pwsh`) for terminal scripts and all shell/script examples in ch
 
 Noteboard is a human-directed, provider-independent spatial conversation environment. Read [the product plan](docs/product-plan.md) for scope and [architecture](docs/architecture.md) before changing data flow.
 
+Start with the [high-level architecture diagram](docs/architecture.md#high-level-architecture) and [renderer feature ownership](docs/architecture.md#renderer-feature-ownership) to locate responsibilities and security boundaries. Keep the diagram and ownership map current when those boundaries change; maintain the diagram in the architecture document rather than duplicating it across guidance files.
+
 - Only a human creates branches. Never generate or rearrange investigative branches autonomously.
 - A Board is one directed rooted tree; each child has exactly one parent. Highlight branches preserve one exact Highlight. Imported continuation Edges preserve chronological source message references and may have an explicitly confirmed retrospective Highlight.
 - Imported responses preserve original visible text and source identities. Unknown original generation context, model and usage must remain unknown; never manufacture generation records or automatically apply exported instructions.

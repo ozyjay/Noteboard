@@ -2,6 +2,58 @@
 
 Noteboard separates a React renderer from an Electron main process. The sandboxed preload exposes only Board/settings persistence, model discovery, generation, cancellation and stream subscription. The renderer has no Node access and cannot call arbitrary remote inference endpoints. External navigation and new windows are blocked; narrow main-process actions open the generated OpenAI authorisation URL, fixed ChatGPT usage settings and user-clicked validated HTTP/HTTPS source links in the system browser; rendered Markdown does not execute HTML or fetch images.
 
+## High-level architecture
+
+```mermaid
+flowchart TB
+  subgraph renderer["React renderer — sandboxed"]
+    ui["Workspace UI: Boards, canvas, reader, composer, synthesis and settings"]
+    features["Feature state and workflow coordination"]
+    core["Core domain: Board tree, Highlights, context, versions and synthesis"]
+    bridge["Renderer bridge"]
+
+    ui --> features
+    features --> core
+    features --> bridge
+  end
+
+  preload["Narrow Electron preload bridge"]
+
+  subgraph main["Electron main process — trusted"]
+    ipc["Validated IPC handlers"]
+    persistence["Persistence service"]
+    providers["Provider adapters: models, generation and cancellation"]
+    auth["Account authentication and credential management"]
+
+    ipc --> persistence
+    ipc --> providers
+    ipc --> auth
+    providers --> auth
+  end
+
+  subgraph storage["Local storage"]
+    sqlite[("SQLite: Boards, settings and model catalogues")]
+    credentials[("Encrypted credentials protected by OS secure storage")]
+  end
+
+  ollama["Ollama — local inference"]
+  chatgpt["ChatGPT plan services"]
+  preview["Browser preview: localStorage and synthetic demo responses"]
+
+  bridge -->|"Desktop"| preload
+  preload -->|"IPC"| ipc
+  bridge -.->|"Browser preview"| preview
+  persistence --> sqlite
+  auth --> credentials
+  auth -->|"Sign-in and token refresh"| chatgpt
+  providers -->|"Loopback only"| ollama
+  providers -->|"Inference and model discovery"| chatgpt
+```
+
+Arrows show calls and dependencies; results and stream events return through the same bridge. The renderer owns interaction and domain workflows. Privileged storage, credentials and provider networking sit behind the Electron boundary. Browser preview uses a separate local demo implementation.
+
+The UI and coordination live in `src/App.tsx` and `src/features/`; shared domain rules live in `src/core/`. `src/bridge.ts` selects the desktop bridge or browser preview. `electron/preload.ts` exposes the narrow IPC API, while `electron/main.ts` validates requests and coordinates persistence, providers and authentication. See [renderer feature ownership](#renderer-feature-ownership) for the detailed state and component map.
+
 ## Domain records
 
 A `Board` has a schema version, title, timestamps, spatial Notes, directed Edges, document artefacts and a viewport. Zod validates saved/imported records. Additional graph validation rejects cycles, multiple roots, duplicate identifiers, missing sources and invalid Highlight ranges.
