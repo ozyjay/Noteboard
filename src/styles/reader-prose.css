@@ -208,6 +208,12 @@
   color: var(--text-secondary);
 }
 .prose table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
   border-collapse: collapse;
   width: 100%;
 }

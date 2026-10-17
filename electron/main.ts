@@ -55,6 +55,7 @@ function createWindow() {
     minWidth: 960,
     minHeight: 650,
     title: "Noteboard",
+    show: false,
     backgroundColor: "#f7f6f2",
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
@@ -62,6 +63,10 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: true,
     },
+  });
+  window.once("ready-to-show", () => {
+    window?.maximize();
+    window?.show();
   });
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   window.webContents.on("will-navigate", (event) => event.preventDefault());
