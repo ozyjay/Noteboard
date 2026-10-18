@@ -217,12 +217,14 @@ export function BoardCanvas({
               {layout.current.ids.size}{" "}
               {layout.current.ids.size === 1 ? "Note" : "Notes"}.
               {!layout.previewing &&
-                " Drag the marked header or use arrow keys; Shift moves faster. Enter applies; Escape cancels."}
+                " Drag the marked Note and release to finish, or use arrow keys; Shift moves faster. Enter applies; Escape cancels."}
             </span>
-            <button onClick={layout.finish}>
-              {layout.previewing ? "Apply" : "Done"}
-            </button>
-            <button onClick={layout.cancel}>Cancel</button>
+            {layout.previewing && (
+              <>
+                <button onClick={layout.finish}>Apply</button>
+                <button onClick={layout.cancel}>Cancel</button>
+              </>
+            )}
           </>
         )}
       </div>

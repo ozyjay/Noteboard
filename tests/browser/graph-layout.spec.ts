@@ -116,6 +116,13 @@ test("branch keyboard movement, cancellation, guides and layout history stay sep
   const original = await saved(page);
   await menu(page, 0, "Move with descendants");
   await expect(page.getByRole("status")).toContainText("3 Notes");
+  await expect(
+    page.getByRole("button", { name: "Done", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Cancel", exact: true }),
+  ).toHaveCount(0);
+  await expect(page.getByRole("status")).toContainText("release to finish");
   await expect(page.locator(".layout-moving")).toHaveCount(3);
   await page.keyboard.press("Shift+ArrowDown");
   await page.keyboard.press("ArrowRight");
