@@ -98,6 +98,8 @@ export function HighlightEdge(props: EdgeProps<HighlightFlowEdge>) {
   return (
     <>
       <g
+        data-source-side={props.sourcePosition}
+        data-target-side={props.targetPosition}
         onMouseEnter={show}
         onMouseLeave={hideSoon}
         onClick={() => setOpen(false)}

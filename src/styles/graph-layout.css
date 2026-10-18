@@ -1,0 +1,97 @@
+.note-drag-handle {
+  cursor: grab;
+}
+.note-drag-handle:active {
+  cursor: grabbing;
+}
+.note-card.overview .note-detail {
+  display: none;
+}
+.note-layout {
+  position: relative;
+  margin: 0 0 12px;
+  font-size: 11px;
+}
+.note-layout summary {
+  cursor: pointer;
+  width: max-content;
+}
+.note-layout summary[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: default;
+}
+.note-layout-options {
+  position: absolute;
+  z-index: 10;
+  top: 100%;
+  left: 0;
+  width: 210px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 4px 16px #0003;
+}
+.note-layout-options button {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  text-align: left;
+}
+.note-layout-options fieldset {
+  margin-top: 8px;
+  border: 1px solid var(--border);
+}
+.note-layout-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 10px;
+}
+.react-flow__node:has(.note-layout[open]) {
+  z-index: 100 !important;
+}
+.note-card.layout-moving {
+  outline: 3px dashed var(--accent);
+  outline-offset: 5px;
+}
+.layout-controls {
+  position: absolute;
+  z-index: 6;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  width: fit-content;
+  max-width: calc(100% - 24px);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  background: var(--surface);
+  font-size: 12px;
+}
+.layout-controls button {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.layout-controls [role="status"] {
+  flex: 1 1 200px;
+}
+.layout-guides {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+.layout-guides line {
+  stroke: var(--accent);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}

@@ -132,6 +132,7 @@ export const NoteSchema = z.object({
   title: z.string().trim().min(1).max(200).optional(),
   takeaway: z.string(),
   position: PositionSchema,
+  childDirection: z.enum(["right", "below"]).optional(),
   versions: z.array(VersionSchema).min(1),
   createdAt: z.string(),
 });

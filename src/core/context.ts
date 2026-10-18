@@ -11,6 +11,7 @@ import {
   withCustomInstructions,
 } from "./instructions";
 import { type Attachment, combineFiles } from "./research";
+import { placeChild } from "./layout";
 export const versionFiles = (version: ResponseVersion): Attachment[] =>
   "files" in version ? (version.files ?? []) : [];
 export const versionResearch = (version: ResponseVersion) =>
@@ -248,16 +249,7 @@ export function assertBudget(messages: Message[], limit: number) {
   return estimate;
 }
 export function childPosition(board: Board, parent: Note) {
-  const x = parent.position.x + 390;
-  let y = parent.position.y;
-  while (
-    board.notes.some(
-      (n) =>
-        Math.abs(n.position.x - x) < 330 && Math.abs(n.position.y - y) < 250,
-    )
-  )
-    y += 280;
-  return { x, y };
+  return placeChild(board, parent, { width: 360, height: 300 }, {});
 }
 export function takeaway(text: string) {
   const explicit = text.match(

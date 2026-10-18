@@ -110,7 +110,7 @@ test("desktop model catalogue and thinking metadata reopen through the isolated 
   }
 });
 
-test("desktop reopens a renamed Board from SQLite", async () => {
+test("desktop reopens a renamed Board and graph layout from SQLite", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "inquiry-desktop-rename-"));
   const env: Record<string, string> = Object.fromEntries(
     Object.entries(process.env).filter(
@@ -141,6 +141,26 @@ test("desktop reopens a renamed Board from SQLite", async () => {
         ),
       )
       .toBe("My renamed exploration");
+    await page.getByLabel("Layout Note 1", { exact: true }).click();
+    await page
+      .locator(".note-card")
+      .first()
+      .getByRole("radio", { name: "Below", exact: true })
+      .check();
+    await page.getByLabel("Layout Note 1", { exact: true }).click();
+    await page
+      .getByRole("button", { name: "Move with descendants", exact: true })
+      .click();
+    await page.keyboard.press("Shift+ArrowDown");
+    await page.keyboard.press("Enter");
+    await expect
+      .poll(() =>
+        page.evaluate(
+          async () =>
+            (await window.inquiry!.listBoards())[0].notes[0].position.y,
+        ),
+      )
+      .toBe(original.notes[0].position.y + 50);
     await app.close();
     app = await electron.launch({ args: [".", `--user-data-dir=${dir}`], env });
     page = await app.firstWindow();
@@ -149,7 +169,16 @@ test("desktop reopens a renamed Board from SQLite", async () => {
       async () => (await window.inquiry!.listBoards())[0],
     );
     expect(saved.id).toBe(original.id);
-    expect(saved.notes).toEqual(original.notes);
+    expect(saved.notes).toEqual(
+      original.notes.map((n, index) => ({
+        ...n,
+        position: { ...n.position, y: n.position.y + 50 },
+        ...(index === 0 ? { childDirection: "below" } : {}),
+      })),
+    );
+    await expect(
+      page.getByRole("button", { name: "Undo layout", exact: true }),
+    ).toBeDisabled();
     expect(saved.edges).toEqual(original.edges);
   } finally {
     await app?.close();
@@ -213,7 +242,7 @@ test("desktop imports a chain, keeps retrospective anchors and reopens spatial N
       ),
     );
     const card = page.locator(".note-card").first();
-    const box = (await card.boundingBox())!;
+    const box = (await card.locator(".note-drag-handle").boundingBox())!;
     await page.mouse.move(box.x + box.width / 2, box.y + 8);
     await page.mouse.down();
     await page.mouse.move(box.x + box.width / 2 + 65, box.y + 70, {

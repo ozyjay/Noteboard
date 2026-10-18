@@ -8,6 +8,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { edgeLabel, type Appearance, type Board } from "../../core/model";
 import { type HighlightFlowEdge } from "./HighlightEdge";
 import { type CardNode } from "./NoteCard";
+import { bounds, connectionSides } from "../../core/layout";
+import type { CanvasLayout } from "./useCanvasLayout";
 
 export function useBoardCanvas({
   board,
@@ -20,6 +22,7 @@ export function useBoardCanvas({
   choose,
   changeBoard,
   openEdgeSource,
+  layout,
 }: {
   board: Board | undefined;
   boardId: string;
@@ -31,16 +34,17 @@ export function useBoardCanvas({
   choose: (id: string) => void;
   changeBoard: (fn: (board: Board) => Board) => void;
   openEdgeSource: (id: string) => void;
+  layout: CanvasLayout;
 }) {
-  const [nodePositions, setNodePositions] = useState<
-    Record<string, { x: number; y: number }>
-  >({});
   const [nodeDimensions, setNodeDimensions] = useState<
     Record<string, { width: number; height: number }>
   >({});
   const { fitView, setViewport } = useReactFlow();
   const nodesInitialised = useNodesInitialized();
   const layoutBoard = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    layoutBoard.current = undefined;
+  }, [boardId]);
   useEffect(() => {
     if (!board || !nodesInitialised || layoutBoard.current === boardId) return;
     layoutBoard.current = boardId;
@@ -51,7 +55,14 @@ export function useBoardCanvas({
     board?.notes.map((n, index) => ({
       id: n.id,
       type: "note",
-      position: nodePositions[`${boardId}:${n.id}`] || n.position,
+      position: layout.preview[n.id] ?? n.position,
+      dragHandle: ".note-drag-handle",
+      draggable:
+        !layout.disabled &&
+        !layout.previewing &&
+        (!layout.current || layout.current.root === n.id),
+      focusable: !layout.pending.has(n.id),
+      style: layout.pending.has(n.id) ? { visibility: "hidden" } : undefined,
       measured: nodeDimensions[n.id],
       selected: readerId === n.id,
       data: {
@@ -60,8 +71,16 @@ export function useBoardCanvas({
         index,
         children: board.edges.filter((e) => e.source === n.id).length,
         chosen: selected.includes(n.id),
-        onRead: read,
-        onChoose: choose,
+        onRead: (id) => {
+          if (!layout.locked && !layout.disabled) read(id);
+        },
+        onChoose: (id) => {
+          if (!layout.locked && !layout.disabled) choose(id);
+        },
+        onLayout: layout.action,
+        onMeasure: layout.onMeasure,
+        layoutDisabled: layout.disabled || layout.locked,
+        moving: layout.current?.ids.has(n.id) ?? false,
       },
     })) || [];
   const trackDimensions = useCallback(
@@ -69,29 +88,9 @@ export function useBoardCanvas({
       const movements = changes.filter(
         (change) => change.type === "position" && change.position,
       );
-      if (movements.length)
-        setNodePositions((current) => {
-          const next = { ...current };
-          for (const change of movements)
-            if (change.type === "position" && change.position)
-              next[`${boardId}:${change.id}`] = change.position;
-          return next;
-        });
-      const settled = movements.filter(
-        (change) => change.type === "position" && !change.dragging,
-      );
-      if (settled.length)
-        changeBoard((b) => ({
-          ...b,
-          notes: b.notes.map((n) => {
-            const change = settled.find(
-              (change) => change.type === "position" && change.id === n.id,
-            );
-            return change?.type === "position" && change.position
-              ? { ...n, position: change.position }
-              : n;
-          }),
-        }));
+      for (const change of movements)
+        if (change.type === "position" && change.position)
+          layout.move(change.id, change.position);
       const updates = changes.filter(
         (change) => change.type === "dimensions" && change.dimensions,
       );
@@ -112,23 +111,38 @@ export function useBoardCanvas({
         return next;
       });
     },
-    [boardId],
+    [layout.move],
   );
   const edges: HighlightFlowEdge[] =
-    board?.edges.map((e) => ({
-      id: e.id,
-      source: e.source,
-      target: e.target,
-      data: { text: edgeLabel(e), onOpenSource: () => openEdgeSource(e.id) },
-      type: "highlight",
-      focusable: false,
-      markerEnd: { type: MarkerType.ArrowClosed, color: "var(--edge)" },
-      style: {
-        stroke: "var(--edge)",
-        strokeWidth: 1.5,
-        ...(e.kind === "continuation" ? { strokeDasharray: "6 4" } : {}),
-      },
-    })) || [];
+    board?.edges.map((e) => {
+      const source = board.notes.find((n) => n.id === e.source)!;
+      const target = board.notes.find((n) => n.id === e.target)!;
+      const sides = connectionSides(
+        bounds(source, { ...layout.sizes, ...nodeDimensions }, layout.preview),
+        bounds(target, { ...layout.sizes, ...nodeDimensions }, layout.preview),
+      );
+      return {
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        sourceHandle: `source-${sides.source}`,
+        targetHandle: `target-${sides.target}`,
+        data: {
+          text: edgeLabel(e),
+          onOpenSource: () => {
+            if (!layout.locked) openEdgeSource(e.id);
+          },
+        },
+        type: "highlight",
+        focusable: false,
+        markerEnd: { type: MarkerType.ArrowClosed, color: "var(--edge)" },
+        style: {
+          stroke: "var(--edge)",
+          strokeWidth: 1.5,
+          ...(e.kind === "continuation" ? { strokeDasharray: "6 4" } : {}),
+        },
+      };
+    }) || [];
 
   return { nodes, edges, trackDimensions };
 }

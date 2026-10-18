@@ -3,10 +3,13 @@ import {
   Controls,
   MiniMap,
   ReactFlow,
+  useViewport,
   type NodeChange,
 } from "@xyflow/react";
 import { Compass, Plus } from "lucide-react";
-import { type Dispatch, type SetStateAction } from "react";
+import { useEffect, useRef, type Dispatch, type SetStateAction } from "react";
+import { alignmentGuides, bounds } from "../../core/layout";
+import type { CanvasLayout } from "./useCanvasLayout";
 import { type Appearance, type Board, type Highlight } from "../../core/model";
 import { HighlightEdge, type HighlightFlowEdge } from "./HighlightEdge";
 import { NoteCard, type CardNode } from "./NoteCard";
@@ -23,6 +26,7 @@ interface Props {
   board: Board | undefined;
   setPrompt: Dispatch<SetStateAction<string>>;
   openComposer: (highlight?: Highlight) => void;
+  layout: CanvasLayout;
 }
 export function BoardCanvas({
   readerExpanded,
@@ -36,9 +40,69 @@ export function BoardCanvas({
   board,
   setPrompt,
   openComposer,
+  layout,
 }: Props) {
+  const viewport = useViewport();
+  const controls = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!layout.previewing) return;
+    const changed: { element: HTMLElement; inert: boolean }[] = [];
+    let element = controls.current?.closest<HTMLElement>(".canvas");
+    while (element?.parentElement && !element.classList.contains("app-shell")) {
+      for (const sibling of element.parentElement.children) {
+        if (sibling !== element && sibling instanceof HTMLElement) {
+          changed.push({ element: sibling, inert: sibling.inert });
+          sibling.inert = true;
+        }
+      }
+      element = element.parentElement;
+    }
+    return () => {
+      for (const item of changed) item.element.inert = item.inert;
+    };
+  }, [layout.previewing]);
+  useEffect(() => {
+    if (layout.current) controls.current?.focus();
+  }, [layout.current?.kind, layout.current?.root]);
+  const guideSizes = { ...layout.sizes };
+  for (const node of nodes)
+    if (node.measured?.width && node.measured?.height)
+      guideSizes[node.id] = {
+        width: node.measured.width,
+        height: node.measured.height,
+      };
+  const movingNote = board?.notes.find((n) => n.id === layout.current?.root);
+  const guides =
+    layout.current && movingNote && layout.current.kind !== "tidy" && board
+      ? alignmentGuides(
+          bounds(movingNote, guideSizes, layout.preview),
+          board.notes
+            .filter((n) => !layout.current!.ids.has(n.id))
+            .map((n) => bounds(n, guideSizes)),
+          viewport.zoom,
+        )
+      : [];
   return (
-    <div className="canvas" inert={readerExpanded || undefined}>
+    <div
+      className="canvas"
+      inert={readerExpanded || undefined}
+      onKeyDown={(event) => {
+        if (
+          (event.target as HTMLElement).closest(
+            "input, textarea, select, [contenteditable=true]",
+          )
+        )
+          return;
+        if (
+          (event.metaKey || event.ctrlKey) &&
+          event.key.toLowerCase() === "z"
+        ) {
+          event.preventDefault();
+          if (event.shiftKey) layout.redo();
+          else layout.undo();
+        }
+      }}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -48,17 +112,21 @@ export function BoardCanvas({
         maxZoom={1.5}
         nodesConnectable={false}
         deleteKeyCode={null}
-        onNodeDoubleClick={(_, n) => read(n.id)}
-        onNodeDragStop={(_, n) =>
-          changeBoard((b) => ({
-            ...b,
-            notes: b.notes.map((note) =>
-              note.id === n.id ? { ...note, position: n.position } : note,
-            ),
-          }))
-        }
+        onNodeDoubleClick={(_, n) => {
+          if (!layout.locked && !layout.disabled) read(n.id);
+        }}
+        onNodeDragStart={(_, n) => layout.dragStart(n.id)}
+        onNodeDragStop={(_, n) => {
+          layout.move(n.id, n.position);
+          layout.finish();
+        }}
+        autoPanOnNodeFocus={false}
+        nodesFocusable={!layout.disabled && !layout.previewing}
+        disableKeyboardA11y={true}
         edgeTypes={edgeTypes}
-        onEdgeClick={(_, edge) => openEdgeSource(edge.id)}
+        onEdgeClick={(_, edge) => {
+          if (!layout.locked) openEdgeSource(edge.id);
+        }}
         onMoveEnd={(_, viewport) => changeBoard((b) => ({ ...b, viewport }))}
       >
         {appearance.showGrid && (
@@ -80,6 +148,61 @@ export function BoardCanvas({
           zoomable
         />
       </ReactFlow>
+      <svg className="layout-guides" aria-hidden="true">
+        {guides.map((guide, index) => (
+          <line
+            key={index}
+            x1={
+              guide.axis === "x"
+                ? guide.value * viewport.zoom + viewport.x
+                : guide.start * viewport.zoom + viewport.x
+            }
+            x2={
+              guide.axis === "x"
+                ? guide.value * viewport.zoom + viewport.x
+                : guide.end * viewport.zoom + viewport.x
+            }
+            y1={
+              guide.axis === "y"
+                ? guide.value * viewport.zoom + viewport.y
+                : guide.start * viewport.zoom + viewport.y
+            }
+            y2={
+              guide.axis === "y"
+                ? guide.value * viewport.zoom + viewport.y
+                : guide.end * viewport.zoom + viewport.y
+            }
+          />
+        ))}
+      </svg>
+      <div
+        className="layout-controls"
+        tabIndex={-1}
+        ref={controls}
+        aria-label="Graph layout controls"
+      >
+        <button disabled={!layout.canUndo} onClick={layout.undo}>
+          Undo layout
+        </button>
+        <button disabled={!layout.canRedo} onClick={layout.redo}>
+          Redo layout
+        </button>
+        {layout.current && (
+          <>
+            <span role="status">
+              {layout.previewing ? "Tidy preview" : "Moving"}:{" "}
+              {layout.current.ids.size}{" "}
+              {layout.current.ids.size === 1 ? "Note" : "Notes"}.
+              {!layout.previewing &&
+                " Drag the marked header or use arrow keys; Shift moves faster. Enter applies; Escape cancels."}
+            </span>
+            <button onClick={layout.finish}>
+              {layout.previewing ? "Apply" : "Done"}
+            </button>
+            <button onClick={layout.cancel}>Cancel</button>
+          </>
+        )}
+      </div>
       {!board?.notes.length && (
         <div className="empty-board">
           <span>

@@ -8,6 +8,7 @@ import { useBoardFiles } from "./features/boards/useBoardFiles";
 import { useBoardStore } from "./features/boards/useBoardStore";
 import { BoardCanvas } from "./features/canvas/BoardCanvas";
 import { useBoardCanvas } from "./features/canvas/useBoardCanvas";
+import { useCanvasLayout } from "./features/canvas/useCanvasLayout";
 import { NoteComposer } from "./features/composer/NoteComposer";
 import { useNoteComposer } from "./features/composer/useNoteComposer";
 import { useDialogFocus } from "./features/dialogues/useDialogFocus";
@@ -124,7 +125,27 @@ export default function App() {
       boardActions.setRenameDraft(undefined);
     },
   );
+  const layout = useCanvasLayout({
+    board,
+    appearanceKey: JSON.stringify(appearanceSettings.appearance),
+    disabled:
+      busy ||
+      mode !== "explore" ||
+      reader.readerExpanded ||
+      reader.readerFocused ||
+      !!reader.sourcePreview ||
+      boardActions.renameDraft !== undefined ||
+      !!composerState.composer ||
+      appearanceSettings.appearanceOpen ||
+      providerSettings.providerOpen ||
+      synthesis.synthOpen ||
+      !!reader.revisionTarget ||
+      !!boardActions.deleteTarget ||
+      files.importOpen,
+    changeBoard: store.changeBoard,
+  });
   const { nodes, edges, trackDimensions } = useBoardCanvas({
+    layout,
     board,
     boardId: store.boardId,
     ready: store.ready,
@@ -176,6 +197,7 @@ export default function App() {
   return (
     <div
       className={`app-shell ${reader.readerFocused && reader.note && mode === "explore" ? "focus-reading" : ""}`}
+      data-layout-preview={layout.previewing || undefined}
     >
       <WorkspaceSidebar
         sidebarVisible={sidebarVisible}
@@ -226,6 +248,7 @@ export default function App() {
         {mode === "explore" ? (
           <div className="exploration">
             <BoardCanvas
+              layout={layout}
               readerExpanded={reader.readerExpanded || reader.readerFocused}
               nodes={nodes}
               edges={edges}
