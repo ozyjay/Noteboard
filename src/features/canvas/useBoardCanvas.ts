@@ -1,5 +1,4 @@
 import {
-  MarkerType,
   useNodesInitialized,
   useReactFlow,
   useStore,
@@ -148,10 +147,8 @@ export function useBoardCanvas({
         },
         type: "highlight",
         focusable: false,
-        markerEnd: { type: MarkerType.ArrowClosed, color: "var(--edge)" },
         style: {
           stroke: "var(--edge)",
-          strokeWidth: 1.5,
           ...(e.kind === "continuation" ? { strokeDasharray: "6 4" } : {}),
         },
       };

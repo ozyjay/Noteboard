@@ -2,11 +2,12 @@ import {
   BaseEdge,
   EdgeLabelRenderer,
   getSmoothStepPath,
+  Position,
   useViewport,
   type Edge,
   type EdgeProps,
 } from "@xyflow/react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 export type HighlightFlowEdge = Edge<
@@ -15,8 +16,21 @@ export type HighlightFlowEdge = Edge<
 >;
 
 export function HighlightEdge(props: EdgeProps<HighlightFlowEdge>) {
-  const [path, x, y] = getSmoothStepPath(props);
   const viewport = useViewport();
+  const arrowId = useId();
+  const outward = {
+    [Position.Left]: { x: -1, y: 0 },
+    [Position.Right]: { x: 1, y: 0 },
+    [Position.Top]: { x: 0, y: -1 },
+    [Position.Bottom]: { x: 0, y: 1 },
+  }[props.targetPosition];
+  // Keep the arrow clear of the connection handle and readable at every zoom.
+  const clearance = 7 / viewport.zoom;
+  const [path, x, y] = getSmoothStepPath({
+    ...props,
+    targetX: props.targetX + outward.x * clearance,
+    targetY: props.targetY + outward.y * clearance,
+  });
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ left: 0, top: 0 });
   const label = useRef<HTMLButtonElement>(null);
@@ -104,11 +118,26 @@ export function HighlightEdge(props: EdgeProps<HighlightFlowEdge>) {
         onMouseLeave={hideSoon}
         onClick={() => setOpen(false)}
       >
+        <defs>
+          <marker
+            id={arrowId}
+            className="note-edge-arrow"
+            viewBox="0 0 12 12"
+            markerWidth={14 / viewport.zoom}
+            markerHeight={14 / viewport.zoom}
+            refX="11"
+            refY="6"
+            orient="auto"
+            markerUnits="userSpaceOnUse"
+          >
+            <path d="M 1 1 L 11 6 L 1 11 Z" fill="var(--edge)" />
+          </marker>
+        </defs>
         <BaseEdge
           id={props.id}
           path={path}
-          style={props.style}
-          markerEnd={props.markerEnd}
+          style={{ ...props.style, strokeWidth: 1.75 / viewport.zoom }}
+          markerEnd={`url(#${arrowId})`}
           interactionWidth={props.interactionWidth}
         />
       </g>
