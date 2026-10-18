@@ -7,6 +7,7 @@ import {
 } from "../src/core/research";
 import { assertBudget } from "../src/core/context";
 import { type ChatGPTAuth } from "./chatgpt-auth";
+import { chatGPTTransport } from "./chatgpt-transport";
 const base = "https://api.openai.com/v1";
 function failure(status: number, code?: unknown) {
   if (code === "subscription_sharing_usage_limit_exceeded" || status === 429)
@@ -34,14 +35,18 @@ function failure(status: number, code?: unknown) {
   );
 }
 async function checked(url: string, token: string, init: RequestInit) {
-  const response = await fetch(url, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    redirect: "error",
-  });
+  const response = await chatGPTTransport(
+    () =>
+      fetch(url, {
+        ...init,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        redirect: "error",
+      }),
+    init.signal,
+  );
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw failure(response.status, data.error?.code);
@@ -128,9 +133,13 @@ export function chatGPTProvider(
         );
       const token = await auth.accessToken(req.settings.chatgptAccountId);
       signal.throwIfAborted();
+      const requestSignal = AbortSignal.any([
+        signal,
+        AbortSignal.timeout(600000),
+      ]);
       const response = await checked(`${base}/responses`, token, {
         method: "POST",
-        signal: AbortSignal.any([signal, AbortSignal.timeout(600000)]),
+        signal: requestSignal,
         body: JSON.stringify({
           model: req.settings.model,
           input: req.messages.map(({ role, content, files }) =>
@@ -308,8 +317,11 @@ export function chatGPTProvider(
         }
       }
       try {
-        while (true) {
-          const chunk = await reader.read();
+        while (!completed) {
+          const chunk = await chatGPTTransport(
+            () => reader.read(),
+            requestSignal,
+          );
           if (chunk.done) break;
           buffer += decoder.decode(chunk.value, { stream: true });
           // Normalise CRLF after decoding; a CR split between chunks stays buffered.
