@@ -64,6 +64,10 @@
   outline: 3px dashed var(--accent);
   outline-offset: 5px;
 }
+.note-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
 .layout-controls {
   position: absolute;
   z-index: 6;
@@ -91,6 +95,23 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+.canvas-snap-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.canvas-snap-control input {
+  accent-color: var(--accent);
+  margin: 0;
+}
+.layout-controls kbd {
+  padding: 1px 4px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-secondary);
+  font-size: 10px;
 }
 .canvas-mode-select select {
   padding: 5px;

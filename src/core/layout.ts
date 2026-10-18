@@ -9,6 +9,13 @@ export type Sizes = Record<string, Size>;
 export type Positions = Record<string, Point>;
 export type LayoutValue = Point & { childDirection?: "right" | "below" };
 export type LayoutSnapshot = Record<string, LayoutValue>;
+export const layoutGridSize = 24;
+export function snapPosition(point: Point): Point {
+  return {
+    x: Math.round(point.x / layoutGridSize) * layoutGridSize,
+    y: Math.round(point.y / layoutGridSize) * layoutGridSize,
+  };
+}
 export const parentGap = 90;
 export const siblingGap = 60;
 const fallbackSize = { width: 360, height: 300 };

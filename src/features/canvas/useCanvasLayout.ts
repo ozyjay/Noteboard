@@ -12,6 +12,8 @@ import {
   subtreeIds,
   tidyBranch,
   translate,
+  snapPosition,
+  layoutGridSize,
   type LayoutSnapshot,
   type Point,
   type Positions,
@@ -49,6 +51,7 @@ export function useCanvasLayout({
   changeBoard: (fn: (b: Board) => Board) => void;
 }) {
   const histories = useRef(new Map<string, History>());
+  const [snapToGrid, setSnapToGrid] = useState(false);
   const visited = useRef(new Map<string, Set<string>>());
   const [, setRevision] = useState(0);
   const [measurements, setMeasurements] = useState<Record<string, Sizes>>({});
@@ -198,14 +201,15 @@ export function useCanvasLayout({
   function move(id: string, point: Point) {
     const op = active.current;
     if (!op || op.root !== id || op.kind === "tidy") return;
+    const destination = snapToGrid ? snapPosition(point) : point;
     const positions = Object.fromEntries(
       [...op.ids].map((key) => [key, op.before[key]]),
     );
     update({
       ...op,
       positions: translate(positions, {
-        x: point.x - op.before[id].x,
-        y: point.y - op.before[id].y,
+        x: destination.x - op.before[id].x,
+        y: destination.y - op.before[id].y,
       }),
     });
   }
@@ -241,7 +245,11 @@ export function useCanvasLayout({
       event.stopPropagation();
       const op = active.current!;
       const p = op.positions[op.root];
-      const step = event.shiftKey ? 50 : 10;
+      const step = snapToGrid
+        ? layoutGridSize * (event.shiftKey ? 5 : 1)
+        : event.shiftKey
+          ? 50
+          : 10;
       move(op.root, { x: p.x + delta[0] * step, y: p.y + delta[1] * step });
     };
     window.addEventListener("keydown", keydown, true);
@@ -262,6 +270,8 @@ export function useCanvasLayout({
   const history = board && histories.current.get(board.id);
   return {
     sizes,
+    snapToGrid,
+    setSnapToGrid,
     preview,
     pending,
     current,

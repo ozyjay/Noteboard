@@ -73,7 +73,7 @@ export function useBoardCanvas({
         !layout.disabled &&
         !layout.previewing &&
         (!layout.current || layout.current.root === n.id),
-      focusable: !layout.pending.has(n.id),
+      focusable: false,
       style: layout.pending.has(n.id) ? { visibility: "hidden" } : undefined,
       measured: nodeDimensions[n.id],
       selected: readerId === n.id,

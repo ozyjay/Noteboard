@@ -39,12 +39,17 @@ export function NoteLayoutMenu({
   return (
     <details
       ref={ref}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node))
+          ref.current!.open = false;
+      }}
       className="note-layout nodrag nopan"
       onToggle={() => {
         if (disabled && ref.current) ref.current.open = false;
       }}
     >
       <summary
+        tabIndex={-1}
         aria-label={`Layout Note ${index + 1}`}
         aria-disabled={disabled}
         onClick={(e) => {
@@ -54,13 +59,25 @@ export function NoteLayoutMenu({
         Layout
       </summary>
       <div className="note-layout-options">
-        <button disabled={disabled} onClick={() => action("move")}>
+        <button
+          tabIndex={-1}
+          disabled={disabled}
+          onClick={() => action("move")}
+        >
           Move Note
         </button>
-        <button disabled={disabled} onClick={() => action("branch")}>
+        <button
+          tabIndex={-1}
+          disabled={disabled}
+          onClick={() => action("branch")}
+        >
           Move with descendants
         </button>
-        <button disabled={disabled} onClick={() => action("tidy")}>
+        <button
+          tabIndex={-1}
+          disabled={disabled}
+          onClick={() => action("tidy")}
+        >
           Tidy branch
         </button>
         <fieldset disabled={disabled}>
@@ -68,6 +85,7 @@ export function NoteLayoutMenu({
           {(["right", "below"] as const).map((direction) => (
             <label key={direction}>
               <input
+                tabIndex={-1}
                 type="radio"
                 name={`direction-${note.id}`}
                 checked={(note.childDirection ?? "right") === direction}

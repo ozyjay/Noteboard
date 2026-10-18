@@ -17,6 +17,7 @@ import {
   subtreeIds,
   tidyBranch,
   translate,
+  snapPosition,
   type Sizes,
 } from "../src/core/layout";
 
@@ -47,6 +48,11 @@ function extend(board: Board, parent: string, id: string) {
 }
 
 describe("graph layout", () => {
+  it("snaps positive and negative coordinates to the visible 24-unit grid", () => {
+    expect(snapPosition({ x: 83.7, y: 161.2 })).toEqual({ x: 72, y: 168 });
+    expect(snapPosition({ x: -31, y: -53 })).toEqual({ x: -24, y: -48 });
+    expect(snapPosition({ x: 96, y: 168 })).toEqual({ x: 96, y: 168 });
+  });
   it("places new children using measured bounds, direction and stationary obstacles", () => {
     const b = fixture();
     const parent = b.notes[0];

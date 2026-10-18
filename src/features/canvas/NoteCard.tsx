@@ -113,6 +113,21 @@ export function NoteCard({ data, selected }: NodeProps<CardNode>) {
   return (
     <article
       ref={card}
+      tabIndex={data.layoutDisabled ? -1 : 0}
+      aria-label={`Note ${data.index + 1}: ${data.note.title ?? versionPrompt(data.note)}. Enter to read.`}
+      aria-keyshortcuts="Enter Space"
+      onKeyDown={(event) => {
+        if (
+          event.target !== event.currentTarget ||
+          event.nativeEvent.isComposing
+        )
+          return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          event.stopPropagation();
+          data.onRead(data.note.id);
+        }
+      }}
       className={`note-card colour-${data.index % 4} ${data.overview ? "overview" : ""} ${selected ? "focused" : ""} ${data.chosen ? "chosen" : ""} ${data.moving ? "layout-moving" : ""}`}
     >
       {[Position.Left, Position.Right, Position.Top, Position.Bottom].flatMap(
@@ -138,6 +153,7 @@ export function NoteCard({ data, selected }: NodeProps<CardNode>) {
           {data.index === 0 ? "STARTING QUESTION" : "EXPLORATION"}
         </span>
         <input
+          tabIndex={-1}
           className="nodrag"
           type="checkbox"
           disabled={data.layoutDisabled}
@@ -153,6 +169,7 @@ export function NoteCard({ data, selected }: NodeProps<CardNode>) {
         onAction={data.onLayout}
       />
       <button
+        tabIndex={-1}
         className={`note-prompt${detailed ? " nodrag" : ""}`}
         disabled={data.layoutDisabled}
         onClick={() => data.onRead(data.note.id)}
@@ -163,6 +180,7 @@ export function NoteCard({ data, selected }: NodeProps<CardNode>) {
         {style === "blueprint" ? (
           <details className="note-peek nodrag nowheel">
             <summary
+              tabIndex={-1}
               aria-disabled={data.layoutDisabled}
               onClick={(e) => {
                 if (data.layoutDisabled) e.preventDefault();
@@ -186,6 +204,7 @@ export function NoteCard({ data, selected }: NodeProps<CardNode>) {
             {data.children === 1 ? "branch" : "branches"}
           </span>
           <button
+            tabIndex={-1}
             className="nodrag"
             disabled={data.layoutDisabled}
             onClick={() => data.onRead(data.note.id)}

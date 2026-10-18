@@ -8,7 +8,7 @@ import {
 } from "@xyflow/react";
 import { Compass, Plus } from "lucide-react";
 import { useEffect, useRef, type Dispatch, type SetStateAction } from "react";
-import { alignmentGuides, bounds } from "../../core/layout";
+import { alignmentGuides, bounds, layoutGridSize } from "../../core/layout";
 import type { CanvasLayout } from "./useCanvasLayout";
 import { type Appearance, type Board, type Highlight } from "../../core/model";
 import { HighlightEdge, type HighlightFlowEdge } from "./HighlightEdge";
@@ -47,6 +47,42 @@ export function BoardCanvas({
 }: Props) {
   const viewport = useViewport();
   const controls = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const shortcut = (event: KeyboardEvent) => {
+      const target = event.target;
+      if (
+        event.defaultPrevented ||
+        event.repeat ||
+        event.isComposing ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        readerExpanded ||
+        layout.locked ||
+        layout.disabled ||
+        (target instanceof Element &&
+          target.closest(
+            "input, textarea, select, [contenteditable]:not([contenteditable=false]), .reader, [role=dialog], .modal",
+          ))
+      )
+        return;
+      if (event.key.toLowerCase() === "a") {
+        event.preventDefault();
+        presentation.setMode(presentation.overview ? "read" : "arrange");
+      } else if (event.key.toLowerCase() === "g") {
+        event.preventDefault();
+        layout.setSnapToGrid(!layout.snapToGrid);
+      }
+    };
+    window.addEventListener("keydown", shortcut);
+    return () => window.removeEventListener("keydown", shortcut);
+  }, [
+    readerExpanded,
+    layout.locked,
+    layout.disabled,
+    layout.snapToGrid,
+    presentation.overview,
+  ]);
   useEffect(() => {
     if (!layout.previewing) return;
     const changed: { element: HTMLElement; inert: boolean }[] = [];
@@ -124,7 +160,7 @@ export function BoardCanvas({
           layout.finish();
         }}
         autoPanOnNodeFocus={false}
-        nodesFocusable={!layout.disabled && !layout.previewing}
+        nodesFocusable={false}
         disableKeyboardA11y={true}
         edgeTypes={edgeTypes}
         onEdgeClick={(_, edge) => {
@@ -132,8 +168,8 @@ export function BoardCanvas({
         }}
         onMoveEnd={(_, viewport) => changeBoard((b) => ({ ...b, viewport }))}
       >
-        {appearance.showGrid && (
-          <Background color="var(--grid)" gap={24} size={1} />
+        {(appearance.showGrid || layout.snapToGrid) && (
+          <Background color="var(--grid)" gap={layoutGridSize} size={1} />
         )}
         <Controls showInteractive={false} />
         <MiniMap
@@ -185,9 +221,11 @@ export function BoardCanvas({
         aria-label="Graph layout controls"
       >
         <label className="canvas-mode-select">
-          Note mode
+          Note mode <kbd title="Toggle Arrange / Read (A)">A</kbd>
           <select
             aria-label="Note mode"
+            aria-keyshortcuts="A"
+            title="A: toggle Arrange / Read. Auto follows zoom."
             value={presentation.mode}
             disabled={layout.locked || layout.disabled}
             onChange={(event) =>
@@ -204,6 +242,20 @@ export function BoardCanvas({
             ? "Arrange · Drag anywhere on a Note"
             : "Read · Drag a header to move a Note"}
         </span>
+        <label
+          className="canvas-snap-control"
+          title="G: toggle snapping. Branches keep their internal spacing."
+        >
+          <input
+            type="checkbox"
+            aria-label="Snap to grid"
+            aria-keyshortcuts="G"
+            checked={layout.snapToGrid}
+            disabled={layout.locked || layout.disabled}
+            onChange={(event) => layout.setSnapToGrid(event.target.checked)}
+          />
+          Snap to grid <kbd aria-hidden="true">G</kbd>
+        </label>
         <button disabled={!layout.canUndo} onClick={layout.undo}>
           Undo layout
         </button>
