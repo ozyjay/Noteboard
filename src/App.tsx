@@ -185,7 +185,7 @@ export default function App() {
     store.setBoardId(b.id);
     resetPanels();
     composerState.setPrompt("");
-    composerState.openComposer();
+    composerState.openComposer(undefined, true);
   }
   if (!store.ready)
     return (
@@ -225,6 +225,10 @@ export default function App() {
           onToggleSidebar={() => setSidebarVisible((v) => !v)}
           board={board}
           busy={busy}
+          onResponseProfile={(responseProfile) =>
+            store.changeBoard((b) => ({ ...b, responseProfile }))
+          }
+          profileDisabled={layout.locked}
           importSaving={files.importSaving}
           onRename={() => board && boardActions.requestRename(board.id)}
           onConsolidate={synthesis.openConsolidation}

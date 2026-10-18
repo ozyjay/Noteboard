@@ -11,6 +11,11 @@ import {
 } from "lucide-react";
 import { type Board } from "../../core/model";
 import { WorkspaceMenu } from "./WorkspaceMenu";
+import { ResponseProfilePicker } from "../../components/ResponseProfilePicker";
+import {
+  boardProfile,
+  type ResponseProfile,
+} from "../../core/response-profiles";
 
 interface Props {
   sidebarVisible: boolean;
@@ -25,6 +30,8 @@ interface Props {
   onImportConversation: () => void;
   onExportBoard: () => void;
   onDeleteBoard: () => void;
+  onResponseProfile: (profile: ResponseProfile) => void;
+  profileDisabled?: boolean;
 }
 export function WorkspaceHeader({
   sidebarVisible,
@@ -39,6 +46,8 @@ export function WorkspaceHeader({
   onImportConversation,
   onExportBoard,
   onDeleteBoard,
+  onResponseProfile,
+  profileDisabled,
 }: Props) {
   return (
     <header className="topbar">
@@ -71,6 +80,15 @@ export function WorkspaceHeader({
         </div>
       </div>
       <div className="topbar-actions">
+        {board && (
+          <ResponseProfilePicker
+            label="Board response profile"
+            value={boardProfile(board)}
+            onChange={onResponseProfile}
+            disabled={busy || profileDisabled}
+            describe={false}
+          />
+        )}
         <button
           className="primary"
           disabled={busy || !board?.notes.length}

@@ -3,6 +3,9 @@ import { type Dispatch, type FormEvent, type SetStateAction } from "react";
 import { bridge } from "../../bridge";
 import { ResearchInputs } from "../../components/ResearchInputs";
 import { ThinkingEffort } from "../../components/ThinkingEffort";
+import { ResponseProfilePicker } from "../../components/ResponseProfilePicker";
+import { profileInstructions } from "../../core/response-profiles";
+import { MAX_CUSTOM_INSTRUCTIONS } from "../../core/instructions";
 import {
   ancestry,
   buildContext,
@@ -128,6 +131,50 @@ export function NoteComposer({
           <p id="prompt-keyboard-hint" className="muted keyboard-hint">
             Enter to send · Shift+Enter for a new line
           </p>
+          <ResponseProfilePicker
+            value={composer.responseProfile}
+            disabled={busy}
+            onChange={(responseProfile) =>
+              setComposer(
+                (current) => current && { ...current, responseProfile },
+              )
+            }
+          />
+          <p className="muted small">
+            For this Note only. Change the Board response profile above the
+            canvas to set its default.
+            {settings.provider === "demo" &&
+              " Demo responses are scripted and do not follow profiles."}
+          </p>
+          <details>
+            <summary>Customise instructions for this Note</summary>
+            <label>
+              Request instructions
+              <textarea
+                rows={6}
+                maxLength={MAX_CUSTOM_INSTRUCTIONS}
+                disabled={busy}
+                value={profileInstructions(
+                  composer.responseProfile,
+                  composer.customInstructions,
+                )}
+                onChange={(event) =>
+                  setComposer(
+                    (current) =>
+                      current && {
+                        ...current,
+                        responseProfile: "custom",
+                        customInstructions: event.target.value,
+                      },
+                  )
+                }
+              />
+            </label>
+            <p className="muted small">
+              Editing switches this request to Custom. Saved instructions and
+              earlier responses stay unchanged.
+            </p>
+          </details>
           {settings.provider !== "demo" && (
             <>
               <div className="revision-model">
@@ -218,7 +265,10 @@ export function NoteComposer({
                       board,
                       prompt,
                       composer.highlight,
-                      settings.customInstructions,
+                      profileInstructions(
+                        composer.responseProfile,
+                        composer.customInstructions,
+                      ),
                       composer.files,
                     ),
                   ).toLocaleString()

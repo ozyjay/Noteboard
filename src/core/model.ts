@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { AttachmentsSchema, WebResearchSchema } from "./research";
+import { ResponseProfileSchema } from "./response-profiles";
 import {
   defaultCustomInstructions,
   MAX_CUSTOM_INSTRUCTIONS,
@@ -203,6 +204,7 @@ export const BoardSchema = z.object({
   schemaVersion: z.literal(4),
   id: z.string(),
   title: z.string().min(1).max(200),
+  responseProfile: ResponseProfileSchema.optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
   notes: z.array(NoteSchema),
@@ -228,6 +230,7 @@ export function newBoard(title = "Untitled inquiry"): Board {
     schemaVersion: 4,
     id: uid(),
     title,
+    responseProfile: "explore",
     createdAt: now(),
     updatedAt: now(),
     notes: [],

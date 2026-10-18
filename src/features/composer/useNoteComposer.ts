@@ -6,12 +6,15 @@ import {
   type Board,
   type Highlight,
   type Note,
-  type ReasoningEffort,
   type Settings,
 } from "../../core/model";
 import { appendNote, completedNote } from "../../core/note-operations";
 import { providerMessages, type ModelChoice } from "../../core/providers";
-import { type Attachment } from "../../core/research";
+import {
+  boardProfile,
+  profileInstructions,
+} from "../../core/response-profiles";
+import type { ComposerDraft } from "./types";
 import { useChatGPTModels } from "../../model-discovery";
 import { errorText } from "../workspace/browser-actions";
 
@@ -36,13 +39,7 @@ export function useNoteComposer({
   onCreated: (note: Note) => void;
   setError: (error: string) => void;
 }) {
-  const [composer, setComposer] = useState<{
-      highlight?: Highlight;
-      model: string;
-      reasoningEffort?: ReasoningEffort;
-      webSearch: boolean;
-      files: Attachment[];
-    } | null>(null),
+  const [composer, setComposer] = useState<ComposerDraft | null>(null),
     [prompt, setPrompt] = useState("");
   const [localComposerModels, setComposerModels] = useState<ModelChoice[]>([]);
   const [localComposerDiscovering, setComposerDiscovering] = useState(false);
@@ -73,12 +70,14 @@ export function useNoteComposer({
       typeof choice === "string" ? choice : choice.name,
     );
   const composerSession = useRef(0);
-  function openComposer(highlight?: Highlight) {
+  function openComposer(highlight?: Highlight, newBoard = false) {
     composerSession.current += 1;
     setComposerModels([]);
     setComposerDiscovering(false);
     setComposerReading(false);
     setComposer({
+      responseProfile: newBoard ? "explore" : boardProfile(board),
+      customInstructions: settings.customInstructions,
       highlight,
       model: settings.model,
       reasoningEffort: settings.reasoningEffort,
@@ -136,7 +135,10 @@ export function useNoteComposer({
           snapshot,
           question,
           h,
-          settings.customInstructions,
+          profileInstructions(
+            composer.responseProfile,
+            composer.customInstructions,
+          ),
           composer.files,
         ),
         settings.provider,

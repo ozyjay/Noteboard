@@ -128,6 +128,7 @@ test("desktop reopens a renamed Board and graph layout from SQLite", async () =>
     const original = await page.evaluate(
       async () => (await window.inquiry!.listBoards())[0],
     );
+    await page.getByLabel("Board response profile").selectOption("evaluate");
     await page.locator(".boards button").first().click({ button: "right" });
     await page.getByRole("menuitem", { name: "Rename", exact: true }).click();
     await page
@@ -165,6 +166,9 @@ test("desktop reopens a renamed Board and graph layout from SQLite", async () =>
     app = await electron.launch({ args: [".", `--user-data-dir=${dir}`], env });
     page = await app.firstWindow();
     await expect(page.locator("h1")).toHaveText("My renamed exploration");
+    await expect(page.getByLabel("Board response profile")).toHaveValue(
+      "evaluate",
+    );
     const saved = await page.evaluate(
       async () => (await window.inquiry!.listBoards())[0],
     );

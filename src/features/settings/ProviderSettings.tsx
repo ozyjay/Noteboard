@@ -253,10 +253,11 @@ export function ProviderSettings({
             />
           </label>
           <p className="muted small">
-            Apply to future Notes and generated synthesis across providers.
-            Leave blank for the basic Noteboard guidance. Changes take effect
-            when you save. Demo responses are scripted and do not follow these
-            instructions.
+            Used by the Custom response profile and generated synthesis across
+            providers. Standard profiles use their own instructions; new Boards
+            start with Explore. Leave blank for the basic Noteboard guidance.
+            Changes take effect when you save. Demo responses are scripted and
+            do not follow these instructions.
           </p>
           <button
             type="button"
@@ -271,9 +272,10 @@ export function ProviderSettings({
             Restore response preferences
           </button>
           <p className="muted small">
-            Noteboard cannot browse the web or access your ChatGPT projects or
-            personalisation. Instructions used for a response are recorded with
-            it and included in Board exports.
+            Web search is available when enabled for ChatGPT Notes. Noteboard
+            cannot access your ChatGPT projects or personalisation. Instructions
+            used for a response are recorded with it and included in Board
+            exports.
           </p>
           <div className="form-columns">
             <label>

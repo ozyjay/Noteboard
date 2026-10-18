@@ -8,6 +8,7 @@ test("custom instructions save, cancel and persist in future generation records"
   const readBoard = () =>
     page.evaluate(() => JSON.parse(localStorage.getItem("inquiry.boards")!)[0]);
   const original = await readBoard();
+  await page.getByLabel("Board response profile").selectOption("custom");
   const openSettings = () =>
     page
       .getByRole("button", { name: "Provider settings", exact: true })

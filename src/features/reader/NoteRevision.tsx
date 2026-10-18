@@ -28,6 +28,11 @@ import {
 } from "../../core/providers";
 import { combineFiles, type Attachment } from "../../core/research";
 import { useChatGPTModels } from "../../model-discovery";
+import { ResponseProfilePicker } from "../../components/ResponseProfilePicker";
+import {
+  boardProfile,
+  profileInstructions,
+} from "../../core/response-profiles";
 
 export type RevisionMode = "prompt" | "regenerate" | "edit" | "improve";
 export function NoteRevision({
@@ -58,6 +63,7 @@ export function NoteRevision({
 }) {
   const base = note.versions.find((v) => v.id === versionId)!;
   const [prompt, setPrompt] = useState(versionPrompt(note, base));
+  const [responseProfile, setResponseProfile] = useState(boardProfile(board));
   const [text, setText] = useState(base.text);
   const [reviewPrompt, setReviewPrompt] = useState(improvementPrompt);
   const [files, setFiles] = useState<Attachment[]>([]);
@@ -135,7 +141,7 @@ export function NoteRevision({
               note.id,
               base.id,
               reviewPrompt.trim(),
-              settings.customInstructions,
+              profileInstructions(responseProfile, settings.customInstructions),
               files,
             )
           : revisionContext(
@@ -143,7 +149,7 @@ export function NoteRevision({
               note.id,
               base.id,
               question,
-              settings.customInstructions,
+              profileInstructions(responseProfile, settings.customInstructions),
               files,
             );
       const common = {
@@ -273,6 +279,11 @@ export function NoteRevision({
             </>
           ) : (
             <>
+              <ResponseProfilePicker
+                value={responseProfile}
+                onChange={setResponseProfile}
+                disabled={busy}
+              />
               <p className="muted">
                 {settings.provider === "demo"
                   ? "Synthetic demo response"
