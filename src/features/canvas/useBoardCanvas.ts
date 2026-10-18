@@ -2,6 +2,7 @@ import {
   MarkerType,
   useNodesInitialized,
   useReactFlow,
+  useStore,
   type NodeChange,
 } from "@xyflow/react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -10,6 +11,13 @@ import { type HighlightFlowEdge } from "./HighlightEdge";
 import { type CardNode } from "./NoteCard";
 import { bounds, connectionSides } from "../../core/layout";
 import type { CanvasLayout } from "./useCanvasLayout";
+
+export type NoteViewMode = "auto" | "arrange" | "read";
+export interface CanvasPresentation {
+  mode: NoteViewMode;
+  setMode: (mode: NoteViewMode) => void;
+  overview: boolean;
+}
 
 export function useBoardCanvas({
   board,
@@ -36,6 +44,10 @@ export function useBoardCanvas({
   openEdgeSource: (id: string) => void;
   layout: CanvasLayout;
 }) {
+  const [mode, setMode] = useState<NoteViewMode>("auto");
+  const zoomOverview = useStore((state) => state.transform[2] <= 0.55);
+  const overview = mode === "arrange" || (mode === "auto" && zoomOverview);
+  const presentation: CanvasPresentation = { mode, setMode, overview };
   const [nodeDimensions, setNodeDimensions] = useState<
     Record<string, { width: number; height: number }>
   >({});
@@ -66,6 +78,7 @@ export function useBoardCanvas({
       measured: nodeDimensions[n.id],
       selected: readerId === n.id,
       data: {
+        overview,
         note: n,
         noteStyle: appearance.noteStyle,
         index,
@@ -144,5 +157,5 @@ export function useBoardCanvas({
       };
     }) || [];
 
-  return { nodes, edges, trackDimensions };
+  return { nodes, edges, trackDimensions, presentation };
 }

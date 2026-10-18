@@ -40,6 +40,8 @@ Model-discovery browser checks use a mocked desktop bridge to verify automatic C
 
 ## Refactor checks
 
+Canvas mode checks exercise the visible Auto/Arrange/Read control, automatic threshold switching, manual overrides across zoom changes, whole-card movement in manual Arrange, title reading in manual Read, mode locking during tidy previews and resetting to Auto on reopening. Mode changes preserve saved Note data and positions.
+
 Graph layout checks cover free Note movement, whole-branch translation, pointer/keyboard cancellation, direction changes, alignment guides, layout undo/redo, graph-change history invalidation and Board switching. Browser cases exercise mixed-direction tidy previews across all five appearances at normal and overview zoom, explicit Apply/Cancel, measured Below child placement, exact Highlight source navigation and reopening. Geometry tests cover variable sizes, fixed obstacles, spatial sibling order, unchanged generation context and SQLite/JSON direction metadata. The desktop rename/layout scenario reopens moved Notes and their direction preference through SQLite after two application launches. These checks use synthetic Notes and do not exercise live inference.
 
 Browser feature suites live in `tests/browser/`; the browser Playwright project also includes `model-discovery.spec.ts`. The desktop project continues to include only `desktop.spec.ts`. Compare `npx playwright test --list` before and after moving tests, including expanded viewport/style cases. [The refactor inventory](refactor-test-inventory.json) records the starting and resulting case identities.

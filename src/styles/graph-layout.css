@@ -87,6 +87,22 @@
   border: 1px solid var(--border);
   border-radius: 4px;
 }
+.canvas-mode-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.canvas-mode-select select {
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+.canvas-mode-hint {
+  color: var(--text-secondary);
+}
 .layout-controls [role="status"] {
   flex: 1 1 200px;
 }

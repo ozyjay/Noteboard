@@ -144,7 +144,7 @@ export default function App() {
       files.importOpen,
     changeBoard: store.changeBoard,
   });
-  const { nodes, edges, trackDimensions } = useBoardCanvas({
+  const { nodes, edges, trackDimensions, presentation } = useBoardCanvas({
     layout,
     board,
     boardId: store.boardId,
@@ -248,6 +248,7 @@ export default function App() {
         {mode === "explore" ? (
           <div className="exploration">
             <BoardCanvas
+              presentation={presentation}
               layout={layout}
               readerExpanded={reader.readerExpanded || reader.readerFocused}
               nodes={nodes}

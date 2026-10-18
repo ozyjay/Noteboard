@@ -1,7 +1,6 @@
 import {
   Handle,
   Position,
-  useStore,
   useUpdateNodeInternals,
   type Node,
   type NodeProps,
@@ -29,15 +28,15 @@ export type CardNode = Node<
     onMeasure: (id: string, size: Size) => void;
     layoutDisabled: boolean;
     moving: boolean;
+    overview: boolean;
   },
   "note"
 >;
 export function NoteCard({ data, selected }: NodeProps<CardNode>) {
   const card = useRef<HTMLElement>(null);
-  const zoom = useStore((s) => s.transform[2]);
   const style = data.noteStyle;
   const takeawayFirst = style === "sticky" || style === "studio";
-  const detailed = zoom > 0.55;
+  const detailed = !data.overview;
   const updateNodeInternals = useUpdateNodeInternals();
   useLayoutEffect(() => {
     const element = card.current!;
@@ -114,7 +113,7 @@ export function NoteCard({ data, selected }: NodeProps<CardNode>) {
   return (
     <article
       ref={card}
-      className={`note-card colour-${data.index % 4} ${zoom <= 0.55 ? "overview" : ""} ${selected ? "focused" : ""} ${data.chosen ? "chosen" : ""} ${data.moving ? "layout-moving" : ""}`}
+      className={`note-card colour-${data.index % 4} ${data.overview ? "overview" : ""} ${selected ? "focused" : ""} ${data.chosen ? "chosen" : ""} ${data.moving ? "layout-moving" : ""}`}
     >
       {[Position.Left, Position.Right, Position.Top, Position.Bottom].flatMap(
         (position) =>

@@ -13,6 +13,7 @@ import type { CanvasLayout } from "./useCanvasLayout";
 import { type Appearance, type Board, type Highlight } from "../../core/model";
 import { HighlightEdge, type HighlightFlowEdge } from "./HighlightEdge";
 import { NoteCard, type CardNode } from "./NoteCard";
+import type { CanvasPresentation, NoteViewMode } from "./useBoardCanvas";
 
 interface Props {
   readerExpanded: boolean;
@@ -27,6 +28,7 @@ interface Props {
   setPrompt: Dispatch<SetStateAction<string>>;
   openComposer: (highlight?: Highlight) => void;
   layout: CanvasLayout;
+  presentation: CanvasPresentation;
 }
 export function BoardCanvas({
   readerExpanded,
@@ -41,6 +43,7 @@ export function BoardCanvas({
   setPrompt,
   openComposer,
   layout,
+  presentation,
 }: Props) {
   const viewport = useViewport();
   const controls = useRef<HTMLDivElement>(null);
@@ -181,6 +184,26 @@ export function BoardCanvas({
         ref={controls}
         aria-label="Graph layout controls"
       >
+        <label className="canvas-mode-select">
+          Note mode
+          <select
+            aria-label="Note mode"
+            value={presentation.mode}
+            disabled={layout.locked || layout.disabled}
+            onChange={(event) =>
+              presentation.setMode(event.target.value as NoteViewMode)
+            }
+          >
+            <option value="auto">Auto (follow zoom)</option>
+            <option value="arrange">Arrange</option>
+            <option value="read">Read</option>
+          </select>
+        </label>
+        <span className="canvas-mode-hint" aria-live="polite">
+          {presentation.overview
+            ? "Arrange · Drag anywhere on a Note"
+            : "Read · Drag a header to move a Note"}
+        </span>
         <button disabled={!layout.canUndo} onClick={layout.undo}>
           Undo layout
         </button>
