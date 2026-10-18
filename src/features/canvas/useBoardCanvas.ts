@@ -56,7 +56,7 @@ export function useBoardCanvas({
       id: n.id,
       type: "note",
       position: layout.preview[n.id] ?? n.position,
-      dragHandle: ".note-drag-handle",
+      dragHandle: ".note-drag-handle, .note-card.overview",
       draggable:
         !layout.disabled &&
         !layout.previewing &&

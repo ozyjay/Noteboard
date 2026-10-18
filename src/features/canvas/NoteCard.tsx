@@ -155,7 +155,7 @@ export function NoteCard({ data, selected }: NodeProps<CardNode>) {
       />
       {takeawayFirst && <div className="note-detail">{takeaway}</div>}
       <button
-        className="note-prompt nodrag"
+        className={`note-prompt${detailed ? " nodrag" : ""}`}
         disabled={data.layoutDisabled}
         onClick={() => data.onRead(data.note.id)}
       >

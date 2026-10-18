@@ -1,11 +1,19 @@
-.note-drag-handle {
+.note-drag-handle,
+.note-card.overview,
+.note-card.overview .note-prompt {
   cursor: grab;
 }
-.note-drag-handle:active {
+.note-drag-handle:active,
+.note-card.overview:active,
+.note-card.overview .note-prompt:active {
   cursor: grabbing;
 }
 .note-card.overview .note-detail {
   display: none;
+}
+.note-card.overview .note-prompt:disabled {
+  /* Keep the card receiving pointer events when a title drag disables reading. */
+  pointer-events: none;
 }
 .note-layout {
   position: relative;
