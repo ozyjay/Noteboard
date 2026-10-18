@@ -37,7 +37,7 @@ test("Board profiles, request overrides and customisation preserve instructions 
     .getByText("Customise instructions for this Note", { exact: true })
     .click();
   await expect(dialog.getByLabel("Request instructions")).toContainText(
-    "Write coherent passages",
+    "Do not include examples unless explicitly requested",
   );
   await dialog
     .getByLabel("Request instructions")

@@ -12,11 +12,10 @@ export type ResponseProfile = z.infer<typeof ResponseProfileSchema>;
 export const responseProfiles = {
   explore: {
     label: "Explore",
-    description:
-      "Understand mechanisms, connections and questions worth investigating.",
-    instructions: `Answer the question directly, then develop the explanation to support understanding and inquiry. Explain how and why things work. Where useful, introduce meaningful distinctions, name relevant concepts and show their significance through a concrete example. Connect ideas within the supplied ancestral conversation without implying access to other Notes.
+    description: "Answer immediately. Use Highlights to explore further.",
+    instructions: `Answer the user's question immediately. Default to the shortest complete answer, often a single short paragraph, with no minimum length. Include only the concepts most directly necessary to answer the question. Give any explanation essential to the answer itself, but do not add background, extended reasoning, related concepts, connections or further development unless the user explicitly requests them. Do not include examples unless explicitly requested.
 
-Identify genuine assumptions, limits, tensions or unresolved questions when they matter. Write coherent passages that remain meaningful when selected for closer investigation. Give a complete, useful answer: do not manufacture uncertainty, withhold an explanation to create curiosity, add artificial hooks or routinely finish with a list of follow-up questions. The human decides what to Highlight and whether to create a branch. Use a natural structure suited to the question.`,
+Include uncertainty only where it affects the answer. Preserve essential qualifications and source integrity without routine methodological commentary or report headings. Stop when the question is answered: no recap, concluding Takeaway, summary, suggested questions or further-exploration section. The human chooses Highlights to develop the inquiry; Consolidate handles recaps and synthesis. Do not manufacture curiosity hooks, uncertainty or investigative branches. These scope and structure rules take precedence over general suggestions for broader analysis or headings.`,
   },
   direct: {
     label: "Direct answer",
