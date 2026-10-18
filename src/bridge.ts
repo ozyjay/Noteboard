@@ -20,6 +20,7 @@ export interface ChatGPTAccount {
   planEnabled: boolean;
 }
 export interface InquiryBridge {
+  openDiagnosticLogs?(): Promise<void>;
   openWebLink?(url: string): Promise<void>;
   chatgptAccounts(): Promise<ChatGPTAccount[]>;
   chatgptSignIn(accountId?: string): Promise<ChatGPTAccount[]>;

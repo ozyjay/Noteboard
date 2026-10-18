@@ -1,16 +1,18 @@
 import {
   ArrowUpRight,
-  Download,
+  LogIn,
+  LogOut,
+  FileText,
   Palette,
   PanelLeftClose,
   PanelLeftOpen,
   Pencil,
   Sparkles,
   Trash2,
-  Upload,
 } from "lucide-react";
 import { type Board } from "../../core/model";
 import { WorkspaceMenu } from "./WorkspaceMenu";
+import { bridge } from "../../bridge";
 import { ResponseProfilePicker } from "../../components/ResponseProfilePicker";
 import {
   boardProfile,
@@ -32,6 +34,7 @@ interface Props {
   onDeleteBoard: () => void;
   onResponseProfile: (profile: ResponseProfile) => void;
   profileDisabled?: boolean;
+  onOpenLogs?: () => void;
 }
 export function WorkspaceHeader({
   sidebarVisible,
@@ -48,6 +51,7 @@ export function WorkspaceHeader({
   onDeleteBoard,
   onResponseProfile,
   profileDisabled,
+  onOpenLogs,
 }: Props) {
   return (
     <header className="topbar">
@@ -114,7 +118,7 @@ export function WorkspaceHeader({
             disabled={busy}
             onClick={onImportBoard}
           >
-            <Upload size={16} /> Import a Board
+            <LogIn size={16} /> Import a Board
           </button>
           <button
             role="menuitem"
@@ -124,7 +128,7 @@ export function WorkspaceHeader({
             disabled={busy || importSaving}
             onClick={onImportConversation}
           >
-            <Upload size={16} /> Import ChatGPT conversation
+            <LogIn size={16} /> Import ChatGPT conversation
           </button>
           <button
             role="menuitem"
@@ -133,8 +137,13 @@ export function WorkspaceHeader({
             aria-label="Export Board"
             onClick={onExportBoard}
           >
-            <Download size={16} /> Export Board
+            <LogOut size={16} /> Export Board
           </button>
+          {bridge.openDiagnosticLogs && (
+            <button role="menuitem" tabIndex={-1} onClick={onOpenLogs}>
+              <FileText size={16} /> Open diagnostic logs
+            </button>
+          )}
 
           <button
             role="menuitem"

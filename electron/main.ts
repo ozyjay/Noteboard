@@ -20,6 +20,12 @@ import { ChatGPTAuth, type CredentialCipher } from "./chatgpt-auth";
 import { macCredentialCipher } from "./macos-credentials";
 import { chatGPTProvider } from "./chatgpt";
 import { ChatGPTModelCatalogues } from "./model-catalogues";
+import {
+  DiagnosticLog,
+  diagnosticError,
+  type DiagnosticEntry,
+} from "./diagnostics";
+let diagnostics: DiagnosticLog | undefined;
 let auth: ChatGPTAuth;
 let store: Store;
 let window: BrowserWindow | null = null;
@@ -31,13 +37,31 @@ const requestSchema = z.object({
   purpose: z.enum(["explore", "synthesis"]),
 });
 function handle(channel: string, fn: (...args: unknown[]) => unknown) {
-  ipcMain.handle(channel, (event, ...args) => {
+  ipcMain.handle(channel, async (event, ...args) => {
     if (
       event.sender !== window?.webContents ||
       event.senderFrame !== event.sender.mainFrame
     )
       throw new Error("Untrusted IPC sender");
-    return fn(...args);
+    const started = performance.now();
+    const operation = channel as DiagnosticEntry["operation"];
+    try {
+      const result = await fn(...args);
+      diagnostics?.write({
+        event: "ipc.completed",
+        operation,
+        durationMs: Math.round(performance.now() - started),
+      });
+      return result;
+    } catch (error) {
+      diagnostics?.write({
+        event: "ipc.failed",
+        operation,
+        durationMs: Math.round(performance.now() - started),
+        error: diagnosticError(error),
+      });
+      throw error;
+    }
   });
 }
 function createWindow() {
@@ -70,6 +94,12 @@ function createWindow() {
   });
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   window.webContents.on("will-navigate", (event) => event.preventDefault());
+  window.webContents.on("render-process-gone", () =>
+    diagnostics?.write({ event: "renderer.exited" }),
+  );
+  window.on("unresponsive", () =>
+    diagnostics?.write({ event: "renderer.unresponsive" }),
+  );
   if (process.platform === "darwin") {
     const editMenu = Menu.buildFromTemplate([
       { role: "undo" },
@@ -105,6 +135,21 @@ app.setName("Noteboard");
 app.setPath("userData", process.env.INQUIRY_DATA_DIR || existingUserData);
 const primaryInstance = app.requestSingleInstanceLock();
 if (!primaryInstance) app.quit();
+else {
+  diagnostics = new DiagnosticLog(app.getPath("userData"));
+  diagnostics.write({
+    event: "app.started",
+    appVersion: app.getVersion(),
+    platform: process.platform,
+  });
+  process.on("uncaughtExceptionMonitor", (error) =>
+    diagnostics?.write({
+      event: "app.error",
+      operation: "uncaught-exception",
+      error: diagnosticError(error),
+    }),
+  );
+}
 app.on("second-instance", () => {
   if (window?.isMinimized()) window.restore();
   window?.focus();
@@ -178,6 +223,11 @@ if (primaryInstance)
       shell.openExternal("https://chatgpt.com/settings/usage"),
     );
     handle("web:open", (url) => shell.openExternal(WebUrlSchema.parse(url)));
+    handle("diagnostics:open", async () => {
+      diagnostics!.ensureDirectory();
+      const error = await shell.openPath(diagnostics!.directory);
+      if (error) throw new Error("Could not open the diagnostic logs folder.");
+    });
     handle("boards:list", () => store.list());
     handle("boards:save", (b) => store.save(b));
     handle("boards:delete", (id) => store.delete(id));
@@ -201,8 +251,20 @@ if (primaryInstance)
       assertBudget(req.messages, req.settings.contextLimit);
       const controller = new AbortController();
       pending.set(req.id, controller);
+      const started = performance.now();
+      const detail = {
+        requestId: req.id,
+        provider: req.settings.provider,
+        purpose: req.purpose,
+      };
+      diagnostics?.write({
+        event: "generation.started",
+        ...detail,
+        messageCount: req.messages.length,
+        webSearch: req.settings.webSearch === true,
+      });
       try {
-        return await provider(req.settings).generate(
+        const result = await provider(req.settings).generate(
           req,
           (text) =>
             window?.webContents.send("provider:delta", { id: req.id, text }),
@@ -213,6 +275,20 @@ if (primaryInstance)
               activity,
             }),
         );
+        diagnostics?.write({
+          event: "generation.completed",
+          ...detail,
+          durationMs: Math.round(performance.now() - started),
+        });
+        return result;
+      } catch (error) {
+        diagnostics?.write({
+          event: "generation.failed",
+          ...detail,
+          durationMs: Math.round(performance.now() - started),
+          error: diagnosticError(error),
+        });
+        throw error;
       } finally {
         pending.delete(req.id);
       }
@@ -229,6 +305,7 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 app.on("before-quit", () => {
+  diagnostics?.write({ event: "app.stopping" });
   for (const c of pending.values()) c.abort();
   auth?.dispose();
   store?.close();

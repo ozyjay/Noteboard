@@ -1,5 +1,7 @@
 import { Compass } from "lucide-react";
 import { useState } from "react";
+import { bridge } from "./bridge";
+import { errorText } from "./features/workspace/browser-actions";
 import { newBoard } from "./core/model";
 import { BoardDialogs } from "./features/boards/BoardDialogs";
 import { BoardImports } from "./features/boards/BoardImports";
@@ -229,6 +231,11 @@ export default function App() {
             store.changeBoard((b) => ({ ...b, responseProfile }))
           }
           profileDisabled={layout.locked}
+          onOpenLogs={() =>
+            void bridge
+              .openDiagnosticLogs?.()
+              .catch((error) => setError(errorText(error)))
+          }
           importSaving={files.importSaving}
           onRename={() => board && boardActions.requestRename(board.id)}
           onConsolidate={synthesis.openConsolidation}

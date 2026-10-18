@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import { type InquiryBridge } from "../src/bridge";
 import { GenerationProgressSchema } from "../src/core/generation-progress";
 const bridge: InquiryBridge = {
+  openDiagnosticLogs: () => ipcRenderer.invoke("diagnostics:open"),
   openWebLink: (url) => ipcRenderer.invoke("web:open", url),
   chatgptAccounts: () => ipcRenderer.invoke("chatgpt:accounts"),
   chatgptSignIn: (id) => ipcRenderer.invoke("chatgpt:signin", id),

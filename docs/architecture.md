@@ -1,6 +1,6 @@
 # Architecture
 
-Noteboard separates a React renderer from an Electron main process. The sandboxed preload exposes only Board/settings persistence, model discovery, generation, cancellation and stream subscription. The renderer has no Node access and cannot call arbitrary remote inference endpoints. External navigation and new windows are blocked; narrow main-process actions open the generated OpenAI authorisation URL, fixed ChatGPT usage settings and user-clicked validated HTTP/HTTPS source links in the system browser; rendered Markdown does not execute HTML or fetch images.
+Noteboard separates a React renderer from an Electron main process. The sandboxed preload exposes only Board/settings persistence, model discovery, generation, cancellation, stream subscription and opening the fixed diagnostic logs folder. The renderer has no Node access and cannot call arbitrary remote inference endpoints. External navigation and new windows are blocked; narrow main-process actions open the generated OpenAI authorisation URL, fixed ChatGPT usage settings and user-clicked validated HTTP/HTTPS source links in the system browser; rendered Markdown does not execute HTML or fetch images.
 
 ## High-level architecture
 
@@ -24,16 +24,19 @@ flowchart TB
     persistence["Persistence service"]
     providers["Provider adapters: models, generation, activity and cancellation"]
     auth["Account authentication and credential management"]
+    diagnostics["Bounded diagnostic logger"]
 
     ipc --> persistence
     ipc --> providers
     ipc --> auth
     providers --> auth
+    ipc --> diagnostics
   end
 
   subgraph storage["Local storage"]
     sqlite[("SQLite: Boards, settings and model catalogues")]
     credentials[("Encrypted credentials protected by OS secure storage")]
+    logfiles[("Local diagnostic JSONL files")]
   end
 
   ollama["Ollama — local inference"]
@@ -45,6 +48,7 @@ flowchart TB
   bridge -.->|"Browser preview"| preview
   persistence --> sqlite
   auth --> credentials
+  diagnostics --> logfiles
   auth -->|"Sign-in and token refresh"| chatgpt
   providers -->|"Loopback only"| ollama
   providers -->|"Inference and model discovery"| chatgpt
@@ -53,6 +57,8 @@ flowchart TB
 Arrows show calls and dependencies; results and stream events return through the same bridge. The renderer owns interaction and domain workflows. Privileged storage, credentials and provider networking sit behind the Electron boundary. Browser preview uses a separate local demo implementation.
 
 The UI and coordination live in `src/App.tsx` and `src/features/`; shared domain rules live in `src/core/`. `src/bridge.ts` selects the desktop bridge or browser preview. `electron/preload.ts` exposes the narrow IPC API, while `electron/main.ts` validates requests and coordinates persistence, providers and authentication. See [renderer feature ownership](#renderer-feature-ownership) for the detailed state and component map.
+
+`electron/diagnostics.ts` owns local structured JSONL diagnostics. One main-process instance records app lifecycle/version/platform, renderer exits/unresponsiveness, trusted IPC outcomes and timing, and generation outcomes correlated by request UUID. Runtime allowlists discard arbitrary fields. Error classification retains only fixed categories and recognised network cause codes; raw messages, stacks, URLs, account identities, Board/Note content, custom instructions, attachments and credentials are excluded. Files rotate at 1 MiB with two backups, stay outside Board storage/exports, and are never sent anywhere. Writes are synchronous and bounded; failures warn once without breaking application operations. A sender-validated `diagnostics:open` action opens only the fixed app logs directory through the native shell; the renderer cannot read files, select a path or submit log payloads. The desktop workspace menu exposes this action through App; browser preview has no diagnostic-files capability.
 
 ## Domain records
 

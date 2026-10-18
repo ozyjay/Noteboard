@@ -119,6 +119,8 @@ Desktop Boards and settings live in `inquiry.sqlite` under the existing Electron
 
 Generation errors retain the entered question for retry. Cancellation creates no partial Note or artefact. Persistence errors appear in the workspace; export the Board if saving fails. Only one generation runs at a time; changing Boards/provider settings is disabled during inference.
 
+Desktop diagnostics are available through **More → Open diagnostic logs**. The app writes `logs/diagnostics.jsonl` under its user-data directory, retaining two rotated backups of up to 1 MiB each. Entries include timestamps, app version/platform, operation durations/outcomes and safe error categories/network codes. Generation request UUIDs correlate start and completion/failure. Logs exclude prompts, responses, custom instructions, files, credentials, account identities, raw errors and URLs; they are local only and separate from Board exports. Reproduce a problem, then inspect the most recent entries. You can delete these files while Noteboard is closed; logging resumes on the next launch. Browser preview does not write diagnostic files.
+
 See [testing](testing.md) for validation commands and [roadmap](roadmap.md) for remaining scope.
 
 See [ChatGPT conversation import](chatgpt-import.md) for importing a text conversation as a Note chain and adding retrospective Highlights.

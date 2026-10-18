@@ -18,6 +18,9 @@ export default defineConfig({
       name: "browser",
       testMatch: ["browser/**/*.spec.ts", "model-discovery.spec.ts"],
     },
-    { name: "desktop", testMatch: "desktop.spec.ts" },
+    {
+      name: "desktop",
+      testMatch: ["desktop.spec.ts", "diagnostics-desktop.spec.ts"],
+    },
   ],
 });
