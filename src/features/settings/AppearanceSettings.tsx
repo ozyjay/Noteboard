@@ -27,7 +27,7 @@ const noteStyles: Record<
   studio: {
     label: "Studio",
     description:
-      "Large Takeaways for comparing ideas, a full-width reading action and fold-away reader tools.",
+      "Prominent prompts with supporting Takeaways, a full-width reading action and fold-away reader tools.",
   },
 };
 

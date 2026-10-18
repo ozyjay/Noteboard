@@ -181,6 +181,22 @@ for (const style of [
         .check();
       await expect(page.locator(".note-card.chosen")).toHaveCount(1);
       const firstCard = page.locator(".note-card").first();
+      const typography = await firstCard.evaluate((card) => {
+        const prompt = getComputedStyle(card.querySelector(".note-prompt")!);
+        const takeaway = getComputedStyle(
+          card.querySelector(".note-takeaway")!,
+        );
+        return {
+          promptSize: parseFloat(prompt.fontSize),
+          takeawaySize: parseFloat(takeaway.fontSize),
+          promptWeight: parseFloat(prompt.fontWeight),
+          takeawayWeight: parseFloat(takeaway.fontWeight),
+        };
+      });
+      expect(typography.promptSize).toBeGreaterThan(typography.takeawaySize);
+      expect(typography.promptWeight).toBeGreaterThan(
+        typography.takeawayWeight,
+      );
       expect(
         await firstCard.evaluate((card) =>
           Boolean(

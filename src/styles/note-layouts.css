@@ -46,16 +46,16 @@
 }
 :root[data-note-style="sticky"] .note-takeaway {
   margin: 0 0 18px;
-  font-size: 18px;
-  line-height: 1.5;
-  color: var(--text);
-  -webkit-line-clamp: 5;
-}
-:root[data-note-style="sticky"] .note-prompt {
-  font-family: var(--font-reading);
   font-size: 13px;
   line-height: 1.6;
   color: var(--text-secondary);
+  -webkit-line-clamp: 5;
+}
+:root[data-note-style="sticky"] .note-prompt {
+  font-family: var(--font-reading-heading);
+  font-size: 22px;
+  line-height: 1.35;
+  color: var(--text);
   margin-bottom: 20px;
 }
 :root[data-note-style="sticky"] .note-card.overview .note-prompt {
@@ -117,20 +117,20 @@
   margin-bottom: 14px;
 }
 :root[data-note-style="studio"] .note-takeaway {
-  font-size: 18px;
-  font-weight: 650;
-  line-height: 1.35;
-  color: var(--text);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--text-secondary);
   margin: 0 0 12px;
   -webkit-line-clamp: 3;
 }
 :root[data-note-style="studio"] .note-prompt {
-  font-family: var(--font-reading);
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 1.4;
+  font-family: var(--font-reading-heading);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.35;
   margin-bottom: 12px;
-  color: var(--text-secondary);
+  color: var(--text);
 }
 :root[data-note-style="studio"] .note-bottom {
   display: grid;
