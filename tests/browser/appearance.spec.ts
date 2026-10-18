@@ -180,6 +180,24 @@ for (const style of [
         .getByRole("checkbox", { name: "Select Note 1 for synthesis" })
         .check();
       await expect(page.locator(".note-card.chosen")).toHaveCount(1);
+      const firstCard = page.locator(".note-card").first();
+      expect(
+        await firstCard.evaluate((card) =>
+          Boolean(
+            card
+              .querySelector(".note-prompt")!
+              .compareDocumentPosition(card.querySelector(".note-takeaway")!) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+          ),
+        ),
+      ).toBe(true);
+      if (style !== "blueprint") {
+        const prompt = (await firstCard.locator(".note-prompt").boundingBox())!;
+        const takeaway = (await firstCard
+          .locator(".note-takeaway")
+          .boundingBox())!;
+        expect(takeaway.y).toBeGreaterThanOrEqual(prompt.y + prompt.height);
+      }
       if (style === "blueprint") {
         const peek = page.locator(".note-card").first().locator(".note-peek");
         const collapsedHeight = (await page

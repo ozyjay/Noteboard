@@ -35,7 +35,7 @@ export type CardNode = Node<
 export function NoteCard({ data, selected }: NodeProps<CardNode>) {
   const card = useRef<HTMLElement>(null);
   const style = data.noteStyle;
-  const takeawayFirst = style === "sticky" || style === "studio";
+  const labelledTakeaway = style === "sticky" || style === "studio";
   const detailed = !data.overview;
   const updateNodeInternals = useUpdateNodeInternals();
   useLayoutEffect(() => {
@@ -106,7 +106,7 @@ export function NoteCard({ data, selected }: NodeProps<CardNode>) {
           : "Generated";
   const takeaway = (
     <div className="note-extract">
-      {takeawayFirst && <span className="note-extract-label">Takeaway</span>}
+      {labelledTakeaway && <span className="note-extract-label">Takeaway</span>}
       <p className="note-takeaway">{data.note.takeaway}</p>
     </div>
   );
@@ -152,7 +152,6 @@ export function NoteCard({ data, selected }: NodeProps<CardNode>) {
         disabled={data.layoutDisabled}
         onAction={data.onLayout}
       />
-      {takeawayFirst && <div className="note-detail">{takeaway}</div>}
       <button
         className={`note-prompt${detailed ? " nodrag" : ""}`}
         disabled={data.layoutDisabled}
@@ -174,7 +173,7 @@ export function NoteCard({ data, selected }: NodeProps<CardNode>) {
             {takeaway}
           </details>
         ) : (
-          !takeawayFirst && takeaway
+          takeaway
         )}
         {(style === "index" || style === "blueprint") && (
           <p className="note-catalogue-meta">

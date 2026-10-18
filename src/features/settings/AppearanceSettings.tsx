@@ -12,7 +12,7 @@ const noteStyles: Record<
   sticky: {
     label: "Sticky notes",
     description:
-      "Scan Takeaways first, then open a Note for a focused read. Revision and navigation tools fold away.",
+      "Scan prompts and Takeaways, then open a Note for a focused read. Revision and navigation tools fold away.",
   },
   blueprint: {
     label: "Blueprint",
