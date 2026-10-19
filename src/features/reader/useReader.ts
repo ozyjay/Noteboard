@@ -59,7 +59,8 @@ export function useReader(
       e.highlight?.versionId ??
         board!.notes.find((n) => n.id === e.source)!.versions[0].id,
     );
-    setAnchor(e.highlight);
+    // Each click must restore the selection, even when this source is already open.
+    setAnchor(e.highlight ? { ...e.highlight } : undefined);
     setHighlight(undefined);
   }
   const incoming = board?.edges.find((e) => e.target === readerId);
